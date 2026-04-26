@@ -11,5 +11,3 @@ class GetUser {
     return users.map((u) => u.toPublic());
   }
 }
-
-module.exports = GetUser;

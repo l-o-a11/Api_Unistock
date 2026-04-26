@@ -17,5 +17,3 @@ class GetUserById {
     return user.toPublic();
   }
 }
-
-module.exports = GetUserById;

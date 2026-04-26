@@ -70,5 +70,3 @@ class UpdateUser {
     return updated.toPublic();
   }
 }
-
-module.exports = UpdateUser;

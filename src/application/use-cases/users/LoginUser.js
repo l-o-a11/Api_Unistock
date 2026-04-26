@@ -37,5 +37,3 @@ class LoginUser {
     return { token, user: user.toPublic() };
   }
 }
-
-module.exports = LoginUser;

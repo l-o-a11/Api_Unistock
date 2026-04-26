@@ -26,5 +26,3 @@ class DeleteUser {
     return true;
   }
 }
-
-module.exports = DeleteUser;

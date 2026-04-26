@@ -72,5 +72,3 @@ class CreateUser {
     return { user: user.toPublic(), temporaryPassword: plainPassword };
   }
 }
-
-module.exports = CreateUser;
