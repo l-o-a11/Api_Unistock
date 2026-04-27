@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// No exponer el password en ninguna respuesta JSON
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

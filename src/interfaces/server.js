@@ -6,6 +6,9 @@ const express = require("express");
 const cors = require("cors");
 const userRoutes = require("../infrastructure/routes/userRoutes");
 const authRoutes = require("../infrastructure/routes/authRoutes");
+const suppliersRoutes = require("../infrastructure/routes/suppliersRoutes");
+const thirdPartiesRoutes = require("../infrastructure/routes/thirdPartiesRoute");
+const productionRoutes = require("../infrastructure/routes/productionRoutes");
 
 const app = express();
 
@@ -16,6 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 // Rutas
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/proveedores", suppliersRoutes);
+app.use("/terceros", thirdPartiesRoutes);
+app.use("/produccion", productionRoutes);
 
 // Health check
 app.get("/health", (_, res) =>
