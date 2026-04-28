@@ -12,6 +12,34 @@ const store = {
     return this._users;
   },
 
+  productCategory(){
+    if (!this._productCategory) {
+      this._productCategory = [];
+    }
+    return this._productCategory;
+  },
+
+  products(){
+    if (!this._products) {
+      this._products = [];
+    }
+    return this._products;
+  },
+
+  technicalSpecifications() {
+    if (!this._technicalSpecifications) {
+      this._technicalSpecifications = [];
+    }
+    return this._technicalSpecifications;
+  },
+
+  materialstechnicalSpecifications() {
+    if (!this._materialstechnicalSpecifications) {
+      this._materialstechnicalSpecifications = [];
+    }
+    return this._materialstechnicalSpecifications;
+  },
+
   suppliers() {
     if (!this._suppliers) {
       this._suppliers = [];
