@@ -1,58 +1,40 @@
 // infrastructure/repositories/ThirdPartyAssignmentRepository.js
-const { store } = require("../../Config/database");
+const ThirdPartyAssignmentModel = require("../db/ThirdPartyAssignmentModel");
 const ThirdPartyAssignment = require("../../domain/entities/ThirdPartyAssignment");
 
 class ThirdPartyAssignmentRepository {
-  _toEntity(raw) {
-    return raw ? new ThirdPartyAssignment(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new ThirdPartyAssignment({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.thirdPartyAssignments();
-
-    if (filters.id_orden) {
-      result = result.filter((tpa) => tpa.id_orden === parseInt(filters.id_orden));
-    }
-    if (filters.id_tercero) {
-      result = result.filter((tpa) => tpa.id_tercero === parseInt(filters.id_tercero));
-    }
-
-    return result.map((tpa) => this._toEntity(tpa));
+  async findAll(filters = {}) {
+    const query = {};
+    if (filters.id_orden)   query.id_orden   = filters.id_orden;
+    if (filters.id_tercero) query.id_tercero = filters.id_tercero;
+    const docs = await ThirdPartyAssignmentModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.thirdPartyAssignments().find((tpa) => tpa.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await ThirdPartyAssignmentModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  create(data) {
-    const assignments = store.thirdPartyAssignments();
-    const maxId = assignments.length > 0 ? Math.max(...assignments.map(a => a.id)) : 0;
-    const newAssignment = {
-      id: maxId + 1,
-      fecha: new Date(),
-      ...data,
-    };
-    assignments.push(newAssignment);
-    return this._toEntity(newAssignment);
+  async create(data) {
+    const doc = await ThirdPartyAssignmentModel.create({ fecha: new Date(), ...data });
+    return this._toEntity(doc);
   }
 
-  update(id, data) {
-    const assignments = store.thirdPartyAssignments();
-    const index = assignments.findIndex((tpa) => tpa.id === parseInt(id));
-    if (index === -1) return null;
-
-    assignments[index] = { ...assignments[index], ...data };
-    return this._toEntity(assignments[index]);
+  async update(id, changes) {
+    const doc = await ThirdPartyAssignmentModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const assignments = store.thirdPartyAssignments();
-    const index = assignments.findIndex((tpa) => tpa.id === parseInt(id));
-    if (index === -1) return false;
-
-    assignments.splice(index, 1);
-    return true;
+  async delete(id) {
+    const result = await ThirdPartyAssignmentModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

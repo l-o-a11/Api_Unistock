@@ -1,62 +1,78 @@
+﻿const { store } = require("../../Config/database");
 const UserModel = require("../db/UserModel");
+const User = require("../../domain/entities/User");
 
 class UserRepository {
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new User({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
+  }
 
-  async findAll(filters = {}, requestingUser) {
+  async findAll(filters = {}) {
     const query = {};
-
-    // Admin solo ve su sede
-    if (requestingUser.rolNombre !== "Gerente") {
-      query.sedeId = requestingUser.sedeId;
-    }
-
     if (filters.search) {
-      const term = new RegExp(filters.search, "i");
-      query.$or = [
-        { nombreCompleto: term },
-        { correo: term },
-        { numeroDocumento: term },
-      ];
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
     }
-    if (filters.rolId)  query.rolId  = filters.rolId;
-    if (filters.sedeId && requestingUser.rolNombre === "Gerente") {
-      query.sedeId = filters.sedeId;
-    }
-    if (filters.estado !== undefined) {
-      query.estado = filters.estado === "true";
-    }
-
-    return UserModel.find(query).select("-password");
+    if (filters.rolId !== undefined) query.rolId = parseInt(filters.rolId);
+    if (filters.sedeId !== undefined) query.sedeId = parseInt(filters.sedeId);
+    if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
+    const docs = await UserModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
   async findById(id) {
-    return UserModel.findById(id);
+    const doc = await UserModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
   async findByEmail(correo) {
-    return UserModel.findOne({ correo });
+    const doc = await UserModel.findOne({ correo });
+    return this._toEntity(doc);
   }
 
   async findByDocument(numeroDocumento) {
-    return UserModel.findOne({ numeroDocumento });
+    const doc = await UserModel.findOne({ numeroDocumento });
+    return this._toEntity(doc);
   }
 
   async countActiveAdmins() {
-    // TODO: cruzar con colección roles cuando esté disponible
-    return UserModel.countDocuments({ estado: true });
+    return UserModel.countDocuments({ rolId: 2, estado: true });
   }
 
   async save(data) {
-    const user = new UserModel(data);
-    return user.save();
+    const doc = await UserModel.create(data);
+    return this._toEntity(doc);
   }
 
   async update(id, changes) {
-    return UserModel.findByIdAndUpdate(id, changes, { new: true }).select("-password");
+    const doc = await UserModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
   async delete(id) {
-    return UserModel.findByIdAndDelete(id);
+    const result = await UserModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
+  }
+
+  // Catálogos
+  findAllRoles() {
+    return [];
+  }
+
+  findRoleById(id) {
+    const parsed = parseInt(id);
+    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
+  }
+
+  findAllSedes() {
+    return store.sedes().filter((s) => s.estado === true);
+  }
+
+  findSedeById(id) {
+    const parsed = parseInt(id);
+    return store.sedes().find((s) => s.id === parsed && s.estado === true) || null;
   }
 }
 

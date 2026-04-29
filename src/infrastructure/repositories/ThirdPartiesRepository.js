@@ -1,105 +1,44 @@
 // infrastructure/repositories/ThirdPartiesRepository.js
-/**
- * ThirdPartiesRepository
- * 
- * Repositorio que abstrae la capa de acceso a datos para Terceros.
- * Implementa el patrón Repository para traducir operaciones del dominio
- * a operaciones sobre la fuente de datos (en-memoria o MongoDB).
- */
-
-const { store } = require("../../Config/database");
+const ThirdPartiesModel = require("../db/ThirdPartiesModel");
 const ThirdParties = require("../../domain/entities/ThirdParties");
 
-class UserRepository {
-  _toEntity(raw) {
-    return raw ? new User(raw) : null;
+class ThirdPartiesRepository {
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new ThirdParties({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.users();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.nombreCompleto.toLowerCase().includes(term) ||
-          u.correo.toLowerCase().includes(term) ||
-          u.numeroDocumento.includes(term),
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre: re }, { contacto: re }];
     }
-    if (filters.rolId !== undefined) {
-      result = result.filter((u) => u.rolId === parseInt(filters.rolId));
-    }
-    if (filters.sedeId !== undefined) {
-      result = result.filter((u) => u.sedeId === parseInt(filters.sedeId));
-    }
-    if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((u) => u.estado === active);
-    }
-
-    return result.map((u) => this._toEntity(u));
+    if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
+    const docs = await ThirdPartiesModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.users().find((u) => u.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await ThirdPartiesModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  findByEmail(correo) {
-    const raw = store.users().find((u) => u.correo === correo);
-    return this._toEntity(raw);
+  async create(data) {
+    const doc = await ThirdPartiesModel.create(data);
+    return this._toEntity(doc);
   }
 
-  findByDocument(numeroDocumento) {
-    const raw = store
-      .users()
-      .find((u) => u.numeroDocumento === numeroDocumento);
-    return this._toEntity(raw);
+  async update(id, changes) {
+    const doc = await ThirdPartiesModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  countActiveAdmins() {
-    return store.users().filter((u) => u.rolId === 2 && u.estado === true)
-      .length;
-  }
-
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.users().push(newRaw);
-    return this._toEntity(newRaw);
-  }
-
-  update(id, changes) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
-  }
-
-  delete(id) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
-  }
-
-  findAllRoles() {
-    return store.roles.filter((r) => r.estado !== false);
-  }
-
-  findRoleById(id) {
-    return store.roles.find((r) => r.id === parseInt(id)) || null;
-  }
-
-  findAllSedes() {
-    return store.sedes.filter((s) => s.estado !== false);
-  }
-
-  findSedeById(id) {
-    return store.sedes.find((s) => s.id === parseInt(id)) || null;
+  async delete(id) {
+    const result = await ThirdPartiesModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 
-module.exports = UserRepository;
+module.exports = ThirdPartiesRepository;

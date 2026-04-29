@@ -54,7 +54,7 @@ class CreateUser {
       password: plainPassword,
     });
 
-    return user.toJSON();
+    return user.toPublic();
   }
 }
 

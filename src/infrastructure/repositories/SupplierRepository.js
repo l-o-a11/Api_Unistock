@@ -1,98 +1,54 @@
-// infrastructure/repositories/UserRepository.js
+// infrastructure/repositories/SupplierRepository.js
+const SuppliersModel = require("../db/SuppliersModel");
+const Suppliers = require("../../domain/entities/Suppliers");
 
-const { store } = require("../../Config/database");
-const User = require("../../domain/entities/User");
-
-class UserRepository {
-  _toEntity(raw) {
-    return raw ? new User(raw) : null;
+class SupplierRepository {
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Suppliers({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.users();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.nombreCompleto.toLowerCase().includes(term) ||
-          u.correo.toLowerCase().includes(term) ||
-          u.numeroDocumento.includes(term),
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre_de_empresa: re }, { correo: re }];
     }
-    if (filters.rolId !== undefined) {
-      result = result.filter((u) => u.rolId === parseInt(filters.rolId));
-    }
-    if (filters.sedeId !== undefined) {
-      result = result.filter((u) => u.sedeId === parseInt(filters.sedeId));
-    }
-    if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((u) => u.estado === active);
-    }
-
-    return result.map((u) => this._toEntity(u));
+    if (filters.activo !== undefined) query.activo = filters.activo === "true" || filters.activo === true;
+    const docs = await SuppliersModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.users().find((u) => u.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await SuppliersModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  findByEmail(correo) {
-    const raw = store.users().find((u) => u.correo === correo);
-    return this._toEntity(raw);
+  async findByNit(nit) {
+    const doc = await SuppliersModel.findOne({ nit });
+    return this._toEntity(doc);
   }
 
-  findByDocument(numeroDocumento) {
-    const raw = store
-      .users()
-      .find((u) => u.numeroDocumento === numeroDocumento);
-    return this._toEntity(raw);
+  async findByEmail(correo) {
+    const doc = await SuppliersModel.findOne({ correo });
+    return this._toEntity(doc);
   }
 
-  countActiveAdmins() {
-    return store.users().filter((u) => u.rolId === 2 && u.estado === true)
-      .length;
+  async create(data) {
+    const doc = await SuppliersModel.create(data);
+    return this._toEntity(doc);
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.users().push(newRaw);
-    return this._toEntity(newRaw);
+  async update(id, changes) {
+    const doc = await SuppliersModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
-  }
-
-  delete(id) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
-  }
-
-  findAllRoles() {
-    return store.roles.filter((r) => r.estado !== false);
-  }
-
-  findRoleById(id) {
-    return store.roles.find((r) => r.id === parseInt(id)) || null;
-  }
-
-  findAllSedes() {
-    return store.sedes.filter((s) => s.estado !== false);
-  }
-
-  findSedeById(id) {
-    return store.sedes.find((s) => s.id === parseInt(id)) || null;
+  async delete(id) {
+    const result = await SuppliersModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 
-module.exports = UserRepository;
+module.exports = SupplierRepository;
