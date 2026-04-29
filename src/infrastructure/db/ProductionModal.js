@@ -1,26 +1,14 @@
-// infrastructure/db/UserModel.js
-
+// infrastructure/db/ProductionModal.js
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const productionOrderSchema = new mongoose.Schema(
   {
-    tipoDocumento: { type: String, required: true, enum: ["CC", "TI"] },
-    numeroDocumento: { type: String, required: true, unique: true },
-    nombreCompleto: { type: String, required: true },
-    correo: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true },
-    rolId: { type: Number, required: true },
-    sedeId: { type: Number, required: true },
-    estado: { type: Boolean, default: true },
+    fecha_creacion: { type: Date, default: Date.now },
+    fecha_entrega:  { type: Date, required: true },
+    cliente:        { type: String, required: true },
+    id_usuario:     { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true },
 );
 
-// No exponer el password en ninguna respuesta JSON
-userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  return obj;
-};
-
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model("ProductionOrder", productionOrderSchema);

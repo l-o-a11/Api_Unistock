@@ -1,58 +1,60 @@
-// application/use-cases/users/UpdateUser.js
+// application/use-cases/suppliers/UpdateUser.js
 
-class UpdateUser {
-  constructor(userRepository) {
-    this.userRepository = userRepository;
+class UpdateSupplier {
+  constructor(supplierRepository) {
+    this.supplierRepository = supplierRepository;
   }
 
   execute(id, data) {
-    const existing = this.userRepository.findById(id);
+    const existing = this.supplierRepository.findById(id);
     if (!existing) {
-      const error = new Error("Usuario no encontrado");
+      const error = new Error("Proveedor no encontrado");
       error.statusCode = 404;
       throw error;
     }
 
     const {
-      tipoDocumento,
-      numeroDocumento,
-      nombreCompleto,
+     nit,
+      nombre_de_empresa,
+      nombre_del_contacto,
+      direccion,
+      telefono,
       correo,
-      rolId,
-      sedeId,
-    } = data;
+      sitio_web,
+      activo,
+    }
 
-    // Unicidad de correo (excluye el usuario actual)
+    // Unicidad de correo (excluye el proveedor actual)
     if (correo && correo !== existing.correo) {
-      const byEmail = this.userRepository.findByEmail(correo);
+      const byEmail = this.supplierRepository.findByEmail(correo);
       if (byEmail && byEmail.id !== parseInt(id)) {
         const error = new Error(
-          "Ya existe otro usuario con ese correo electrónico",
+          "Ya existe otro proveedor con ese correo electrónico",
         );
         error.statusCode = 409;
         throw error;
       }
     }
 
-    // Unicidad de documento (excluye el usuario actual)
+    // Unicidad de documento (excluye el proveedor actual)
     if (numeroDocumento && numeroDocumento !== existing.numeroDocumento) {
-      const byDoc = this.userRepository.findByDocument(numeroDocumento);
+      const byDoc = this.supplierRepository.findByDocument(numeroDocumento);
       if (byDoc && byDoc.id !== parseInt(id)) {
         const error = new Error(
-          "Ya existe otro usuario con ese número de documento",
+          "Ya existe otro proveedor con ese número de documento",
         );
         error.statusCode = 409;
         throw error;
       }
     }
 
-    if (rolId && !this.userRepository.findRoleById(rolId)) {
+    if (rolId && !this.Repository.findRoleById(rolId)) {
       const error = new Error("El rol seleccionado no existe");
       error.statusCode = 422;
       throw error;
     }
 
-    if (sedeId && !this.userRepository.findSedeById(sedeId)) {
+    if (sedeId && !this.supplierRepository.findSedeById(sedeId)) {
       const error = new Error("La sede seleccionada no existe");
       error.statusCode = 422;
       throw error;
@@ -66,7 +68,7 @@ class UpdateUser {
     if (rolId) changes.rolId = parseInt(rolId);
     if (sedeId) changes.sedeId = parseInt(sedeId);
 
-    const updated = this.userRepository.update(id, changes);
+    const updated = this.supplierRepository.update(id, changes);
     return updated.toPublic();
   }
 }
