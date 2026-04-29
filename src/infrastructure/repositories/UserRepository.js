@@ -83,19 +83,21 @@ class UserRepository {
 
   // Catálogos
   findAllRoles() {
-    return store.roles.filter((r) => r.estado !== false);
+    return [];
   }
 
   findRoleById(id) {
-    return store.roles.find((r) => r.id === parseInt(id)) || null;
+    const parsed = parseInt(id);
+    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
   }
 
   findAllSedes() {
-    return store.sedes.filter((s) => s.estado !== false);
+    return [];
   }
 
   findSedeById(id) {
-    return store.sedes.find((s) => s.id === parseInt(id)) || null;
+    const parsed = parseInt(id);
+    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
   }
 }
 
