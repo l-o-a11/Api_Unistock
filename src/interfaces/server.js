@@ -9,6 +9,13 @@ const authRoutes = require("../infrastructure/routes/authRoutes");
 const suppliersRoutes = require("../infrastructure/routes/suppliersRoutes");
 const thirdPartiesRoutes = require("../infrastructure/routes/thirdPartiesRoute");
 const productionRoutes = require("../infrastructure/routes/productionRoutes");
+const compraRoutes = require("../infrastructure/routes/compraRouter");
+const insumoRoutes = require("../infrastructure/routes/insumoRouter");
+const rolRoutes = require("../infrastructure/routes/rolRouter");
+const sedeRoutes = require("../infrastructure/routes/sedeRoutes");
+const categoriaInsumoRoutes = require("../infrastructure/routes/categoriaInsumoRoutes");
+const moduloRoutes = require("../infrastructure/routes/moduloRoutes");
+const privilegioRoutes = require("../infrastructure/routes/privilegioRoutes");
 
 const app = express();
 
@@ -22,6 +29,13 @@ app.use("/users", userRoutes);
 app.use("/proveedores", suppliersRoutes);
 app.use("/terceros", thirdPartiesRoutes);
 app.use("/produccion", productionRoutes);
+app.use('/compras', compraRoutes);
+app.use('/insumos', insumoRoutes);
+app.use('/roles', rolRoutes);
+app.use('/sedes', sedeRoutes);
+app.use('/categorias-insumos', categoriaInsumoRoutes);
+app.use('/modulos', moduloRoutes);
+app.use('/privilegios', privilegioRoutes);
 
 // Health check
 app.get("/health", (_, res) =>
