@@ -1,4 +1,4 @@
-// infrastructure/repositories/UserRepository.js
+﻿const { store } = require("../../Config/database");
 const UserModel = require("../db/UserModel");
 const User = require("../../domain/entities/User");
 
@@ -6,7 +6,7 @@ class UserRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new User({ ...obj, id: obj._id.toString() });
+    return new User({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
   }
 
   async findAll(filters = {}) {
@@ -15,7 +15,7 @@ class UserRepository {
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
     }
-    if (filters.rolId  !== undefined) query.rolId  = parseInt(filters.rolId);
+    if (filters.rolId !== undefined) query.rolId = parseInt(filters.rolId);
     if (filters.sedeId !== undefined) query.sedeId = parseInt(filters.sedeId);
     if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
     const docs = await UserModel.find(query);
@@ -56,13 +56,6 @@ class UserRepository {
     return !!result;
   }
 
-<<<<<<< HEAD
-  // Catálogos (sin modelo propio — arrays estáticos por ahora)
-  findAllRoles()     { return []; }
-  findRoleById(id)   { return id ? { id: parseInt(id) } : null; }
-  findAllSedes()     { return []; }
-  findSedeById(id)   { return id ? { id: parseInt(id) } : null; }
-=======
   // Catálogos
   findAllRoles() {
     return [];
@@ -74,14 +67,13 @@ class UserRepository {
   }
 
   findAllSedes() {
-    return store.sedes().filter(s => s.estado === true);
+    return store.sedes().filter((s) => s.estado === true);
   }
 
   findSedeById(id) {
     const parsed = parseInt(id);
-    return store.sedes().find(s => s.id === parsed && s.estado === true) || null;
+    return store.sedes().find((s) => s.id === parsed && s.estado === true) || null;
   }
->>>>>>> a762b7d23450e837c1db0cdd2470e08f987bcde7
 }
 
 module.exports = UserRepository;
