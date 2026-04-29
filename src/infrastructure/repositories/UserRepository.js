@@ -92,12 +92,12 @@ class UserRepository {
   }
 
   findAllSedes() {
-    return [];
+    return store.sedes().filter(s => s.estado === true);
   }
 
   findSedeById(id) {
     const parsed = parseInt(id);
-    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
+    return store.sedes().find(s => s.id === parsed && s.estado === true) || null;
   }
 }
 
