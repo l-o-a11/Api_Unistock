@@ -6,6 +6,8 @@ const express = require("express");
 const cors = require("cors");
 const userRoutes = require("../infrastructure/routes/userRoutes");
 const authRoutes = require("../infrastructure/routes/authRoutes");
+const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
+const productRoutes = require("../infrastructure/routes/productRoutes");
 const suppliersRoutes = require("../infrastructure/routes/suppliersRoutes");
 const thirdPartiesRoutes = require("../infrastructure/routes/thirdPartiesRoute");
 const productionRoutes = require("../infrastructure/routes/productionRoutes");
@@ -26,6 +28,8 @@ app.use(express.urlencoded({ extended: true }));
 // Rutas
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/categorias", productCategoryRoutes);
+app.use("/productos", productRoutes);
 app.use("/proveedores", suppliersRoutes);
 app.use("/terceros", thirdPartiesRoutes);
 app.use("/produccion", productionRoutes);

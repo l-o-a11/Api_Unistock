@@ -10,6 +10,14 @@ const store = {
     if (!this._users) this._users = [];
     return this._users;
   },
+  productsCategories() {
+    if (!this._productsCategories) this._productsCategories = [];
+    return this._productsCategories;
+  },
+  products() {
+    if (!this._products) this._products = [];
+    return this._products;
+  },
   suppliers() {
     if (!this._suppliers) this._suppliers = [];
     return this._suppliers;
