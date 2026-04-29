@@ -46,13 +46,13 @@ const store = {
     if (!this._headquarterTransfers) this._headquarterTransfers = [];
     return this._headquarterTransfers;
   },
-  compras() {
-    if (!this._compras) this._compras = [];
-    return this._compras;
+  purchases() {
+    if (!this._purchases) this._purchases = [];
+    return this._purchases;
   },
-  detalleCompras() {
-    if (!this._detalleCompras) this._detalleCompras = [];
-    return this._detalleCompras;
+  detallePurchases() {
+    if (!this._detallePurchases) this._detallePurchases = [];
+    return this._detallePurchases;
   },
   insumos() {
     if (!this._insumos) this._insumos = [];

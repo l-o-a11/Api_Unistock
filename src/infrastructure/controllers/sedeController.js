@@ -4,11 +4,11 @@
 
 const SedeRepository = require("../repositories/SedeRepository");
 const UserRepository = require("../repositories/UserRepository");
-const CreateSede = require("../../application/use-cases/sedes/CreateSede");
-const GetSede = require("../../application/use-cases/sedes/GetSede");
-const GetSedeById = require("../../application/use-cases/sedes/GetSedeById");
-const UpdateSede = require("../../application/use-cases/sedes/UpdateSede");
-const DeleteSede = require("../../application/use-cases/sedes/DeleteSede");
+const CreateSede = require("../../application/use-cases/sites/CreateSites");
+const GetSede = require("../../application/use-cases/sites/GetSites");
+const GetSedeById = require("../../application/use-cases/sites/GetSedeById");
+const UpdateSede = require("../../application/use-cases/sites/UpdateSites");
+const DeleteSede = require("../../application/use-cases/sites/DeleteSites");
 
 const {
     ok,
