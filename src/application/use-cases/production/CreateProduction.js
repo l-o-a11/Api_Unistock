@@ -5,9 +5,9 @@ class CreateProduction {
   }
 
   async execute(data) {
-    const { fecha_entrega, cliente, id_usuario } = data;
+    const { fecha_entrega, cliente, id_produccion } = data;
 
-    if (!fecha_entrega || !cliente || !id_usuario) {
+    if (!fecha_entrega || !cliente || !id_produccion) {
       const error = new Error("Faltan campos requeridos");
       error.statusCode = 400;
       throw error;
@@ -16,7 +16,7 @@ class CreateProduction {
     return this.productionRepository.create({
       fecha_entrega,
       cliente,
-      id_usuario,
+      id_produccion,
     });
   }
 }

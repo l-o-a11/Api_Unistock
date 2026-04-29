@@ -1,5 +1,5 @@
 // application/use-cases/suppliers/CreateSupplier.js
-class CreateSupplier {
+class Create {
   constructor(supplierRepository) {
     this.supplierRepository = supplierRepository;
   }
