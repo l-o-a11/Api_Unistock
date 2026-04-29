@@ -56,24 +56,11 @@ class UserRepository {
     return !!result;
   }
 
-  // Catálogos
-  findAllRoles() {
-    return [];
-  }
-
-  findRoleById(id) {
-    const parsed = parseInt(id);
-    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
-  }
-
-  findAllSedes() {
-    return store.sedes().filter((s) => s.estado === true);
-  }
-
-  findSedeById(id) {
-    const parsed = parseInt(id);
-    return store.sedes().find((s) => s.id === parsed && s.estado === true) || null;
-  }
+  // Catálogos (sin modelo propio — arrays estáticos por ahora)
+  findAllRoles()     { return []; }
+  findRoleById(id)   { return id ? { id: parseInt(id) } : null; }
+  findAllSedes()     { return []; }
+  findSedeById(id)   { return id ? { id: parseInt(id) } : null; }
 }
 
 module.exports = UserRepository;
