@@ -8,9 +8,9 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas
-app.use("/api/auth",       require("./infrastructure/routes/authRoutes"));
-app.use("/api/users",      require("./infrastructure/routes/userRoutes"));
-app.use("/api/suppliers",  require("./infrastructure/routes/suppliersRoutes"));
+app.use("/api/auth", require("./infrastructure/routes/authRoutes"));
+app.use("/api/users", require("./infrastructure/routes/userRoutes"));
+app.use("/api/suppliers", require("./infrastructure/routes/suppliersRoutes"));
 app.use("/api/third-parties", require("./infrastructure/routes/thirdPartiesRoute"));
 app.use("/api/production", require("./infrastructure/routes/productionRoutes"));
 

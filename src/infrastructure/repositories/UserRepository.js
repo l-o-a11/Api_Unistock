@@ -1,4 +1,4 @@
-// infrastructure/repositories/UserRepository.js
+﻿const { store } = require("../../Config/database");
 const UserModel = require("../db/UserModel");
 const User = require("../../domain/entities/User");
 
@@ -6,7 +6,7 @@ class UserRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new User({ ...obj, id: obj._id.toString() });
+    return new User({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
   }
 
   async findAll(filters = {}) {
@@ -15,7 +15,7 @@ class UserRepository {
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
     }
-    if (filters.rolId  !== undefined) query.rolId  = parseInt(filters.rolId);
+    if (filters.rolId !== undefined) query.rolId = parseInt(filters.rolId);
     if (filters.sedeId !== undefined) query.sedeId = parseInt(filters.sedeId);
     if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
     const docs = await UserModel.find(query);

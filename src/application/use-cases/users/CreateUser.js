@@ -1,5 +1,5 @@
-// application/use-cases/users/CreateUser.js
-const bcrypt = require("bcryptjs");
+const { hash } = require("../../../infrastructure/security/password_encrypter");
+const { sendWelcomeEmail } = require("../../../shared/utils/emailService");
 const { generatePassword } = require("../../../shared/utils/generatePassword");
 
 class CreateUser {
@@ -7,68 +7,55 @@ class CreateUser {
     this.userRepository = userRepository;
   }
 
-  async execute(data) {
+  async execute(data, createdBy) {
     const {
-      tipoDocumento,
-      numeroDocumento,
-      nombreCompleto,
-      correo,
-      rolId,
-      sedeId,
-      password,
+      tipoDocumento, numeroDocumento, nombreCompleto,
+      correo, rolId, sedeId,
     } = data;
 
-    // Unicidad de correo
-    if (this.userRepository.findByEmail(correo)) {
-      const error = new Error(
-        "Ya existe un usuario con ese correo electrónico",
-      );
+    // Si es Admin solo puede crear usuarios de su propia sede
+    if (createdBy.rolId !== "gerente" && 
+        createdBy.sedeId.toString() !== sedeId.toString()) {
+      const error = new Error("Solo puedes crear usuarios de tu sede");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (await this.userRepository.findByEmail(correo)) {
+      const error = new Error("Ya existe un usuario con ese correo");
       error.statusCode = 409;
       throw error;
     }
 
-    // Unicidad de documento
-    if (this.userRepository.findByDocument(numeroDocumento)) {
-      const error = new Error(
-        "Ya existe un usuario con ese número de documento",
-      );
+    if (await this.userRepository.findByDocument(numeroDocumento)) {
+      const error = new Error("Ya existe un usuario con ese número de documento");
       error.statusCode = 409;
       throw error;
     }
 
-    // Rol existe
-    if (!this.userRepository.findRoleById(rolId)) {
-      const error = new Error("El rol seleccionado no existe");
-      error.statusCode = 422;
-      throw error;
-    }
+    const plainPassword = generatePassword();
+    const hashedPassword = await hash(plainPassword);
 
-    // Sede existe
-    if (!this.userRepository.findSedeById(sedeId)) {
-      const error = new Error("La sede seleccionada no existe");
-      error.statusCode = 422;
-      throw error;
-    }
-
-    const plainPassword = password || generatePassword();
-    const hashed = await bcrypt.hash(
-      plainPassword,
-      parseInt(process.env.BCRYPT_ROUNDS) || 10,
-    );
-
-    const user = this.userRepository.save({
+    const user = await this.userRepository.save({
       tipoDocumento,
       numeroDocumento,
       nombreCompleto: nombreCompleto.trim(),
       correo,
-      password: hashed,
-      rolId: parseInt(rolId),
-      sedeId: parseInt(sedeId),
+      password: hashedPassword,
+      rolId,
+      sedeId,
       estado: true,
     });
 
-    // Devolvemos la contraseña en texto plano solo aquí para que el
-    // frontend pueda enviar el correo de bienvenida
-    return { user: user.toPublic(), temporaryPassword: plainPassword };
+    // Enviar correo de bienvenida con la contraseña en texto plano
+    await sendWelcomeEmail({
+      nombreCompleto,
+      correo,
+      password: plainPassword,
+    });
+
+    return user.toPublic();
   }
 }
+
+module.exports = CreateUser;
