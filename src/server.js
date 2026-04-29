@@ -4,20 +4,20 @@
 
 const express = require("express");
 const cors = require("cors");
-const userRoutes = require("../infrastructure/routes/userRoutes");
-const authRoutes = require("../infrastructure/routes/authRoutes");
-const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
-const productRoutes = require("../infrastructure/routes/productRoutes");
-const suppliersRoutes = require("../infrastructure/routes/suppliersRoutes");
-const thirdPartiesRoutes = require("../infrastructure/routes/thirdPartiesRoute");
-const productionRoutes = require("../infrastructure/routes/productionRoutes");
-const compraRoutes = require("../infrastructure/routes/compraRouter");
-const insumoRoutes = require("../infrastructure/routes/insumoRouter");
-const rolRoutes = require("../infrastructure/routes/rolRouter");
-const sedeRoutes = require("../infrastructure/routes/sedeRoutes");
-const categoriaInsumoRoutes = require("../infrastructure/routes/categoriaInsumoRoutes");
-const moduloRoutes = require("../infrastructure/routes/moduloRoutes");
-const privilegioRoutes = require("../infrastructure/routes/privilegioRoutes");
+const userRoutes = require("./infrastructure/routes/userRoutes");
+const authRoutes = require("./infrastructure/routes/authRoutes");
+const productCategoryRoutes = require("./infrastructure/routes/productCategoryRoutes");
+const productRoutes = require("./infrastructure/routes/productRoutes");
+const suppliersRoutes = require("./infrastructure/routes/suppliersRoutes");
+const thirdPartiesRoutes = require("./infrastructure/routes/thirdPartiesRoute");
+const productionRoutes = require("./infrastructure/routes/productionRoutes");
+const compraRoutes = require("./infrastructure/routes/compraRouter");
+const insumoRoutes = require("./infrastructure/routes/insumoRouter");
+const rolRoutes = require("./infrastructure/routes/rolRouter");
+const sedeRoutes = require("./infrastructure/routes/sedeRoutes");
+const categoriaInsumoRoutes = require("./infrastructure/routes/categoriaInsumoRoutes");
+const moduloRoutes = require("./infrastructure/routes/moduloRoutes");
+const privilegioRoutes = require("./infrastructure/routes/privilegioRoutes");
 
 const app = express();
 

@@ -1,103 +1,62 @@
-// infrastructure/repositories/UserRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
-const User = require("../../domain/entities/User");
+const UserModel = require("../db/UserModel");
 
 class UserRepository {
-  // Convierte un objeto plano del store en una entidad User
-  _toEntity(raw) {
-    return raw ? new User(raw) : null;
-  }
 
-  findAll(filters = {}) {
-    let result = store.users();
+  async findAll(filters = {}, requestingUser) {
+    const query = {};
+
+    // Admin solo ve su sede
+    if (requestingUser.rolNombre !== "Gerente") {
+      query.sedeId = requestingUser.sedeId;
+    }
 
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.nombreCompleto.toLowerCase().includes(term) ||
-          u.correo.toLowerCase().includes(term) ||
-          u.numeroDocumento.includes(term),
-      );
+      const term = new RegExp(filters.search, "i");
+      query.$or = [
+        { nombreCompleto: term },
+        { correo: term },
+        { numeroDocumento: term },
+      ];
     }
-    if (filters.rolId !== undefined) {
-      result = result.filter((u) => u.rolId === parseInt(filters.rolId));
-    }
-    if (filters.sedeId !== undefined) {
-      result = result.filter((u) => u.sedeId === parseInt(filters.sedeId));
+    if (filters.rolId)  query.rolId  = filters.rolId;
+    if (filters.sedeId && requestingUser.rolNombre === "Gerente") {
+      query.sedeId = filters.sedeId;
     }
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((u) => u.estado === active);
+      query.estado = filters.estado === "true";
     }
 
-    return result.map((u) => this._toEntity(u));
+    return UserModel.find(query).select("-password");
   }
 
-  findById(id) {
-    const raw = store.users().find((u) => u.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    return UserModel.findById(id);
   }
 
-  findByEmail(correo) {
-    const raw = store.users().find((u) => u.correo === correo);
-    return this._toEntity(raw);
+  async findByEmail(correo) {
+    return UserModel.findOne({ correo });
   }
 
-  findByDocument(numeroDocumento) {
-    const raw = store
-      .users()
-      .find((u) => u.numeroDocumento === numeroDocumento);
-    return this._toEntity(raw);
+  async findByDocument(numeroDocumento) {
+    return UserModel.findOne({ numeroDocumento });
   }
 
-  countActiveAdmins() {
-    return store.users().filter((u) => u.rolId === 2 && u.estado === true)
-      .length;
+  async countActiveAdmins() {
+    // TODO: cruzar con colección roles cuando esté disponible
+    return UserModel.countDocuments({ estado: true });
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.users().push(newRaw);
-    return this._toEntity(newRaw);
+  async save(data) {
+    const user = new UserModel(data);
+    return user.save();
   }
 
-  update(id, changes) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    return UserModel.findByIdAndUpdate(id, changes, { new: true }).select("-password");
   }
 
-  delete(id) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
-  }
-
-  // Catálogos
-  findAllRoles() {
-    return [];
-  }
-
-  findRoleById(id) {
-    const parsed = parseInt(id);
-    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
-  }
-
-  findAllSedes() {
-    return store.sedes().filter(s => s.estado === true);
-  }
-
-  findSedeById(id) {
-    const parsed = parseInt(id);
-    return store.sedes().find(s => s.id === parsed && s.estado === true) || null;
+  async delete(id) {
+    return UserModel.findByIdAndDelete(id);
   }
 }
 

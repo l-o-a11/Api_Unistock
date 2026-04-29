@@ -1,20 +1,24 @@
-const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!";
+const LOWERCASE = "abcdefghijkmnpqrstuvwxyz";
+const UPPERCASE = "ABCDEFGHJKMNPQRSTUVWXYZ";
+const NUMBERS   = "23456789";
+const SPECIALS  = "*-_#~$";
+const ALL       = LOWERCASE + UPPERCASE + NUMBERS + SPECIALS;
 
-function generatePassword(length = 10) {
+function generatePassword() {
+  // Garantiza mínimo 1 de cada tipo
   let pwd =
-    "ABCDEFGHJKMNPQRSTUVWXYZ"[Math.floor(Math.random() * 23)] +
-    "abcdefghjkmnpqrstuvwxyz"[Math.floor(Math.random() * 23)] +
-    "23456789"[Math.floor(Math.random() * 8)] +
-    "@#$!"[Math.floor(Math.random() * 4)];
+    LOWERCASE[Math.floor(Math.random() * LOWERCASE.length)] +
+    UPPERCASE[Math.floor(Math.random() * UPPERCASE.length)] +
+    NUMBERS[Math.floor(Math.random() * NUMBERS.length)] +
+    SPECIALS[Math.floor(Math.random() * SPECIALS.length)];
 
-  for (let i = pwd.length; i < length; i++) {
-    pwd += CHARS[Math.floor(Math.random() * CHARS.length)];
+  // Rellena hasta 8 caracteres con mezcla libre
+  for (let i = pwd.length; i < 8; i++) {
+    pwd += ALL[Math.floor(Math.random() * ALL.length)];
   }
 
-  return pwd
-    .split("")
-    .sort(() => Math.random() - 0.5)
-    .join("");
+  // Mezcla para que los obligatorios no queden siempre al inicio
+  return pwd.split("").sort(() => Math.random() - 0.5).join("");
 }
 
 module.exports = { generatePassword };
