@@ -1,3 +1,4 @@
+
 // infrastructure/db/CategoriaInsumoModel.js
 
 const mongoose = require("mongoose");
@@ -10,5 +11,6 @@ const categoriaInsumoSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
 
 module.exports = mongoose.model("CategoriaInsumo", categoriaInsumoSchema);
