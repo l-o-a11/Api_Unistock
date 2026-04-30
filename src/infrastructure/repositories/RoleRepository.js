@@ -1,75 +1,50 @@
 // infrastructure/repositories/RoleRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
+const RoleModel = require("../db/RoleModel");
 const Role = require("../../domain/entities/Role");
 
 class RoleRepository {
-  // Convierte un objeto plano del store en una entidad Role
-  _toEntity(raw) {
-    return raw ? new Role(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Role({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.roles();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.nombre.toLowerCase().includes(term) ||
-          r.descripcion.toLowerCase().includes(term)
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre: re }, { descripcion: re }];
     }
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((r) => r.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map((r) => this._toEntity(r));
+    const docs = await RoleModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.roles().find((r) => r.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await RoleModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  findByName(nombre) {
-    const raw = store.roles().find((r) => r.nombre === nombre);
-    return this._toEntity(raw);
+  async findByName(nombre) {
+    const doc = await RoleModel.findOne({ nombre });
+    return this._toEntity(doc);
   }
 
-  create(data) {
-    const now = new Date();
-    const newRaw = {
-      id: store.nextId(),
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    };
-    store.roles().push(newRaw);
-    return this._toEntity(newRaw);
+  async create(data) {
+    const doc = await RoleModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.roles();
-    const idx = list.findIndex((r) => r.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = {
-      ...list[idx],
-      ...changes,
-      updatedAt: new Date(),
-    };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await RoleModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.roles();
-    const idx = list.findIndex((r) => r.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await RoleModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

@@ -4,11 +4,11 @@
 
 const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
 const SupplyRepository = require("../repositories/SupplyRepository");
-const CreateSupplyCategory = require("../../application/use-cases/suppliesCategories/CreateSupplyCategory");
-const GetSupplyCategory = require("../../application/use-cases/suppliesCategories/GetSupplyCategory");
-const GetSupplyCategoryById = require("../../application/use-cases/suppliesCategories/GetSupplyCategoryById");
-const UpdateSupplyCategory = require("../../application/use-cases/suppliesCategories/UpdateSupplyCategory");
-const DeleteSupplyCategory = require("../../application/use-cases/suppliesCategories/DeleteSupplyCategory");
+const CreateSupplyCategory = require("../../application/use-cases/supplyCategories/CreateSupplyCategory");
+const GetSupplyCategory = require("../../application/use-cases/supplyCategories/GetSuppliesCategory");
+const GetSupplyCategoryById = require("../../application/use-cases/supplyCategories/GetSupplyCategoryById");
+const UpdateSupplyCategory = require("../../application/use-cases/supplyCategories/UpdateSupplyCategory");
+const DeleteSupplyCategory = require("../../application/use-cases/supplyCategories/DeleteSupplyCategory");
 
 const {
     ok,

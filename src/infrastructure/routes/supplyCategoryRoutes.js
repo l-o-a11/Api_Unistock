@@ -2,21 +2,21 @@
 
 const express = require("express");
 const {
-  getSuppliesCategories,
+  getSupplyCategories,
   getSupplyCategoryById,
   createSupplyCategory,
   updateSupplyCategory,
   deleteSupplyCategory,
 } = require("../controllers/supplyCategoryController");
-const { authMiddleware } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
 
 // Todas las rutas requieren autenticación
-router.use(authMiddleware);
+router.use(requireAuth);
 
 // GET /categorias-insumos - Obtener todas las categorías de insumos
-router.get("/", getSuppliesCategories);
+router.get("/", getSupplyCategories);
 
 // GET /categorias-insumos/:id - Obtener una categoría por ID
 router.get("/:id", getSupplyCategoryById);

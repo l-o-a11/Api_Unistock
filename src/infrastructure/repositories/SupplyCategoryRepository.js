@@ -1,60 +1,45 @@
 // infrastructure/repositories/SupplyCategoryRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
-const SupplyCategory = require("../../domain/entities/SupplyCategory");
+const CategoriaInsumoModel = require("../db/CategoriaInsumoModel");
+const SupplyCategory = require("../../domain/entities/CategoriaInsumo");
 
 class SupplyCategoryRepository {
-  // Convierte un objeto plano del store en una entidad SupplyCategory
-  _toEntity(raw) {
-    return raw ? new SupplyCategory(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new SupplyCategory({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.suppliesCategories();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.nombre.toLowerCase().includes(term) ||
-          c.descripcion.toLowerCase().includes(term),
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre: re }, { descripcion: re }];
     }
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((c) => c.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map((c) => this._toEntity(c));
+    const docs = await CategoriaInsumoModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.suppliesCategories().find((c) => c.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await CategoriaInsumoModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.suppliesCategories().push(newRaw);
-    return this._toEntity(newRaw);
+  async save(data) {
+    const doc = await CategoriaInsumoModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.suppliesCategories();
-    const idx = list.findIndex((c) => c.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await CategoriaInsumoModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.suppliesCategories();
-    const idx = list.findIndex((c) => c.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await CategoriaInsumoModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

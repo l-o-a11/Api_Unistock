@@ -1,56 +1,42 @@
 // infrastructure/repositories/PurchaseRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
+const CompraModel = require("../db/CompraModel");
 const Purchase = require("../../domain/entities/Purchase");
 
 class PurchaseRepository {
-  // Convierte un objeto plano del store en una entidad Purchase
-  _toEntity(raw) {
-    return raw ? new Purchase(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Purchase({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.purchases();
-
-    if (filters.proveedorId !== undefined) {
-      result = result.filter((c) => c.proveedorId === parseInt(filters.proveedorId));
-    }
+  async findAll(filters = {}) {
+    const query = {};
+    if (filters.proveedorId !== undefined) query.proveedorId = filters.proveedorId;
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((c) => c.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-    // Agregar más filtros si es necesario
-
-    return result.map((c) => this._toEntity(c));
+    const docs = await CompraModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.purchases().find((c) => c.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await CompraModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  create(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.purchases().push(newRaw);
-    return this._toEntity(newRaw);
+  async create(data) {
+    const doc = await CompraModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.purchases();
-    const idx = list.findIndex((c) => c.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await CompraModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.purchases();
-    const idx = list.findIndex((c) => c.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await CompraModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

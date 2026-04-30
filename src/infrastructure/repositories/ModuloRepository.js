@@ -1,27 +1,26 @@
 // infrastructure/repositories/ModuloRepository.js
-
-const { store } = require("../../Config/database");
+const ModuloModel = require("../db/ModuloModel");
 const Modulo = require("../../domain/entities/Modulo");
 
 class ModuloRepository {
-  _toEntity(raw) {
-    return raw ? new Modulo(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Modulo({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.modulos();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter(m => m.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map(m => this._toEntity(m));
+    const docs = await ModuloModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findByNombre(nombre) {
-    const raw = store.modulos().find(m => m.nombre === nombre.toLowerCase());
-    return this._toEntity(raw);
+  async findByNombre(nombre) {
+    const doc = await ModuloModel.findOne({ nombre: nombre.toLowerCase() });
+    return this._toEntity(doc);
   }
 }
 

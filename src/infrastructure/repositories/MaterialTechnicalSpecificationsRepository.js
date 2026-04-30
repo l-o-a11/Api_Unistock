@@ -1,60 +1,41 @@
 // infrastructure/repositories/MaterialTechnicalSpecificationsRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
-const product = require("../../domain/entities/MaterialTechnicalSpecifications");
+const MaterialTechnicalSpecificationsModel = require("../db/MaterialTechnicalSpecificationsModel");
+const MaterialTechnicalSpecifications = require("../../domain/entities/MaterialTechnicalSpecifications");
 
 class MaterialTechnicalSpecificationsRepository {
-  // Convierte un objeto plano del store en una entidad MaterialTechnicalSpecifications
-  _toEntity(raw) {
-    return raw ? new MaterialTechnicalSpecifications(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new MaterialTechnicalSpecifications({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.materialTechnicalSpecifications();
-
-    if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (mts) =>
-          mts.cantidades.toString().toLowerCase().includes(term),
-      );
-    }
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((mts) => mts.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map((mts) => this._toEntity(mts));
+    const docs = await MaterialTechnicalSpecificationsModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.materialTechnicalSpecifications().find((mts) => mts.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await MaterialTechnicalSpecificationsModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.materialTechnicalSpecifications().push(newRaw);
-    return this._toEntity(newRaw);
+  async save(data) {
+    const doc = await MaterialTechnicalSpecificationsModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.materialTechnicalSpecifications();
-    const idx = list.findIndex((mts) => mts.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await MaterialTechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.materialTechnicalSpecifications();
-    const idx = list.findIndex((mts) => mts.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await MaterialTechnicalSpecificationsModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 
