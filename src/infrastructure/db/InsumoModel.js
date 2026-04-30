@@ -15,4 +15,5 @@ const insumoSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+
 module.exports = mongoose.model("Insumo", insumoSchema);

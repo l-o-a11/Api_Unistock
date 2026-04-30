@@ -1,0 +1,57 @@
+// infrastructure/repositories/PurchaseRepository.js
+// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
+// Si cambias de BD, solo cambias este archivo.
+
+const { store } = require("../../Config/database");
+const Purchase = require("../../domain/entities/Purchase");
+
+class PurchaseRepository {
+  // Convierte un objeto plano del store en una entidad Purchase
+  _toEntity(raw) {
+    return raw ? new Purchase(raw) : null;
+  }
+
+  findAll(filters = {}) {
+    let result = store.purchases();
+
+    if (filters.proveedorId !== undefined) {
+      result = result.filter((c) => c.proveedorId === parseInt(filters.proveedorId));
+    }
+    if (filters.estado !== undefined) {
+      const active = filters.estado === "true" || filters.estado === true;
+      result = result.filter((c) => c.estado === active);
+    }
+    // Agregar más filtros si es necesario
+
+    return result.map((c) => this._toEntity(c));
+  }
+
+  findById(id) {
+    const raw = store.purchases().find((c) => c.id === parseInt(id));
+    return this._toEntity(raw);
+  }
+
+  create(data) {
+    const newRaw = { id: store.nextId(), ...data };
+    store.purchases().push(newRaw);
+    return this._toEntity(newRaw);
+  }
+
+  update(id, changes) {
+    const list = store.purchases();
+    const idx = list.findIndex((c) => c.id === parseInt(id));
+    if (idx === -1) return null;
+    list[idx] = { ...list[idx], ...changes };
+    return this._toEntity(list[idx]);
+  }
+
+  delete(id) {
+    const list = store.purchases();
+    const idx = list.findIndex((c) => c.id === parseInt(id));
+    if (idx === -1) return false;
+    list.splice(idx, 1);
+    return true;
+  }
+}
+
+module.exports = PurchaseRepository;
