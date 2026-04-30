@@ -1,7 +1,6 @@
 // infrastructure/db/ProductModel.js
 
 const mongoose = require("mongoose");
-const { version } = require("react");
 
 const technicalSpecificationSchema = new mongoose.Schema(
   {
@@ -23,4 +22,4 @@ technicalSpecificationSchema.methods.toJSON = function () {
   return obj;
 };
 
-module.exports = mongoose.model("Product", productSchema);
+module.exports = mongoose.model("TechnicalSpecification", technicalSpecificationSchema);
