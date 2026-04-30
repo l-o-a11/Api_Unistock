@@ -25,7 +25,7 @@ const router = Router();
 router.use(requireAuth);
 
 // Rutas CRUD
-router.get("/", ctrl.getSupplys);
+router.get("/", ctrl.getSupplies);
 router.get("/:id", ctrl.getSupplyById);
 router.post("/", ctrl.createSupply);
 router.put("/:id", ctrl.updateSupply);

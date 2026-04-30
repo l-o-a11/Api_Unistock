@@ -8,12 +8,12 @@ const {
     updateSite,
     deleteSite,
 } = require("../controllers/siteController");
-const { authMiddleware } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
 
 // Todas las rutas requieren autenticación
-router.use(authMiddleware);
+router.use(requireAuth);
 
 // GET /sites - Obtener todas las sedes
 router.get("/", getSites);
