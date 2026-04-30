@@ -1,6 +1,7 @@
 // infrastructure/repositories/SupplyRepository.js
-const InsumoModel = require("../db/InsumoModel");
-const CategoriaInsumoModel = require("../db/CategoriaInsumoModel");
+const { store } = require("../../Config/database");
+const SupplyModel = require("../db/SupplyModel");
+const SupplyCategoryModel = require("../db/SupplyCategoryModel");
 const Supply = require("../../domain/entities/Insumo");
 
 class SupplyRepository {
@@ -29,27 +30,27 @@ class SupplyRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await InsumoModel.find(query);
+    const docs = await SupplyModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
 
   async findById(id) {
-    const doc = await InsumoModel.findById(id).catch(() => null);
+    const doc = await SupplyModel.findById(id).catch(() => null);
     return this._toEntity(doc);
   }
 
   async create(data) {
-    const doc = await InsumoModel.create(data);
+    const doc = await SupplyModel.create(data);
     return this._toEntity(doc);
   }
 
   async update(id, changes) {
-    const doc = await InsumoModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await SupplyModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
     return this._toEntity(doc);
   }
 
   async delete(id) {
-    const result = await InsumoModel.findByIdAndDelete(id).catch(() => null);
+    const result = await SupplyModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
   }
 
@@ -61,12 +62,14 @@ class SupplyRepository {
   findCategoryById(id) {
     const parsed = parseInt(id);
     return store.suppliesCategories().find(c => c.id === parsed && c.estado === true) || null;
+  }
+
   async findAllCategorias() {
-    return CategoriaInsumoModel.find({ estado: true });
+    return SupplyCategoryModel.find({ estado: true });
   }
 
   async findCategoriaById(id) {
-    return CategoriaInsumoModel.findOne({ _id: id, estado: true }).catch(() => null);
+    return SupplyCategoryModel.findOne({ _id: id, estado: true }).catch(() => null);
   }
 }
 
