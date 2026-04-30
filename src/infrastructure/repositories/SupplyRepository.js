@@ -13,6 +13,15 @@ class SupplyRepository {
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
+      const term = filters.search.toLowerCase();
+      result = result.filter(
+        (i) =>
+          i.nombre.toLowerCase().includes(term) ||
+          i.category.toLowerCase().includes(term)
+      );
+    }
+    if (filters.category !== undefined) {
+      result = result.filter((i) => i.category === filters.category);
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombre: re }, { categoria: re }];
     }
@@ -44,6 +53,14 @@ class SupplyRepository {
     return !!result;
   }
 
+  // Catálogos
+  findAllCategories() {
+    return store.suppliesCategories().filter(c => c.estado === true);
+  }
+
+  findCategoryById(id) {
+    const parsed = parseInt(id);
+    return store.suppliesCategories().find(c => c.id === parsed && c.estado === true) || null;
   async findAllCategorias() {
     return CategoriaInsumoModel.find({ estado: true });
   }

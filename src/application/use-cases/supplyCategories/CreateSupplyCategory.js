@@ -1,4 +1,4 @@
-// application/use-cases/categoriasInsumos/CreateSupplyCategory.js
+// application/use-cases/supplyCategories/CreateSupplyCategory.js
 
 class CreateSupplyCategory {
   constructor(supplyCategoryRepository) {
