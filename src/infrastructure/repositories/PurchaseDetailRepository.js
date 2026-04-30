@@ -1,5 +1,5 @@
 // infrastructure/repositories/PurchaseDetailRepository.js
-const CompraDetailModel = require("../db/CompraDetailModel");
+const PurchaseDetailModel = require("../db/PurchaseDetailModel");
 const PurchaseDetail = require("../../domain/entities/PurchaseDetail");
 
 class PurchaseDetailRepository {
@@ -12,27 +12,27 @@ class PurchaseDetailRepository {
   async findAll(filters = {}) {
     const query = {};
     if (filters.purchaseId !== undefined) query.compraId = filters.purchaseId;
-    const docs = await CompraDetailModel.find(query);
+    const docs = await PurchaseDetailModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
 
   async findById(id) {
-    const doc = await CompraDetailModel.findById(id).catch(() => null);
+    const doc = await PurchaseDetailModel.findById(id).catch(() => null);
     return this._toEntity(doc);
   }
 
   async create(data) {
-    const doc = await CompraDetailModel.create(data);
+    const doc = await PurchaseDetailModel.create(data);
     return this._toEntity(doc);
   }
 
   async update(id, changes) {
-    const doc = await CompraDetailModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await PurchaseDetailModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
     return this._toEntity(doc);
   }
 
   async delete(id) {
-    const result = await CompraDetailModel.findByIdAndDelete(id).catch(() => null);
+    const result = await PurchaseDetailModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
   }
 }

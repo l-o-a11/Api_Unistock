@@ -5,7 +5,7 @@ class GetSupplyCategory {
     this.supplyCategoryRepository = supplyCategoryRepository;
   }
 
-  execute(filters = {}) {
+  async execute(filters = {}) {
     return this.supplyCategoryRepository.findAll(filters);
   }
 }

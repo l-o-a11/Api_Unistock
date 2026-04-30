@@ -1,8 +1,8 @@
-// infrastructure/db/ModuloModel.js
+// infrastructure/db/PrivilegeModel.js
 
 const mongoose = require("mongoose");
 
-const moduloSchema = new mongoose.Schema(
+const privilegeSchema = new mongoose.Schema(
   {
     nombre: { type: String, required: true, unique: true, lowercase: true },
     estado: { type: Boolean, default: true },
@@ -10,4 +10,4 @@ const moduloSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model("Modulo", moduloSchema);
+module.exports = mongoose.model("Privilege", privilegeSchema);

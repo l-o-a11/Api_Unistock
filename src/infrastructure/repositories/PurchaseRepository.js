@@ -1,5 +1,5 @@
 // infrastructure/repositories/PurchaseRepository.js
-const CompraModel = require("../db/CompraModel");
+const PurchaseModel = require("../db/PurchaseModel");
 const Purchase = require("../../domain/entities/Purchase");
 
 class PurchaseRepository {
@@ -15,27 +15,27 @@ class PurchaseRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await CompraModel.find(query);
+    const docs = await PurchaseModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
 
   async findById(id) {
-    const doc = await CompraModel.findById(id).catch(() => null);
+    const doc = await PurchaseModel.findById(id).catch(() => null);
     return this._toEntity(doc);
   }
 
   async create(data) {
-    const doc = await CompraModel.create(data);
+    const doc = await PurchaseModel.create(data);
     return this._toEntity(doc);
   }
 
   async update(id, changes) {
-    const doc = await CompraModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await PurchaseModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
     return this._toEntity(doc);
   }
 
   async delete(id) {
-    const result = await CompraModel.findByIdAndDelete(id).catch(() => null);
+    const result = await PurchaseModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
   }
 }

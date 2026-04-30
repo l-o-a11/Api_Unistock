@@ -1,6 +1,6 @@
 const normalize = (value) => String(value).trim().toLowerCase();
 
-const validatePermissions = (permisos = [], moduloRepository, privilegioRepository) => {
+const validatePermissions = async (permisos = [], moduleRepository, privilegeRepository) => {
   if (!Array.isArray(permisos)) {
     const error = new Error("Los permisos deben enviarse como un arreglo");
     error.statusCode = 422;
@@ -13,15 +13,15 @@ const validatePermissions = (permisos = [], moduloRepository, privilegioReposito
     throw error;
   }
 
-  // Obtener módulos y privilegios válidos de BD
-  const modulosValidos = moduloRepository.findAll();
-  const privilegiosValidos = privilegioRepository.findAll();
+  // Fetch valid modules and privileges from DB
+  const validModules = await moduleRepository.findAll();
+  const validPrivileges = await privilegeRepository.findAll();
 
-  const isValidModulo = (modulo) => 
-    modulosValidos.some(m => normalize(m.nombre) === normalize(modulo));
-  
-  const isValidPrivilegio = (privilegio) => 
-    privilegiosValidos.some(p => normalize(p.nombre) === normalize(privilegio));
+  const isValidModule = (modulo) =>
+    validModules.some((m) => normalize(m.nombre) === normalize(modulo));
+
+  const isValidPrivilege = (privilegio) =>
+    validPrivileges.some((p) => normalize(p.nombre) === normalize(privilegio));
 
   const seenModules = new Set();
 
@@ -45,7 +45,7 @@ const validatePermissions = (permisos = [], moduloRepository, privilegioReposito
     }
 
     const moduloNormalized = normalize(modulo);
-    if (!isValidModulo(moduloNormalized)) {
+    if (!isValidModule(moduloNormalized)) {
       const error = new Error(`Módulo inválido: ${modulo}`);
       error.statusCode = 422;
       throw error;
@@ -66,7 +66,7 @@ const validatePermissions = (permisos = [], moduloRepository, privilegioReposito
 
     const privilegiosNormalized = privilegios.map((privilegio) => {
       const valor = normalize(privilegio);
-      if (!isValidPrivilegio(valor)) {
+      if (!isValidPrivilege(valor)) {
         const error = new Error(`Privilegio inválido en módulo '${moduloNormalized}': ${privilegio}`);
         error.statusCode = 422;
         throw error;
@@ -85,8 +85,4 @@ const validatePermissions = (permisos = [], moduloRepository, privilegioReposito
 
 module.exports = {
   validatePermissions,
-};
-
-module.exports = {
-    validatePermissions,
 };
