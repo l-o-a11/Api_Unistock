@@ -19,11 +19,11 @@ class SupplyRepository {
       result = result.filter(
         (i) =>
           i.nombre.toLowerCase().includes(term) ||
-          i.categoria.toLowerCase().includes(term)
+          i.category.toLowerCase().includes(term)
       );
     }
-    if (filters.categoria !== undefined) {
-      result = result.filter((i) => i.categoria === filters.categoria);
+    if (filters.category !== undefined) {
+      result = result.filter((i) => i.category === filters.category);
     }
     if (filters.estado !== undefined) {
       const active = filters.estado === "true" || filters.estado === true;
@@ -71,11 +71,11 @@ class SupplyRepository {
   }
 
   // Catálogos
-  findAllCategorias() {
+  findAllCategories() {
     return store.suppliesCategories().filter(c => c.estado === true);
   }
 
-  findCategoriaById(id) {
+  findCategoryById(id) {
     const parsed = parseInt(id);
     return store.suppliesCategories().find(c => c.id === parsed && c.estado === true) || null;
   }
