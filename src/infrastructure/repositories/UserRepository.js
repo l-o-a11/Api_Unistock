@@ -1,104 +1,66 @@
-// infrastructure/repositories/UserRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
+﻿const { store } = require("../../Config/database");
+const UserModel = require("../db/UserModel");
 const User = require("../../domain/entities/User");
 
 class UserRepository {
-  // Convierte un objeto plano del store en una entidad User
-  _toEntity(raw) {
-    return raw ? new User(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new User({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
   }
 
-  findAll(filters = {}) {
-    let result = store.users();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.nombreCompleto.toLowerCase().includes(term) ||
-          u.correo.toLowerCase().includes(term) ||
-          u.numeroDocumento.includes(term),
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
     }
-    if (filters.rolId !== undefined) {
-      result = result.filter((u) => u.rolId === parseInt(filters.rolId));
-    }
-    if (filters.sedeId !== undefined) {
-      result = result.filter((u) => u.sedeId === parseInt(filters.sedeId));
-    }
-    if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((u) => u.estado === active);
-    }
-
-    return result.map((u) => this._toEntity(u));
+    if (filters.rolId !== undefined) query.rolId = parseInt(filters.rolId);
+    if (filters.sedeId !== undefined) query.sedeId = parseInt(filters.sedeId);
+    if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
+    const docs = await UserModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.users().find((u) => u.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await UserModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  findByEmail(correo) {
-    const raw = store.users().find((u) => u.correo === correo);
-    return this._toEntity(raw);
+  async findByEmail(correo) {
+    const doc = await UserModel.findOne({ correo });
+    return this._toEntity(doc);
   }
 
-  findByDocument(numeroDocumento) {
-    const raw = store
-      .users()
-      .find((u) => u.numeroDocumento === numeroDocumento);
-    return this._toEntity(raw);
+  async findByDocument(numeroDocumento) {
+    const doc = await UserModel.findOne({ numeroDocumento });
+    return this._toEntity(doc);
   }
 
-  countActiveAdmins() {
-    return store.users().filter((u) => u.rolId === 2 && u.estado === true)
-      .length;
+  async countActiveAdmins() {
+    return UserModel.countDocuments({ rolId: 2, estado: true });
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.users().push(newRaw);
-    return this._toEntity(newRaw);
+  async save(data) {
+    const doc = await UserModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await UserModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.users();
-    const idx = list.findIndex((u) => u.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await UserModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 
-  // Catálogos
-  findAllRoles() {
-    return [];
-  }
-
-  findRoleById(id) {
-    const parsed = parseInt(id);
-    return !isNaN(parsed) && parsed > 0 ? { id: parsed } : null;
-  }
-
-  findAllSedes() {
-    return store.sedes().filter(s => s.estado === true);
-  }
-
-  findSedeById(id) {
-    const parsed = parseInt(id);
-    return store.sedes().find(s => s.id === parsed && s.estado === true) || null;
-  }
+  // Catálogos (sin modelo propio — arrays estáticos por ahora)
+  findAllRoles()     { return []; }
+  findRoleById(id)   { return id ? { id: parseInt(id) } : null; }
+  findAllSedes()     { return []; }
+  findSedeById(id)   { return id ? { id: parseInt(id) } : null; }
 }
 
 module.exports = UserRepository;

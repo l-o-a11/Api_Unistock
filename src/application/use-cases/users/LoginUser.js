@@ -1,6 +1,6 @@
-// application/use-cases/users/LoginUser.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const { compare } = require("../../../infrastructure/security/password_encrypter");
+const { generate } = require("../../../infrastructure/security/token_generator");
+const UserRepository = require("../../../infrastructure/repositories/UserRepository");
 
 class LoginUser {
   constructor(userRepository) {
@@ -8,7 +8,7 @@ class LoginUser {
   }
 
   async execute({ correo, password }) {
-    const user = this.userRepository.findByEmail(correo);
+    const user = await this.userRepository.findByEmail(correo);
 
     if (!user || !user.estado) {
       const error = new Error("Credenciales inválidas");
@@ -16,24 +16,23 @@ class LoginUser {
       throw error;
     }
 
-    const match = await bcrypt.compare(password, user.password);
+    const match = await compare(password, user.password);
     if (!match) {
       const error = new Error("Credenciales inválidas");
       error.statusCode = 401;
       throw error;
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        correo: user.correo,
-        rolId: user.rolId,
-        nombreCompleto: user.nombreCompleto,
-      },
-      process.env.JWT_SECRET || "unistock_secret",
-      { expiresIn: "8h" },
-    );
+    const token = generate({
+      id:             user._id,
+      correo:         user.correo,
+      rolId:          user.rolId,
+      sedeId:         user.sedeId,
+      nombreCompleto: user.nombreCompleto,
+    });
 
-    return { token, user: user.toPublic() };
+    return { token, user: user.toJSON() };
   }
 }
+
+module.exports = LoginUser;

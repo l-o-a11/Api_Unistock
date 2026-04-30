@@ -1,7 +1,3 @@
-// infrastructure/controllers/UserController.js
-// Recibe los requests HTTP, delega al use case correspondiente, responde.
-// No contiene lógica de negocio — solo traduce HTTP ↔ use cases.
-
 const UserRepository = require("../repositories/UserRepository");
 const CreateUser = require("../../application/use-cases/users/CreateUser");
 const GetUser = require("../../application/use-cases/users/GetUser");
@@ -10,122 +6,86 @@ const UpdateUser = require("../../application/use-cases/users/UpdateUser");
 const DeleteUser = require("../../application/use-cases/users/DeleteUser");
 const LoginUser = require("../../application/use-cases/users/LoginUser");
 const { generatePassword } = require("../../shared/utils/generatePassword");
-
-const {
-  ok,
-  created,
-  noContent,
-  badRequest,
-  notFound,
-  conflict,
-  unprocessable,
-  unauthorized,
-  serverError,
-} = require("../../shared/utils/response");
+const { ok, created, noContent, notFound, conflict, unprocessable, unauthorized, forbidden, serverError } = require("../../shared/utils/response");
 
 const repo = new UserRepository();
 
-// ── Auth ───────────────────────────────────────────────────────────────────────
 const login = async (req, res) => {
   try {
-    const result = await new LoginUser(repo).execute(req.body);
-    return ok(res, result);
+    return ok(res, await new LoginUser(repo).execute(req.body));
   } catch (err) {
     if (err.statusCode === 401) return unauthorized(res, err.message);
     return serverError(res);
   }
 };
 
-const prepareWelcome = (req, res) => {
-  return ok(res, { password: generatePassword() });
-};
+const prepareWelcome = (req, res) => ok(res, { password: generatePassword() });
 
-// ── Users CRUD ─────────────────────────────────────────────────────────────────
-const getUsers = (req, res) => {
+const getUsers = async (req, res) => {
   try {
-    const users = new GetUser(repo).execute(req.query);
-    return ok(res, users);
+    return ok(res, await new GetUser(repo).execute(req.query));
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getUserById = (req, res) => {
+const getUserById = async (req, res) => {
   try {
-    const user = new GetUserById(repo).execute(req.params.id);
-    return ok(res, user);
+    return ok(res, await new GetUserById(repo).execute(req.params.id));
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res);
   }
 };
 
 const createUser = async (req, res) => {
   try {
-    const result = await new CreateUser(repo).execute(req.body);
-    return created(res, result);
+    return created(res, await new CreateUser(repo).execute(req.body));
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     if (err.statusCode === 422) return unprocessable(res, err.message);
     return serverError(res);
   }
 };
 
-const updateUser = (req, res) => {
+const updateUser = async (req, res) => {
   try {
-    const user = new UpdateUser(repo).execute(req.params.id, req.body);
-    return ok(res, user);
+    return ok(res, await new UpdateUser(repo).execute(req.params.id, req.body));
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 409) return conflict(res, err.message);
-    if (err.statusCode === 422) return unprocessable(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res);
   }
 };
 
-const toggleStatus = (req, res) => {
+const toggleStatus = async (req, res) => {
   try {
-    const user = repo.findById(req.params.id);
+    const user = await repo.findById(req.params.id);
     if (!user) return notFound(res, "Usuario no encontrado");
-
-    if (user.isLastActiveAdmin(repo.countActiveAdmins())) {
-      return unprocessable(
-        res,
-        "No se puede desactivar el único administrador activo",
-      );
-    }
-
-    const updated = repo.update(req.params.id, { estado: !user.estado });
-    return ok(res, updated.toPublic());
+    if (user.isLastActiveAdmin && user.isLastActiveAdmin(await repo.countActiveAdmins()))
+      return unprocessable(res, "No se puede desactivar el único administrador activo");
+    return ok(res, await repo.update(req.params.id, { estado: !user.estado }));
   } catch (err) {
     return serverError(res);
   }
 };
 
-const deleteUser = (req, res) => {
+const deleteUser = async (req, res) => {
   try {
-    new DeleteUser(repo).execute(req.params.id);
+    await new DeleteUser(repo).execute(req.params.id);
     return noContent(res);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     if (err.statusCode === 422) return unprocessable(res, err.message);
     return serverError(res);
   }
 };
 
-// ── Catálogos ──────────────────────────────────────────────────────────────────
 const getRoles = (req, res) => ok(res, repo.findAllRoles());
 const getSedes = (req, res) => ok(res, repo.findAllSedes());
 
-module.exports = {
-  login,
-  prepareWelcome,
-  getUsers,
-  getUserById,
-  createUser,
-  updateUser,
-  toggleStatus,
-  deleteUser,
-  getRoles,
-  getSedes,
-};
+module.exports = { login, prepareWelcome, getUsers, getUserById, createUser, updateUser, toggleStatus, deleteUser, getRoles, getSedes };

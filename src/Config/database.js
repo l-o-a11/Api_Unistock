@@ -42,9 +42,9 @@ const store = {
     if (!this._orderProcesses) this._orderProcesses = [];
     return this._orderProcesses;
   },
-  headquarterTransfers() {
-    if (!this._headquarterTransfers) this._headquarterTransfers = [];
-    return this._headquarterTransfers;
+  sedeTransfers() {
+    if (!this._sedeTransfers) this._sedeTransfers = [];
+    return this._sedeTransfers;
   },
   purchases() {
     if (!this._purchases) this._purchases = [];
@@ -62,9 +62,9 @@ const store = {
     if (!this._roles) this._roles = [];
     return this._roles;
   },
-  sedes() {
-    if (!this._sedes) this._sedes = [];
-    return this._sedes;
+  sites() {
+    if (!this._sites) this._sites = [];
+    return this._sites;
   },
   categoriasInsumos() {
     if (!this._categoriasInsumos) this._categoriasInsumos = [];
@@ -80,41 +80,15 @@ const store = {
   },
 };
 
+const mongoose = require("mongoose");
+
+
 const connectDatabase = async () => {
-  console.log("Connected to in-memory store");
+  const uri = process.env.MONGO_URI;
+  const dbName = process.env.DATABASE_NAME || "unistock";
 
-  // Inicializar módulos por defecto
-  const modulos = store.modulos();
-  if (modulos.length === 0) {
-    const defaultModulos = [
-      { id: store.nextId(), nombre: "usuarios", estado: true },
-      { id: store.nextId(), nombre: "ventas", estado: true },
-      { id: store.nextId(), nombre: "empleados", estado: true },
-      { id: store.nextId(), nombre: "roles", estado: true },
-      { id: store.nextId(), nombre: "compras", estado: true },
-      { id: store.nextId(), nombre: "insumos", estado: true },
-      { id: store.nextId(), nombre: "categorias-insumos", estado: true },
-      { id: store.nextId(), nombre: "produccion", estado: true },
-      { id: store.nextId(), nombre: "proveedores", estado: true },
-      { id: store.nextId(), nombre: "terceros", estado: true },
-      { id: store.nextId(), nombre: "sedes", estado: true },
-      { id: store.nextId(), nombre: "productos", estado: true },
-      { id: store.nextId(), nombre: "categorias-productos", estado: true },
-    ];
-    modulos.push(...defaultModulos);
-  }
-
-  // Inicializar privilegios por defecto
-  const privilegios = store.privilegios();
-  if (privilegios.length === 0) {
-    const defaultPrivilegios = [
-      { id: store.nextId(), nombre: "crear", estado: true },
-      { id: store.nextId(), nombre: "leer", estado: true },
-      { id: store.nextId(), nombre: "actualizar", estado: true },
-      { id: store.nextId(), nombre: "eliminar", estado: true },
-    ];
-    privilegios.push(...defaultPrivilegios);
-  }
+  await mongoose.connect(uri, { dbName });
+  console.log(` MongoDB conectado → ${dbName}`);
 };
 
-module.exports = { store, connectDatabase };
+module.exports = { connectDatabase };

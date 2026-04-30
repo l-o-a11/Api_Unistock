@@ -1,54 +1,39 @@
 // infrastructure/repositories/ProductionOrderDetailRepository.js
-const { store } = require("../../Config/database");
+const ProductionOrderDetailModel = require("../db/ProductionOrderDetailModel");
 const ProductionOrderDetail = require("../../domain/entities/ProductionOrderDetail");
 
 class ProductionOrderDetailRepository {
-  _toEntity(raw) {
-    return raw ? new ProductionOrderDetail(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new ProductionOrderDetail({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.productionOrderDetails();
-
-    if (filters.id_orden) {
-      result = result.filter((pod) => pod.id_orden === parseInt(filters.id_orden));
-    }
-
-    return result.map((pod) => this._toEntity(pod));
+  async findAll(filters = {}) {
+    const query = {};
+    if (filters.id_orden) query.id_orden = filters.id_orden;
+    const docs = await ProductionOrderDetailModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.productionOrderDetails().find((pod) => pod.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await ProductionOrderDetailModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  create(data) {
-    const details = store.productionOrderDetails();
-    const maxId = details.length > 0 ? Math.max(...details.map(d => d.id)) : 0;
-    const newDetail = {
-      id: maxId + 1,
-      ...data,
-    };
-    details.push(newDetail);
-    return this._toEntity(newDetail);
+  async create(data) {
+    const doc = await ProductionOrderDetailModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, data) {
-    const details = store.productionOrderDetails();
-    const index = details.findIndex((pod) => pod.id === parseInt(id));
-    if (index === -1) return null;
-
-    details[index] = { ...details[index], ...data };
-    return this._toEntity(details[index]);
+  async update(id, changes) {
+    const doc = await ProductionOrderDetailModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const details = store.productionOrderDetails();
-    const index = details.findIndex((pod) => pod.id === parseInt(id));
-    if (index === -1) return false;
-
-    details.splice(index, 1);
-    return true;
+  async delete(id) {
+    const result = await ProductionOrderDetailModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

@@ -1,146 +1,79 @@
-/**
- * productionController.js
- * 
- * Controlador para la gestión de Órdenes de Producción.
- * Maneja:
- * - Órdenes de Producción (Production Orders)
- * - Detalles de Órdenes (Order Details)
- * - Asignaciones de Terceros (Third Party Assignments)
- * 
- * @author Unistock Team
- * @version 1.0.0
- */
-
+// infrastructure/controllers/productionController.js
 const ProductionRepository = require("../repositories/ProductionRepository");
 const ProductionOrderDetailRepository = require("../repositories/ProductionOrderDetailRepository");
 const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
 const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
 
-const prodRepo = new ProductionRepository();
-const detailRepo = new ProductionOrderDetailRepository();
+const prodRepo       = new ProductionRepository();
+const detailRepo     = new ProductionOrderDetailRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
 
-const getOrders = (req, res) => {
-  try {
-    const orders = prodRepo.findAll(req.query);
-    return ok(res, orders);
-  } catch (err) {
-    return serverError(res);
-  }
+const getOrders = async (req, res) => {
+  try { return ok(res, await prodRepo.findAll(req.query)); }
+  catch (err) { return serverError(res); }
 };
 
-const getOrderById = (req, res) => {
+const getOrderById = async (req, res) => {
   try {
-    const order = prodRepo.findById(req.params.id);
+    const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
-    const details = detailRepo.findAll({ id_orden: req.params.id });
-    return ok(res, { ...order, detalles: details });
-  } catch (err) {
-    return serverError(res);
-  }
+    const details = await detailRepo.findAll({ id_orden: req.params.id });
+    return ok(res, { ...order.toJSON(), detalles: details });
+  } catch (err) { return serverError(res); }
 };
 
-const createOrder = (req, res) => {
+const createOrder = async (req, res) => {
   try {
     const { fecha_entrega, cliente, id_usuario } = req.body;
-    if (!fecha_entrega || !cliente || !id_usuario) {
+    if (!fecha_entrega || !cliente || !id_usuario)
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
-    }
-    const order = prodRepo.create({
-      fecha_entrega,
-      cliente,
-      id_usuario,
-    });
-    return created(res, order);
-  } catch (err) {
-    return serverError(res);
-  }
+    return created(res, await prodRepo.create({ fecha_entrega, cliente, id_usuario }));
+  } catch (err) { return serverError(res); }
 };
 
-const updateOrder = (req, res) => {
+const updateOrder = async (req, res) => {
   try {
-    const order = prodRepo.findById(req.params.id);
+    const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
-    const updated = prodRepo.update(req.params.id, req.body);
-    return ok(res, updated);
-  } catch (err) {
-    return serverError(res);
-  }
+    return ok(res, await prodRepo.update(req.params.id, req.body));
+  } catch (err) { return serverError(res); }
 };
 
-const deleteOrder = (req, res) => {
+const deleteOrder = async (req, res) => {
   try {
-    const order = prodRepo.findById(req.params.id);
+    const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
-    prodRepo.delete(req.params.id);
+    await prodRepo.delete(req.params.id);
     return ok(res, { message: "Orden eliminada exitosamente" });
-  } catch (err) {
-    return serverError(res);
-  }
+  } catch (err) { return serverError(res); }
 };
 
-const getOrderDetails = (req, res) => {
-  try {
-    const details = detailRepo.findAll(req.query);
-    return ok(res, details);
-  } catch (err) {
-    return serverError(res);
-  }
+const getOrderDetails = async (req, res) => {
+  try { return ok(res, await detailRepo.findAll(req.query)); }
+  catch (err) { return serverError(res); }
 };
 
-const createOrderDetail = (req, res) => {
+const createOrderDetail = async (req, res) => {
   try {
     const { id_orden, id_producto, cantidad, color } = req.body;
-    if (!id_orden || !id_producto || !cantidad) {
+    if (!id_orden || !id_producto || !cantidad)
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
-    }
-    const detail = detailRepo.create({
-      id_orden,
-      id_producto,
-      cantidad,
-      color,
-      estado: true,
-    });
-    return created(res, detail);
-  } catch (err) {
-    return serverError(res);
-  }
+    return created(res, await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true }));
+  } catch (err) { return serverError(res); }
 };
 
-const getAssignments = (req, res) => {
-  try {
-    const assignments = assignmentRepo.findAll(req.query);
-    return ok(res, assignments);
-  } catch (err) {
-    return serverError(res);
-  }
+const getAssignments = async (req, res) => {
+  try { return ok(res, await assignmentRepo.findAll(req.query)); }
+  catch (err) { return serverError(res); }
 };
 
-const createAssignment = (req, res) => {
+const createAssignment = async (req, res) => {
   try {
     const { id_orden, id_tercero, cantidad } = req.body;
-    if (!id_orden || !id_tercero || !cantidad) {
+    if (!id_orden || !id_tercero || !cantidad)
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
-    }
-    const assignment = assignmentRepo.create({
-      id_orden,
-      id_tercero,
-      cantidad,
-    });
-    return created(res, assignment);
-  } catch (err) {
-    return serverError(res);
-  }
+    return created(res, await assignmentRepo.create({ id_orden, id_tercero, cantidad }));
+  } catch (err) { return serverError(res); }
 };
 
-module.exports = {
-  getOrders,
-  getOrderById,
-  createOrder,
-  updateOrder,
-  deleteOrder,
-  getOrderDetails,
-  createOrderDetail,
-  getAssignments,
-  createAssignment,
-};
+module.exports = { getOrders, getOrderById, createOrder, updateOrder, deleteOrder, getOrderDetails, createOrderDetail, getAssignments, createAssignment };
