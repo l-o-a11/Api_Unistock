@@ -5,14 +5,14 @@ class GetSupplyCategoryById {
     this.supplyCategoryRepository = supplyCategoryRepository;
   }
 
-  execute(id) {
-    const categoria = this.supplyCategoryRepository.findById(id);
-    if (!categoria) {
+  async execute(id) {
+    const category = await this.supplyCategoryRepository.findById(id);
+    if (!category) {
       const error = new Error("Categoría no encontrada");
       error.statusCode = 404;
       throw error;
     }
-    return categoria;
+    return category;
   }
 }
 

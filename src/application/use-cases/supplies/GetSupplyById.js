@@ -5,8 +5,8 @@ class GetSupplyById {
     this.supplyRepository = supplyRepository;
   }
 
-  execute(id) {
-    const supply = this.supplyRepository.findById(id);
+  async execute(id) {
+    const supply = await this.supplyRepository.findById(id);
 
     if (!supply) {
       const error = new Error("Insumo no encontrado");
@@ -17,3 +17,5 @@ class GetSupplyById {
     return supply.toPublic();
   }
 }
+
+module.exports = GetSupplyById;

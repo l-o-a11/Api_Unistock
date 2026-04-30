@@ -1,6 +1,7 @@
-// domain/entities/Modulo.js
+// domain/entities/Module.js
+// Pure domain entity — no external dependencies.
 
-class Modulo {
+class Module {
   constructor({
     id,
     nombre,
@@ -16,4 +17,4 @@ class Modulo {
   }
 }
 
-module.exports = Modulo;
+module.exports = Module;
