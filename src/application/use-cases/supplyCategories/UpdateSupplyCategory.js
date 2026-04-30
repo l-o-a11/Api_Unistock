@@ -1,4 +1,4 @@
-// application/use-cases/categoriasInsumos/UpdateSupplyCategory.js
+// application/use-cases/supplyCategories/UpdateSupplyCategory.js
 
 class UpdateSupplyCategory {
   constructor(supplyCategoryRepository) {
@@ -15,7 +15,6 @@ class UpdateSupplyCategory {
 
     const {
       nombre,
-      descripcion,
       estado,
     } = data;
 
@@ -28,7 +27,6 @@ class UpdateSupplyCategory {
 
     const changes = {};
     if (nombre !== undefined) changes.nombre = nombre;
-    if (descripcion !== undefined) changes.descripcion = descripcion;
     if (estado !== undefined) changes.estado = estado;
 
     return this.supplyCategoryRepository.update(id, changes);

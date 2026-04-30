@@ -1,9 +1,9 @@
-// application/use-cases/categoriasInsumos/DeleteSupplyCategory.js
+// application/use-cases/supplyCategories/DeleteSupplyCategory.js
 
 class DeleteSupplyCategory {
-  constructor(supplyCategoryRepository, insumoRepository) {
+  constructor(supplyCategoryRepository, supplyRepository) {
     this.supplyCategoryRepository = supplyCategoryRepository;
-    this.insumoRepository = insumoRepository;
+    this.supplyRepository = supplyRepository;
   }
 
   async execute(id) {
@@ -15,8 +15,8 @@ class DeleteSupplyCategory {
     }
 
     // Verificar si hay insumos activos en esta categoría
-    const insumosInCategoria = this.insumoRepository.findAll({ categoria: id, estado: true });
-    if (insumosInCategoria.length > 0) {
+    const suppliesInCategory = this.supplyRepository.findAll({ categoria: id, estado: true });
+    if (suppliesInCategory.length > 0) {
       const error = new Error("No se puede eliminar la categoría porque tiene insumos activos asignados");
       error.statusCode = 422;
       throw error;
