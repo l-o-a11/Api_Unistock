@@ -1,51 +1,39 @@
 // infrastructure/repositories/PurchaseDetailRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-
-const { store } = require("../../Config/database");
+const CompraDetailModel = require("../db/CompraDetailModel");
 const PurchaseDetail = require("../../domain/entities/PurchaseDetail");
 
 class PurchaseDetailRepository {
-  // Convierte un objeto plano del store en una entidad PurchaseDetail
-  _toEntity(raw) {
-    return raw ? new PurchaseDetail(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new PurchaseDetail({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.detallePurchases();
-
-    if (filters.purchaseId !== undefined) {
-      result = result.filter((d) => d.purchaseId === parseInt(filters.purchaseId));
-    }
-    // Agregar más filtros si es necesario
-
-    return result.map((d) => this._toEntity(d));
+  async findAll(filters = {}) {
+    const query = {};
+    if (filters.purchaseId !== undefined) query.compraId = filters.purchaseId;
+    const docs = await CompraDetailModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.detallePurchases().find((d) => d.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await CompraDetailModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  create(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.detallePurchases().push(newRaw);
-    return this._toEntity(newRaw);
+  async create(data) {
+    const doc = await CompraDetailModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.detallePurchases();
-    const idx = list.findIndex((d) => d.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await CompraDetailModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.detallePurchases();
-    const idx = list.findIndex((d) => d.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await CompraDetailModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 

@@ -13,9 +13,11 @@ const purchaseRoutes = require("../infrastructure/routes/purchaseRouter");
 const supplyRoutes = require("../infrastructure/routes/supplyRouter");
 const roleRoutes = require("../infrastructure/routes/roleRouter");
 const siteRoutes = require("../infrastructure/routes/siteRoutes");
-const supplyCategoryRoutes = require("../infrastructure/routes/SupplyCategoryRoutes");
+const supplyCategoryRoutes = require("../infrastructure/routes/supplyCategoryRoutes");
 const moduloRoutes = require("../infrastructure/routes/moduloRoutes");
 const privilegioRoutes = require("../infrastructure/routes/privilegioRoutes");
+const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
+const productRoutes = require("../infrastructure/routes/productRoutes");
 
 const app = express();
 
@@ -36,6 +38,8 @@ app.use('/sites', siteRoutes);
 app.use('/categorias-insumos', supplyCategoryRoutes);
 app.use('/modulos', moduloRoutes);
 app.use('/privilegios', privilegioRoutes);
+app.use("/categorias-productos", productCategoryRoutes);
+app.use("/productos", productRoutes);
 
 // Health check
 app.get("/health", (_, res) =>

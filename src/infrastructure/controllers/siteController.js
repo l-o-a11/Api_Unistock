@@ -6,7 +6,7 @@ const SiteRepository = require("../repositories/SiteRepository");
 const UserRepository = require("../repositories/UserRepository");
 const CreateSite = require("../../application/use-cases/sites/CreateSites");
 const GetSite = require("../../application/use-cases/sites/GetSites");
-const GetSiteById = require("../../application/use-cases/sites/GetSiteById");
+const GetSiteById = require("../../application/use-cases/sites/GetSedeById");
 const UpdateSite = require("../../application/use-cases/sites/UpdateSites");
 const DeleteSite = require("../../application/use-cases/sites/DeleteSites");
 

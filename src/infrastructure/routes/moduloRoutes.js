@@ -2,11 +2,11 @@
 
 const express = require("express");
 const { getModulos } = require("../controllers/moduloController");
-const { authMiddleware } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(requireAuth);
 router.get("/", getModulos);
 
 module.exports = router;

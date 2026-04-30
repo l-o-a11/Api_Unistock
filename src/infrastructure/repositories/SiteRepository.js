@@ -1,62 +1,46 @@
 // infrastructure/repositories/SiteRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
+const SiteModel = require("../db/SiteModel");
 const Site = require("../../domain/entities/Site");
 
 class SiteRepository {
-    // Convierte un objeto plano del store en una entidad Site
-    _toEntity(raw) {
-        return raw ? new Site(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Site({ ...obj, id: obj._id.toString() });
+  }
+
+  async findAll(filters = {}) {
+    const query = {};
+    if (filters.search) {
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre: re }, { ciudad: re }, { barrio: re }];
     }
-
-    findAll(filters = {}) {
-        let result = store.sites();
-
-        if (filters.search) {
-            const term = filters.search.toLowerCase();
-            result = result.filter(
-                (s) =>
-                    s.nombre.toLowerCase().includes(term) ||
-                    s.ciudad.toLowerCase().includes(term) ||
-                    s.barrio.toLowerCase().includes(term),
-            );
-        }
-        if (filters.estado !== undefined) {
-            const active = filters.estado === "true" || filters.estado === true;
-            result = result.filter((s) => s.estado === active);
-        }
-
-        return result.map((s) => this._toEntity(s));
+    if (filters.estado !== undefined) {
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
+    const docs = await SiteModel.find(query);
+    return docs.map((d) => this._toEntity(d));
+  }
 
-    findById(id) {
-        const raw = store.sites().find((s) => s.id === parseInt(id));
-        return this._toEntity(raw);
-    }
+  async findById(id) {
+    const doc = await SiteModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
+  }
 
-    save(data) {
-        const newRaw = { id: store.nextId(), ...data };
-        store.sites().push(newRaw);
-        return this._toEntity(newRaw);
-    }
+  async save(data) {
+    const doc = await SiteModel.create(data);
+    return this._toEntity(doc);
+  }
 
-    update(id, changes) {
-        const list = store.sites();
-        const idx = list.findIndex((s) => s.id === parseInt(id));
-        if (idx === -1) return null;
-        list[idx] = { ...list[idx], ...changes };
-        return this._toEntity(list[idx]);
-    }
+  async update(id, changes) {
+    const doc = await SiteModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
+  }
 
-    delete(id) {
-        const list = store.sites();
-        const idx = list.findIndex((s) => s.id === parseInt(id));
-        if (idx === -1) return false;
-        list.splice(idx, 1);
-        return true;
-    }
+  async delete(id) {
+    const result = await SiteModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
+  }
 }
 
 module.exports = SiteRepository;

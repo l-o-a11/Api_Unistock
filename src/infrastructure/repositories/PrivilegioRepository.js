@@ -1,27 +1,26 @@
 // infrastructure/repositories/PrivilegioRepository.js
-
-const { store } = require("../../Config/database");
+const PrivilegioModel = require("../db/PrivilegioModel");
 const Privilegio = require("../../domain/entities/Privilegio");
 
 class PrivilegioRepository {
-  _toEntity(raw) {
-    return raw ? new Privilegio(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Privilegio({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.privilegios();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter(p => p.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map(p => this._toEntity(p));
+    const docs = await PrivilegioModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findByNombre(nombre) {
-    const raw = store.privilegios().find(p => p.nombre === nombre.toLowerCase());
-    return this._toEntity(raw);
+  async findByNombre(nombre) {
+    const doc = await PrivilegioModel.findOne({ nombre: nombre.toLowerCase() });
+    return this._toEntity(doc);
   }
 }
 
