@@ -1,64 +1,45 @@
 // infrastructure/repositories/ProductRepository.js
-// Traduce operaciones de dominio a operaciones sobre la fuente de datos.
-// Si cambias de BD, solo cambias este archivo.
-
-const { store } = require("../../Config/database");
-const product = require("../../domain/entities/Products");
+const ProductModel = require("../db/ProductModel");
+const Product = require("../../domain/entities/Products");
 
 class ProductRepository {
-  // Convierte un objeto plano del store en una entidad Product
-  _toEntity(raw) {
-    return raw ? new Product(raw) : null;
+  _toEntity(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    return new Product({ ...obj, id: obj._id.toString() });
   }
 
-  findAll(filters = {}) {
-    let result = store.products();
-
+  async findAll(filters = {}) {
+    const query = {};
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.imagenes_Url.toString().toLowerCase().includes(term) ||
-          p.referencia.toLowerCase().includes(term) ||
-          p.nombre.toLowerCase().includes(term) ||
-          p.precio.toLowerCase().includes(term) ||
-          p.stock.toString().toLowerCase().includes(term),
-      );
+      const re = new RegExp(filters.search, "i");
+      query.$or = [{ nombre: re }, { referencia: re }];
     }
-
     if (filters.estado !== undefined) {
-      const active = filters.estado === "true" || filters.estado === true;
-      result = result.filter((p) => p.estado === active);
+      query.estado = filters.estado === "true" || filters.estado === true;
     }
-
-    return result.map((p) => this._toEntity(p));
+    const docs = await ProductModel.find(query);
+    return docs.map((d) => this._toEntity(d));
   }
 
-  findById(id) {
-    const raw = store.products().find((p) => p.id === parseInt(id));
-    return this._toEntity(raw);
+  async findById(id) {
+    const doc = await ProductModel.findById(id).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  save(data) {
-    const newRaw = { id: store.nextId(), ...data };
-    store.products().push(newRaw);
-    return this._toEntity(newRaw);
+  async save(data) {
+    const doc = await ProductModel.create(data);
+    return this._toEntity(doc);
   }
 
-  update(id, changes) {
-    const list = store.products();
-    const idx = list.findIndex((p) => p.id === parseInt(id));
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...changes };
-    return this._toEntity(list[idx]);
+  async update(id, changes) {
+    const doc = await ProductModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    return this._toEntity(doc);
   }
 
-  delete(id) {
-    const list = store.products();
-    const idx = list.findIndex((p) => p.id === parseInt(id));
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    return true;
+  async delete(id) {
+    const result = await ProductModel.findByIdAndDelete(id).catch(() => null);
+    return !!result;
   }
 }
 
