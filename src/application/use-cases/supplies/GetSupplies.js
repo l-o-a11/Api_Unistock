@@ -1,12 +1,14 @@
-// application/use-cases/supplies/GetSupply.js
+// application/use-cases/supplies/GetSupplies.js
 
-class GetSupply {
+class GetSupplies {
   constructor(supplyRepository) {
     this.supplyRepository = supplyRepository;
   }
 
-  execute(filters = {}) {
-    const supplies = this.supplyRepository.findAll(filters);
+  async execute(filters = {}) {
+    const supplies = await this.supplyRepository.findAll(filters);
     return supplies.map((s) => s.toPublic());
   }
 }
+
+module.exports = GetSupplies;

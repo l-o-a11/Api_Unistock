@@ -24,9 +24,9 @@ const router = Router();
 // Middleware: Requerir autenticación en todos los endpoints
 router.use(requireAuth);
 
-// Rutas de catálogo
-router.get("/modulos", ctrl.getModulos);
-router.get("/privilegios", ctrl.getPrivilegios);
+// Catalog routes
+router.get("/modules", ctrl.getModules);
+router.get("/privileges", ctrl.getPrivileges);
 
 // Rutas CRUD
 router.get("/", ctrl.getRoles);

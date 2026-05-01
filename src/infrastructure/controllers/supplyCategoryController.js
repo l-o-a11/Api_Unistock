@@ -25,18 +25,18 @@ const categoryRepo = new SupplyCategoryRepository();
 const supplyRepo = new SupplyRepository();
 
 // ── categoryRepo CRUD ─────────────────────────────────────────────────────────────────
-const getSupplyCategories = (req, res) => {
+const getSupplyCategories = async (req, res) => {
     try {
-        const categories = new GetSupplyCategory(categoryRepo).execute(req.query);
+        const categories = await new GetSupplyCategory(categoryRepo).execute(req.query);
         return ok(res, categories);
     } catch (err) {
         return serverError(res);
     }
 };
 
-const getSupplyCategoryById = (req, res) => {
+const getSupplyCategoryById = async (req, res) => {
     try {
-        const category = new GetSupplyCategoryById(categoryRepo).execute(req.params.id);
+        const category = await new GetSupplyCategoryById(categoryRepo).execute(req.params.id);
         return ok(res, category);
     } catch (err) {
         if (err.statusCode === 404) return notFound(res, err.message);

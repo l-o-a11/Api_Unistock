@@ -1,6 +1,7 @@
 // infrastructure/repositories/SupplyCategoryRepository.js
+
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
-const SupplyCategory = require("../../domain/entities/CategoriaInsumo");
+const SupplyCategory = require("../../domain/entities/SupplyCategory");
 
 class SupplyCategoryRepository {
   _toEntity(doc) {
@@ -11,13 +12,16 @@ class SupplyCategoryRepository {
 
   async findAll(filters = {}) {
     const query = {};
+
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombre: re }, { descripcion: re }];
     }
+
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
+
     const docs = await SupplyCategoryModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }

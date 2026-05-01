@@ -1,6 +1,7 @@
-// domain/entities/Privilegio.js
+// domain/entities/Privilege.js
+// Pure domain entity — no external dependencies.
 
-class Privilegio {
+class Privilege {
   constructor({
     id,
     nombre,
@@ -16,4 +17,4 @@ class Privilegio {
   }
 }
 
-module.exports = Privilegio;
+module.exports = Privilege;
