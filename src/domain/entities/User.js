@@ -36,3 +36,5 @@ class User {
     return this.rolId === 2 && this.estado === true && activeAdminCount <= 1;
   }
 }
+
+module.exports = User;
