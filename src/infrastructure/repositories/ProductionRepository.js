@@ -11,8 +11,9 @@ class ProductionRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.cliente) query.cliente = new RegExp(filters.cliente, "i");
+    if (filters.cliente)    query.cliente    = new RegExp(filters.cliente, "i");
     if (filters.id_usuario) query.id_usuario = filters.id_usuario;
+    if (filters.estado)     query.estado     = filters.estado;
     const docs = await ProductionOrderModel.find(query).sort({ createdAt: -1 });
     return docs.map((d) => this._toEntity(d));
   }
@@ -28,13 +29,58 @@ class ProductionRepository {
   }
 
   async update(id, changes) {
-    const doc = await ProductionOrderModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await ProductionOrderModel
+      .findByIdAndUpdate(id, changes, { new: true })
+      .catch(() => null);
     return this._toEntity(doc);
   }
 
-  async delete(id) {
-    const result = await ProductionOrderModel.findByIdAndDelete(id).catch(() => null);
-    return !!result;
+  /**
+   * Anula una orden: pone estado "Anulada", guarda motivo
+   * y agrega entrada al historial.
+   */
+  async anular(id, motivo, id_usuario) {
+    const historialEntry = {
+      estado: "Anulada",
+      fecha: new Date(),
+      id_usuario: id_usuario || null,
+      motivo: motivo || null,
+    };
+    const doc = await ProductionOrderModel
+      .findByIdAndUpdate(
+        id,
+        {
+          estado: "Anulada",
+          motivo_anulacion: motivo || null,
+          $push: { historial: historialEntry },
+        },
+        { new: true },
+      )
+      .catch(() => null);
+    return this._toEntity(doc);
+  }
+
+  /**
+   * Cambia el estado de la orden y registra la transición en el historial.
+   */
+  async cambiarEstado(id, nuevoEstado, id_usuario) {
+    const historialEntry = {
+      estado: nuevoEstado,
+      fecha: new Date(),
+      id_usuario: id_usuario || null,
+      motivo: null,
+    };
+    const doc = await ProductionOrderModel
+      .findByIdAndUpdate(
+        id,
+        {
+          estado: nuevoEstado,
+          $push: { historial: historialEntry },
+        },
+        { new: true },
+      )
+      .catch(() => null);
+    return this._toEntity(doc);
   }
 }
 
