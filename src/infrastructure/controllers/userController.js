@@ -41,7 +41,7 @@ const getUserById = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    return created(res, await new CreateUser(repo).execute(req.body));
+    return created(res, await new CreateUser(repo).execute(req.body, req.user));
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);

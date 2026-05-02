@@ -1,4 +1,5 @@
 // infrastructure/repositories/SupplyRepository.js
+
 const SupplyModel = require("../db/SupplyModel");
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
 const Supply = require("../../domain/entities/Supply");
@@ -12,14 +13,18 @@ class SupplyRepository {
 
   async findAll(filters = {}) {
     const query = {};
+
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombre: re }, { categoria: re }];
     }
+
     if (filters.categoria !== undefined) query.categoria = filters.categoria;
+
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
+
     const docs = await SupplyModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }

@@ -33,7 +33,7 @@ class CreateUser {
       throw error;
     }
 
-    const plainPassword = generatePassword();
+    const plainPassword = data.password?.trim() || generatePassword();
     const hashedPassword = await hash(plainPassword);
 
     const user = await this.userRepository.save({

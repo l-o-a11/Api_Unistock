@@ -24,14 +24,14 @@ class LoginUser {
     }
 
     const token = generate({
-      id:             user._id,
+      id:             user.id,
       correo:         user.correo,
       rolId:          user.rolId,
       sedeId:         user.sedeId,
       nombreCompleto: user.nombreCompleto,
     });
 
-    return { token, user: user.toJSON() };
+    return { token, user: user.toPublic() };
   }
 }
 
