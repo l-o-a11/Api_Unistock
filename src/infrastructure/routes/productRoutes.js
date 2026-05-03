@@ -33,7 +33,8 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/productController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requireRole } = require("../../interfaces/middlewares/authMiddleware");
+const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
 
@@ -46,6 +47,13 @@ router.get("/:id", ctrl.getProductById);
 router.post("/", ctrl.createProduct);
 router.put("/:id", ctrl.updateProduct);
 router.delete("/:id", ctrl.deleteProduct);
+router.patch(
+  "/:id/status",
+  requireRole("Gerente", "Administrador"),
+  rules.idParam,
+  validate,
+  ctrl.toggleProductStatus 
+);
 
 // Rutas ficha técnica
 router.get("/:id/tecnicas", ctrl.getTechnicalSpecifications);
