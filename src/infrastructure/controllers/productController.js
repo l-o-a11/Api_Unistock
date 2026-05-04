@@ -220,6 +220,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  toggleProductStatus,
   getTechnicalSpecifications,
   getTechnicalSpecificationById,
   createTechnicalSpecification,
