@@ -1,3 +1,13 @@
+/**
+ * rolePermissionValidator.js
+ *
+ * Valida el array de permisos que se envía al crear o actualizar un rol.
+ * Cada permiso tiene la forma: { modulo: string, privilegios: string[] }
+ *
+ * Acepta tanto el nombre del módulo/privilegio como su ID de MongoDB,
+ * y siempre normaliza a nombre en minúsculas en el resultado.
+ */
+
 const normalize = (value) => String(value).trim().toLowerCase();
 
 const validatePermissions = async (permisos = [], moduleRepository, privilegeRepository) => {
@@ -13,15 +23,31 @@ const validatePermissions = async (permisos = [], moduleRepository, privilegeRep
     throw error;
   }
 
-  // Fetch valid modules and privileges from DB
-  const validModules = await moduleRepository.findAll();
+  // Cargar catálogos completos una sola vez
+  const validModules    = await moduleRepository.findAll();
   const validPrivileges = await privilegeRepository.findAll();
 
-  const isValidModule = (modulo) =>
-    validModules.some((m) => normalize(m.nombre) === normalize(modulo));
+  /**
+   * Resuelve un módulo por nombre o por _id.
+   * Devuelve el nombre normalizado o null si no existe.
+   */
+  const resolveModule = (value) => {
+    const norm = normalize(value);
+    // Buscar por nombre
+    const byName = validModules.find((m) => normalize(m.nombre) === norm);
+    if (byName) return normalize(byName.nombre);
+    // Buscar por id
+    const byId = validModules.find((m) => m.id === value || normalize(m.id) === norm);
+    return byId ? normalize(byId.nombre) : null;
+  };
 
-  const isValidPrivilege = (privilegio) =>
-    validPrivileges.some((p) => normalize(p.nombre) === normalize(privilegio));
+  const resolvePrivilege = (value) => {
+    const norm = normalize(value);
+    const byName = validPrivileges.find((p) => normalize(p.nombre) === norm);
+    if (byName) return normalize(byName.nombre);
+    const byId = validPrivileges.find((p) => p.id === value || normalize(p.id) === norm);
+    return byId ? normalize(byId.nombre) : null;
+  };
 
   const seenModules = new Set();
 
@@ -33,6 +59,7 @@ const validatePermissions = async (permisos = [], moduleRepository, privilegeRep
     }
 
     const { modulo, privilegios } = permiso;
+
     if (!modulo) {
       const error = new Error(`El permiso en la posición ${index} debe incluir el campo 'modulo'`);
       error.statusCode = 422;
@@ -44,45 +71,43 @@ const validatePermissions = async (permisos = [], moduleRepository, privilegeRep
       throw error;
     }
 
-    const moduloNormalized = normalize(modulo);
-    if (!isValidModule(moduloNormalized)) {
-      const error = new Error(`Módulo inválido: ${modulo}`);
+    const moduloResuelto = resolveModule(modulo);
+    if (!moduloResuelto) {
+      const error = new Error(`Módulo inválido: '${modulo}'. Módulos disponibles: ${validModules.map(m => m.nombre).join(", ")}`);
       error.statusCode = 422;
       throw error;
     }
 
-    if (seenModules.has(moduloNormalized)) {
-      const error = new Error(`El módulo '${moduloNormalized}' está repetido en los permisos`);
+    if (seenModules.has(moduloResuelto)) {
+      const error = new Error(`El módulo '${moduloResuelto}' está repetido en los permisos`);
       error.statusCode = 422;
       throw error;
     }
-    seenModules.add(moduloNormalized);
+    seenModules.add(moduloResuelto);
 
     if (!Array.isArray(privilegios) || privilegios.length === 0) {
-      const error = new Error(`El módulo '${moduloNormalized}' debe contener un arreglo no vacío de privilegios`);
+      const error = new Error(`El módulo '${moduloResuelto}' debe contener un arreglo no vacío de privilegios`);
       error.statusCode = 422;
       throw error;
     }
 
-    const privilegiosNormalized = privilegios.map((privilegio) => {
-      const valor = normalize(privilegio);
-      if (!isValidPrivilege(valor)) {
-        const error = new Error(`Privilegio inválido en módulo '${moduloNormalized}': ${privilegio}`);
+    const privilegiosResueltos = privilegios.map((privilegio) => {
+      const valor = resolvePrivilege(privilegio);
+      if (!valor) {
+        const error = new Error(
+          `Privilegio inválido en módulo '${moduloResuelto}': '${privilegio}'. Privilegios disponibles: ${validPrivileges.map(p => p.nombre).join(", ")}`
+        );
         error.statusCode = 422;
         throw error;
       }
       return valor;
     });
 
-    const uniquePrivilegios = [...new Set(privilegiosNormalized)];
-
     return {
-      modulo: moduloNormalized,
-      privilegios: uniquePrivilegios,
+      modulo: moduloResuelto,
+      privilegios: [...new Set(privilegiosResueltos)],
     };
   });
 };
 
-module.exports = {
-  validatePermissions,
-};
+module.exports = { validatePermissions };

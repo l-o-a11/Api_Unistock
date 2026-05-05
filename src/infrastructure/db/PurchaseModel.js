@@ -6,7 +6,7 @@ const purchaseSchema = new mongoose.Schema({
     fecha: { type: Date, required: true },
     proveedorId: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier" },
     total: { type: Number, required: true },
-    estado: { type: Boolean, default: true },
+    anulada: { type: Boolean, default: false },
     observaciones: { type: String, required: false },
     numeroFactura: { type: String, required: true },
 }, { timestamps: true });

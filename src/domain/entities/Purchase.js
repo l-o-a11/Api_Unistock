@@ -8,7 +8,7 @@ class Purchase {
     fecha,
     proveedorId,
     total,
-    estado = true,
+    anulada = false,
     observaciones,
     numeroFactura,
   }) {
@@ -16,7 +16,7 @@ class Purchase {
     this.fecha = fecha;
     this.proveedorId = proveedorId;
     this.total = total;
-    this.estado = estado;
+    this.anulada = anulada;
     this.observaciones = observaciones;
     this.numeroFactura = numeroFactura;
   }
