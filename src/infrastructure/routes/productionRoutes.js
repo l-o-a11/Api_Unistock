@@ -28,7 +28,7 @@ const ctrl = require("../controllers/productionController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = Router();
-router.use(requireAuth);
+// router.use(requireAuth);  // REMOVIDO para desarrollo público
 
 // Órdenes
 router.get("/ordenes/estados",       ctrl.getEstados);        // Debe ir antes de /:id

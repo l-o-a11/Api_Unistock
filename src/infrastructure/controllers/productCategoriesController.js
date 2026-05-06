@@ -13,18 +13,18 @@ const { ok, created, badRequest, notFound, serverError } = require("../../shared
 
 const repo = new ProductCategoriesRepository();
 
-const getProductCategories = (req, res) => {
+const getProductCategories = async (req, res) => {
   try {
-    const productCategories = repo.findAll(req.query);
+    const productCategories = await repo.findAll(req.query);
     return ok(res, productCategories);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getProductCategoryById = (req, res) => {
+const getProductCategoryById = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
     return ok(res, productCategory);
   } catch (err) {
@@ -32,13 +32,13 @@ const getProductCategoryById = (req, res) => {
   }
 };
 
-const createProductCategory = (req, res) => {
+const createProductCategory = async (req, res) => {
   try {
     const { nombre, descripción } = req.body;
     if (!nombre || !descripción) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const productCategory = repo.create({
+    const productCategory = await repo.create({
       nombre,
       descripción,
       estado: true,
@@ -49,22 +49,22 @@ const createProductCategory = (req, res) => {
   }
 };
 
-const updateProductCategory = (req, res) => {
+const updateProductCategory = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
-    const updated = repo.update(req.params.id, req.body);
+    const updated = await repo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const deleteProductCategory = (req, res) => {
+const deleteProductCategory = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
-    repo.delete(req.params.id);
+    await repo.delete(req.params.id);
     return ok(res, { message: "Categoría de producto eliminada exitosamente" });
   } catch (err) {
     return serverError(res);

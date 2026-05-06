@@ -17,18 +17,18 @@ const repo = new productRepository();
 const techSpecRepo = new technicalSpecificationsRepository();
 const materialTechSpecRepo = new materialTechnicalSpecificationsRepository();
 
-const getProducts = (req, res) => {
+const getProducts = async (req, res) => {
   try {
-    const products = repo.findAll(req.query);
+    const products = await repo.findAll(req.query);
     return ok(res, products);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getProductById = (req, res) => {
+const getProductById = async (req, res) => {
   try {
-    const product = repo.findById(req.params.id);
+    const product = await repo.findById(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
     return ok(res, product);
   } catch (err) {
@@ -36,13 +36,13 @@ const getProductById = (req, res) => {
   }
 };
 
-const createProduct = (req, res) => {
+const createProduct = async (req, res) => {
   try {
     const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } = req.body;
-    if (!id_categorias || !referencia || !nombre || !precio || !stock) {
+    if (!id_categorias || !referencia || !nombre || precio === undefined || stock === undefined) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const product = repo.create({
+    const product = await repo.create({
       id_categorias,
       imagenes_Url,
       referencia,
@@ -57,37 +57,37 @@ const createProduct = (req, res) => {
   }
 };
 
-const updateProduct = (req, res) => {
+const updateProduct = async (req, res) => {
   try {
-    const product = repo.findById(req.params.id);
+    const product = await repo.findById(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
-    const updated = repo.update(req.params.id, req.body);
+    const updated = await repo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const deleteProduct = (req, res) => {
+const deleteProduct = async (req, res) => {
   try {
-    const product = repo.findById(req.params.id);
+    const product = await repo.findById(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
-    repo.delete(req.params.id);
+    await repo.delete(req.params.id);
     return ok(res, { message: "Producto eliminado exitosamente" });
   } catch (err) {
     return serverError(res);
   }
 };
 
-const toggleProductStatus = (req, res) => {
+const toggleProductStatus = async (req, res) => {
   try {
-    const product = repo.findById(req.params.id);
+    const product = await repo.findById(req.params.id);
 
     if (!product) {
       return notFound(res, "Producto no encontrado");
     }
 
-    const updated = repo.update(req.params.id, {
+    const updated = await repo.update(req.params.id, {
       estado: !product.estado,
     });
 
@@ -97,18 +97,18 @@ const toggleProductStatus = (req, res) => {
   }
 };
 
-const getTechnicalSpecifications = (req, res) => {
+const getTechnicalSpecifications = async (req, res) => {
   try {
-    const techSpecs = techSpecRepo.findAll({ id_producto: req.params.id });
+    const techSpecs = await techSpecRepo.findAll({ id_producto: req.params.id });
     return ok(res, techSpecs);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getTechnicalSpecificationById = (req, res) => {
+const getTechnicalSpecificationById = async (req, res) => {
   try {
-    const techSpec = techSpecRepo.findById(req.params.techSpecId);
+    const techSpec = await techSpecRepo.findById(req.params.techSpecId);
     if (!techSpec) return notFound(res, "Ficha técnica no encontrada");
     return ok(res, techSpec);
   } catch (err) {
@@ -116,13 +116,14 @@ const getTechnicalSpecificationById = (req, res) => {
   }
 };
 
-const createTechnicalSpecification = (req, res) => {
+const createTechnicalSpecification = async (req, res) => {
   try {
-    const { responsable, fecha_inicio, fecha_fin, versiones, descripciones } = req.body;
-    if (!responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
+    const { id_producto, responsable, fecha_inicio, fecha_fin, versiones, descripciones } = req.body;
+    if (!id_producto || !responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const techSpec = techSpecRepo.create({
+    const techSpec = await techSpecRepo.create({
+      id_producto,
       responsable,
       fecha_inicio,
       fecha_fin,
@@ -135,40 +136,40 @@ const createTechnicalSpecification = (req, res) => {
   }
 };
 
-const updateTechnicalSpecification = (req, res) => {
+const updateTechnicalSpecification = async (req, res) => {
   try {
-    const techSpec = techSpecRepo.findById(req.params.id);
+    const techSpec = await techSpecRepo.findById(req.params.id);
     if (!techSpec) return notFound(res, "Ficha técnica no encontrada");
-    const updated = techSpecRepo.update(req.params.id, req.body);
+    const updated = await techSpecRepo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const deleteTechnicalSpecification = (req, res) => {
+const deleteTechnicalSpecification = async (req, res) => {
   try {
-    const techSpec = techSpecRepo.findById(req.params.id);
+    const techSpec = await techSpecRepo.findById(req.params.id);
     if (!techSpec) return notFound(res, "Ficha técnica no encontrada");
-    techSpecRepo.delete(req.params.id);
+    await techSpecRepo.delete(req.params.id);
     return ok(res, { message: "Ficha técnica eliminada exitosamente" });
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getMaterialTechnicalSpecifications = (req, res) => {
+const getMaterialTechnicalSpecifications = async (req, res) => {
   try {
-    const materialTechSpecs = materialTechSpecRepo.findAll({ id_producto: req.params.id });
+    const materialTechSpecs = await materialTechSpecRepo.findAll({ id_producto: req.params.id });
     return ok(res, materialTechSpecs);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getMaterialTechnicalSpecificationById = (req, res) => {
+const getMaterialTechnicalSpecificationById = async (req, res) => {
   try {
-    const materialTechSpec = materialTechSpecRepo.findById(req.params.materialTechSpecId);
+    const materialTechSpec = await materialTechSpecRepo.findById(req.params.materialTechSpecId);
     if (!materialTechSpec) return notFound(res, "Especificación técnica del material no encontrada");
     return ok(res, materialTechSpec);
   } catch (err) {
@@ -176,13 +177,14 @@ const getMaterialTechnicalSpecificationById = (req, res) => {
   }
 };
 
-const createMaterialTechnicalSpecification = (req, res) => {
+const createMaterialTechnicalSpecification = async (req, res) => {
   try {
-    const { id_materiales, cantidades } = req.body;
-    if (!id_materiales || !cantidades) {
+    const { id_producto, id_materiales, cantidades } = req.body;
+    if (!id_producto || !id_materiales || !cantidades) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const materialTechSpec = materialTechSpecRepo.create({
+    const materialTechSpec = await materialTechSpecRepo.create({
+      id_producto,
       id_materiales,
       cantidades,
     });
@@ -192,22 +194,22 @@ const createMaterialTechnicalSpecification = (req, res) => {
   }
 };
 
-const updateMaterialTechnicalSpecification = (req, res) => {
+const updateMaterialTechnicalSpecification = async (req, res) => {
   try {
-    const materialTechSpec = materialTechSpecRepo.findById(req.params.id);
+    const materialTechSpec = await materialTechSpecRepo.findById(req.params.id);
     if (!materialTechSpec) return notFound(res, "Material de la ficha técnica no encontrado");
-    const updated = materialTechSpecRepo.update(req.params.id, req.body);
+    const updated = await materialTechSpecRepo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
   } 
 };
  
-const deleteMaterialTechnicalSpecification = (req, res) => {
+const deleteMaterialTechnicalSpecification = async (req, res) => {
   try {
-    const materialTechSpec = materialTechSpecRepo.findById(req.params.id);
+    const materialTechSpec = await materialTechSpecRepo.findById(req.params.id);
     if (!materialTechSpec) return notFound(res, "Material de la ficha técnica no encontrado");
-    materialTechSpecRepo.delete(req.params.id);
+    await materialTechSpecRepo.delete(req.params.id);
     return ok(res, { message: "Material de la ficha técnica eliminado exitosamente" });
   } catch (err) {
     return serverError(res);
