@@ -79,6 +79,24 @@ const deleteProduct = (req, res) => {
   }
 };
 
+const toggleProductStatus = (req, res) => {
+  try {
+    const product = repo.findById(req.params.id);
+
+    if (!product) {
+      return notFound(res, "Producto no encontrado");
+    }
+
+    const updated = repo.update(req.params.id, {
+      estado: !product.estado,
+    });
+
+    return ok(res, updated);
+  } catch (err) {
+    return serverError(res);
+  }
+};
+
 const getTechnicalSpecifications = (req, res) => {
   try {
     const techSpecs = techSpecRepo.findAll({ id_producto: req.params.id });
@@ -202,6 +220,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  toggleProductStatus,
   getTechnicalSpecifications,
   getTechnicalSpecificationById,
   createTechnicalSpecification,

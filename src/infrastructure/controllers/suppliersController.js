@@ -21,15 +21,27 @@ const getSupplierById = async (req, res) => {
 
 const createSupplier = async (req, res) => {
   try {
-    const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo, sitio_web } = req.body;
+    const backendData = {
+      nit: req.body.nit,
+      nombre_de_empresa: req.body.nombreEmpresa,
+      nombre_del_contacto: req.body.nombreContacto || '',
+      direccion: req.body.direccion,
+      telefono: req.body.telefono,
+      correo: req.body.correoEmpresa,
+      sitio_web: req.body.sitioWeb,
+    };
+    
+    const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo, sitio_web } = backendData;
+    
     if (!nit || !nombre_de_empresa || !nombre_del_contacto || !direccion || !telefono || !correo)
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     if (await repo.findByNit(nit)) return conflict(res, "Ya existe un proveedor con ese NIT");
     if (await repo.findByEmail(correo)) return conflict(res, "Ya existe un proveedor con ese correo");
-    const supplier = await repo.create({ nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo, sitio_web, activo: true });
+    const supplier = await repo.create({ ...backendData, activo: true });
     return created(res, supplier);
   } catch (err) { return serverError(res); }
 };
+
 
 const updateSupplier = async (req, res) => {
   try {

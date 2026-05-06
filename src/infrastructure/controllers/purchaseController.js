@@ -1,11 +1,11 @@
 /**
  * purchaseController.js
- * 
+ *
  * Controlador para la gestión de Compras.
  * Maneja operaciones CRUD para compras.
- * 
+ *
  * @author Unistock Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 const PurchaseRepository = require("../repositories/PurchaseRepository");
@@ -15,15 +15,17 @@ const { ok, created, badRequest, notFound, serverError } = require("../../shared
 const purchaseRepo = new PurchaseRepository();
 const purchaseDetailRepo = new PurchaseDetailRepository();
 
-const crearPurchase = (req, res) => {
+// ── Compras ───────────────────────────────────────────────────────────────────
+
+const crearPurchase = async (req, res) => {
   try {
     const { fecha, proveedorId, total, estado = true, observaciones, numeroFactura } = req.body;
     if (!fecha || !proveedorId || total === undefined) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const purchase = purchaseRepo.create({
+    const purchase = await purchaseRepo.create({
       fecha,
-      proveedorId: parseInt(proveedorId),
+      proveedorId,
       total: parseFloat(total),
       estado,
       observaciones,
@@ -35,68 +37,114 @@ const crearPurchase = (req, res) => {
   }
 };
 
-const obtenerPurchases = (req, res) => {
+const obtenerPurchases = async (req, res) => {
   try {
-    const purchases = purchaseRepo.findAll(req.query);
+    const purchases = await purchaseRepo.findAll(req.query);
     return ok(res, purchases);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const obtenerPurchase = (req, res) => {
+const obtenerPurchase = async (req, res) => {
   try {
-    const purchase = purchaseRepo.findById(req.params.id);
+    const purchase = await purchaseRepo.findById(req.params.id);
     if (!purchase) return notFound(res, "Compra no encontrada");
-    return ok(res, purchase);
+
+    // Incluir los detalles de la compra en la respuesta
+    const detalles = await purchaseDetailRepo.findAll({ purchaseId: req.params.id });
+    return ok(res, { ...purchase, detalles });
   } catch (err) {
     return serverError(res);
   }
 };
 
-const actualizarPurchase = (req, res) => {
+const actualizarPurchase = async (req, res) => {
   try {
-    const purchase = purchaseRepo.findById(req.params.id);
+    const purchase = await purchaseRepo.findById(req.params.id);
     if (!purchase) return notFound(res, "Compra no encontrada");
-    const updated = purchaseRepo.update(req.params.id, req.body);
+    const updated = await purchaseRepo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const eliminarPurchase = (req, res) => {
+const eliminarPurchase = async (req, res) => {
   try {
-    const purchase = purchaseRepo.findById(req.params.id);
+    const purchase = await purchaseRepo.findById(req.params.id);
     if (!purchase) return notFound(res, "Compra no encontrada");
-    purchaseRepo.delete(req.params.id);
+    await purchaseRepo.delete(req.params.id);
     return ok(res, { message: "Compra eliminada exitosamente" });
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getPurchaseDetail = (req, res) => {
+/**
+ * PATCH /compras/:id/anular
+ * Alterna el campo `anulada` de la compra (toggle).
+ */
+const anularPurchase = async (req, res) => {
   try {
-    const details = purchaseDetailRepo.findAll(req.query);
+    const purchase = await purchaseRepo.findById(req.params.id);
+    if (!purchase) return notFound(res, "Compra no encontrada");
+
+    const nuevoValor = !purchase.anulada;
+    const updated = await purchaseRepo.update(req.params.id, { anulada: nuevoValor });
+    return ok(res, {
+      ...updated,
+      message: nuevoValor ? "Compra anulada exitosamente" : "Anulación revertida exitosamente",
+    });
+  } catch (err) {
+    return serverError(res);
+  }
+};
+
+// ── Detalles de compra ────────────────────────────────────────────────────────
+
+const getPurchaseDetail = async (req, res) => {
+  try {
+    const details = await purchaseDetailRepo.findAll(req.query);
     return ok(res, details);
   } catch (err) {
     return serverError(res);
   }
 };
 
-const createPurchaseDetail = (req, res) => {
+/**
+ * GET /compras/detalle-purchase/:id
+ * Devuelve un detalle de compra por su ID.
+ */
+const getPurchaseDetailById = async (req, res) => {
+  try {
+    const detail = await purchaseDetailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, "Detalle de compra no encontrado");
+    return ok(res, detail);
+  } catch (err) {
+    return serverError(res);
+  }
+};
+
+const createPurchaseDetail = async (req, res) => {
   try {
     const { purchaseId, productoId, cantidad, precioUnitario, subtotal } = req.body;
     if (!purchaseId || !productoId || cantidad === undefined || precioUnitario === undefined) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const detail = purchaseDetailRepo.create({
-      purchaseId: parseInt(purchaseId),
-      productoId: parseInt(productoId),
+
+    // Verificar que la compra existe
+    const purchase = await purchaseRepo.findById(purchaseId);
+    if (!purchase) return notFound(res, "Compra no encontrada");
+
+    const detail = await purchaseDetailRepo.create({
+      compraId: purchaseId,
+      productoId,
       cantidad: parseFloat(cantidad),
       precioUnitario: parseFloat(precioUnitario),
-      subtotal: subtotal !== undefined ? parseFloat(subtotal) : parseFloat(cantidad) * parseFloat(precioUnitario),
+      subtotal: subtotal !== undefined
+        ? parseFloat(subtotal)
+        : parseFloat(cantidad) * parseFloat(precioUnitario),
     });
     return created(res, detail);
   } catch (err) {
@@ -110,6 +158,8 @@ module.exports = {
   obtenerPurchase,
   actualizarPurchase,
   eliminarPurchase,
+  anularPurchase,
   getPurchaseDetail,
+  getPurchaseDetailById,
   createPurchaseDetail,
 };
