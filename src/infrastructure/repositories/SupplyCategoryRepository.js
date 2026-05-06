@@ -1,4 +1,5 @@
 // infrastructure/repositories/SupplyCategoryRepository.js
+
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
 const SupplyCategory = require("../../domain/entities/SupplyCategory");
 
