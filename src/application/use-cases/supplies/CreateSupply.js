@@ -1,4 +1,5 @@
 // application/use-cases/supplies/CreateSupply.js
+
 class CreateSupply {
   constructor(supplyRepository) {
     this.supplyRepository = supplyRepository;
@@ -7,13 +8,7 @@ class CreateSupply {
   async execute(data) {
     const { nombre, categoria, valor_medida, medida, imagenes_Url, stock = 0, propiedades = [] } = data;
 
-    // Validaciones
-    if (!imagenes_Url || !Array.isArray(imagenes_Url) || imagenes_Url.length === 0) {
-      const error = new Error("Se requiere al menos una imagen");
-      error.statusCode = 400;
-      throw error;
-    }
-    
+    // Validations
     if (!nombre) {
       const error = new Error("El nombre es obligatorio");
       error.statusCode = 400;
@@ -38,13 +33,13 @@ class CreateSupply {
       throw error;
     }
 
-    if (stock === undefined || stock === null) {
-      const error = new Error("El stock es obligatorio");
+    if (!imagenes_Url || !Array.isArray(imagenes_Url) || imagenes_Url.length === 0) {
+      const error = new Error("Se requiere al menos una imagen");
       error.statusCode = 400;
       throw error;
     }
 
-    // Unicidad
+    // Name uniqueness
     const existing = await this.supplyRepository.findByName(nombre);
     if (existing) {
       const error = new Error("Insumo ya existente");
@@ -52,16 +47,16 @@ class CreateSupply {
       throw error;
     }
 
-    // Crear
-    const supply = await this.supplyRepository.save({
-      imagenes_Url: imagenes_Url,
-      referencia: referencia.trim(),
+    return this.supplyRepository.create({
       nombre: nombre.trim(),
-      precio: precio,
-      stock: stock
+      categoria,
+      valor_medida,
+      medida,
+      imagenes_Url,
+      stock,
+      propiedades,
+      estado: true,
     });
-
-    return supply;
   }
 }
 

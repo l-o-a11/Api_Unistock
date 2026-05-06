@@ -1,12 +1,12 @@
-// infrastructure/routes/privilegioRoutes.js
+// infrastructure/routes/moduleRoutes.js
 
 const express = require("express");
-const { getPrivilegios } = require("../controllers/privilegioController");
+const { getModules } = require("../controllers/moduleController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
 
 router.use(requireAuth);
-router.get("/", getPrivilegios);
+router.get("/", getModules);
 
 module.exports = router;

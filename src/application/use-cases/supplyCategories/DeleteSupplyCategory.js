@@ -7,15 +7,15 @@ class DeleteSupplyCategory {
   }
 
   async execute(id) {
-    const categoria = this.supplyCategoryRepository.findById(id);
-    if (!categoria) {
+    const category = await this.supplyCategoryRepository.findById(id);
+    if (!category) {
       const error = new Error("Categoría no encontrada");
       error.statusCode = 404;
       throw error;
     }
 
-    // Verificar si hay insumos activos en esta categoría
-    const suppliesInCategory = this.supplyRepository.findAll({ categoria: id, estado: true });
+    // Check for active supplies in this category
+    const suppliesInCategory = await this.supplyRepository.findAll({ categoria: id, estado: true });
     if (suppliesInCategory.length > 0) {
       const error = new Error("No se puede eliminar la categoría porque tiene insumos activos asignados");
       error.statusCode = 422;

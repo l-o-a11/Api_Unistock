@@ -1,8 +1,7 @@
 // infrastructure/repositories/SupplyRepository.js
-const { store } = require("../../Config/database");
 const SupplyModel = require("../db/SupplyModel");
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
-const Supply = require("../../domain/entities/Insumo");
+const Supply = require("../../domain/entities/Supply");
 
 class SupplyRepository {
   _toEntity(doc) {
@@ -13,23 +12,23 @@ class SupplyRepository {
 
   async findAll(filters = {}) {
     const query = {};
+
     if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(
-        (i) =>
-          i.nombre.toLowerCase().includes(term) ||
-          i.category.toLowerCase().includes(term)
-      );
-    }
-    if (filters.category !== undefined) {
-      result = result.filter((i) => i.category === filters.category);
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombre: re }, { categoria: re }];
+      query.$or = [
+        { nombre: re },
+        { categoria: re }
+      ];
     }
-    if (filters.categoria !== undefined) query.categoria = filters.categoria;
+
+    if (filters.categoria !== undefined) {
+      query.categoria = filters.categoria;
+    }
+
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
+
     const docs = await SupplyModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
@@ -39,13 +38,23 @@ class SupplyRepository {
     return this._toEntity(doc);
   }
 
+  async findByName(nombre) {
+    const doc = await SupplyModel.findOne({ nombre }).catch(() => null);
+    return this._toEntity(doc);
+  }
+
   async create(data) {
     const doc = await SupplyModel.create(data);
     return this._toEntity(doc);
   }
 
   async update(id, changes) {
-    const doc = await SupplyModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await SupplyModel.findByIdAndUpdate(
+      id,
+      changes,
+      { new: true }
+    ).catch(() => null);
+
     return this._toEntity(doc);
   }
 
@@ -54,22 +63,15 @@ class SupplyRepository {
     return !!result;
   }
 
-  // Catálogos
-  findAllCategories() {
-    return store.suppliesCategories().filter(c => c.estado === true);
-  }
-
-  findCategoryById(id) {
-    const parsed = parseInt(id);
-    return store.suppliesCategories().find(c => c.id === parsed && c.estado === true) || null;
-  }
-
+  // Categorías (MongoDB)
   async findAllCategorias() {
     return SupplyCategoryModel.find({ estado: true });
   }
 
   async findCategoriaById(id) {
-    return SupplyCategoryModel.findOne({ _id: id, estado: true }).catch(() => null);
+    return SupplyCategoryModel
+      .findOne({ _id: id, estado: true })
+      .catch(() => null);
   }
 }
 

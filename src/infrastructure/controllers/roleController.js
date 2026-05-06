@@ -1,59 +1,56 @@
 /**
  * roleController.js
- * 
- * Controlador para la gestión de Roles.
- * Maneja operaciones CRUD para roles y sus permisos.
- * 
- * @author Unistock Team
- * @version 1.0.0
+ *
+ * Controller for Role management.
+ * Handles CRUD operations for roles and their permissions.
  */
 
 const RoleRepository = require("../repositories/RoleRepository");
 const UserRepository = require("../repositories/UserRepository");
-const ModuloRepository = require("../repositories/ModuloRepository");
-const PrivilegioRepository = require("../repositories/PrivilegioRepository");
+const ModuleRepository = require("../repositories/ModuleRepository");
+const PrivilegeRepository = require("../repositories/PrivilegeRepository");
 const CreateRole = require("../../application/use-cases/roles/CreateRole");
 const GetRole = require("../../application/use-cases/roles/GetRole");
 const GetRoleById = require("../../application/use-cases/roles/GetRoleById");
 const UpdateRole = require("../../application/use-cases/roles/UpdateRole");
 const DeleteRole = require("../../application/use-cases/roles/DeleteRole");
-const { ok, created, badRequest, notFound, conflict, unprocessable, serverError } = require("../../shared/utils/response");
+const { ok, created, notFound, conflict, unprocessable, serverError } = require("../../shared/utils/response");
 
 const roleRepo = new RoleRepository();
 const userRepo = new UserRepository();
-const moduloRepo = new ModuloRepository();
-const privilegioRepo = new PrivilegioRepository();
+const moduleRepo = new ModuleRepository();
+const privilegeRepo = new PrivilegeRepository();
 
-const getModulos = (req, res) => {
+const getModules = async (req, res) => {
   try {
-    const modulos = moduloRepo.findAll({ estado: true });
-    return ok(res, modulos.map(m => m.toPublic()));
+    const modules = await moduleRepo.findAll({ estado: true });
+    return ok(res, modules.map((m) => m.toPublic()));
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getPrivilegios = (req, res) => {
+const getPrivileges = async (req, res) => {
   try {
-    const privilegios = privilegioRepo.findAll({ estado: true });
-    return ok(res, privilegios.map(p => p.toPublic()));
+    const privileges = await privilegeRepo.findAll({ estado: true });
+    return ok(res, privileges.map((p) => p.toPublic()));
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getRoles = (req, res) => {
+const getRoles = async (req, res) => {
   try {
-    const roles = new GetRole(roleRepo).execute(req.query);
-    return ok(res, roles.map(r => r.toPublic()));
+    const roles = await new GetRole(roleRepo).execute(req.query);
+    return ok(res, roles.map((r) => r.toPublic()));
   } catch (err) {
     return serverError(res);
   }
 };
 
-const getRoleById = (req, res) => {
+const getRoleById = async (req, res) => {
   try {
-    const role = new GetRoleById(roleRepo).execute(req.params.id);
+    const role = await new GetRoleById(roleRepo).execute(req.params.id);
     return ok(res, role.toPublic());
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -63,7 +60,7 @@ const getRoleById = (req, res) => {
 
 const createRole = async (req, res) => {
   try {
-    const role = await new CreateRole(roleRepo, moduloRepo, privilegioRepo).execute(req.body);
+    const role = await new CreateRole(roleRepo, moduleRepo, privilegeRepo).execute(req.body);
     return created(res, role.toPublic());
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
@@ -74,7 +71,7 @@ const createRole = async (req, res) => {
 
 const updateRole = async (req, res) => {
   try {
-    const role = await new UpdateRole(roleRepo, moduloRepo, privilegioRepo).execute(req.params.id, req.body);
+    const role = await new UpdateRole(roleRepo, moduleRepo, privilegeRepo).execute(req.params.id, req.body);
     return ok(res, role.toPublic());
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -96,8 +93,8 @@ const deleteRole = async (req, res) => {
 };
 
 module.exports = {
-  getModulos,
-  getPrivilegios,
+  getModules,
+  getPrivileges,
   getRoles,
   getRoleById,
   createRole,

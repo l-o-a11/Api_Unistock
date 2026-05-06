@@ -1,8 +1,7 @@
-// domain/entities/Insumo.js
-// Entidad pura del dominio — sin dependencias externas.
-// Define la forma canónica de un Insumo y las reglas que le pertenecen.
+// domain/entities/Supply.js
+// Pure domain entity — no external dependencies.
 
-class Insumo {
+class Supply {
   constructor({
     id,
     nombre,
@@ -10,6 +9,7 @@ class Insumo {
     stock = 0,
     valor_medida,
     medida,
+    imagenes_Url,
     estado = true,
     propiedades = [],
     createdAt,
@@ -21,16 +21,16 @@ class Insumo {
     this.stock = stock;
     this.valor_medida = valor_medida;
     this.medida = medida;
+    this.imagenes_Url = imagenes_Url;
     this.estado = estado;
     this.propiedades = propiedades;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
 
-  // Devuelve el objeto público
   toPublic() {
     return { ...this };
   }
 }
 
-module.exports = Insumo;
+module.exports = Supply;
