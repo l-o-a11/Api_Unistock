@@ -49,6 +49,7 @@ app.use('/api/privileges', privilegeRoutes);
 app.use("/api/categorias-productos", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
+
 // Health check
 app.get("/health", (_, res) =>
   res.json({ status: "ok", timestamp: new Date() }),

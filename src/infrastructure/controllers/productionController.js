@@ -27,7 +27,7 @@ const getOrderById = async (req, res) => {
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const details = await detailRepo.findAll({ id_orden: req.params.id });
-    return ok(res, { ...order.toJSON(), detalles: details });
+    return ok(res, { ...order.toJSON(), detalles: details.map((d) => d.toJSON()) });
   } catch (err) {
     return serverError(res);
   }
@@ -36,20 +36,27 @@ const getOrderById = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     const { fecha_entrega, cliente, id_usuario } = req.body;
-    if (!fecha_entrega || !cliente || !id_usuario)
-      return badRequest(res, "Los campos fecha_entrega, cliente e id_usuario son requeridos");
+    // Usar id_usuario del body, o del middleware si está disponible, o "anonymous" si nada está disponible
+    const userId = id_usuario || req.user?.id || "anonymous";
+    
+    if (!fecha_entrega || !cliente)
+      return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
 
     const order = await prodRepo.create({
       fecha_entrega,
       cliente,
-      id_usuario,
+      id_usuario: userId,
       estado: "Diseño",
-      historial: [{ estado: "Diseño", fecha: new Date(), id_usuario, motivo: null }],
+      historial: [{ estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null }],
     });
     return created(res, order.toJSON());
   } catch (err) {
-    return serverError(res);
-  }
+  console.error("Error al crear orden:", err);
+  const msg = process.env.NODE_ENV === "production"
+    ? "Error interno"
+    : err.message;
+  return serverError(res, msg);
+}
 };
 
 const updateOrder = async (req, res) => {
@@ -116,7 +123,8 @@ const getEstados = (_req, res) => {
 
 const getOrderDetails = async (req, res) => {
   try {
-    return ok(res, await detailRepo.findAll(req.query));
+    const details = await detailRepo.findAll(req.query);
+    return ok(res, details.map((d) => d.toJSON()));
   } catch (err) {
     return serverError(res);
   }

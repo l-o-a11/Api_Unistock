@@ -14,7 +14,7 @@ const historialEntrySchema = new mongoose.Schema(
   {
     estado: { type: String, enum: ESTADOS_VALIDOS, required: true },
     fecha: { type: Date, default: Date.now },
-    id_usuario: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    id_usuario: { type: mongoose.Schema.Types.Mixed, required: true },
     motivo: { type: String, default: null },
   },
   { _id: false },
@@ -26,7 +26,7 @@ const productionOrderSchema = new mongoose.Schema(
     fecha_creacion: { type: Date, default: Date.now },
     fecha_entrega: { type: Date, required: true },
     cliente: { type: String, required: true },
-    id_usuario: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    id_usuario: { type: mongoose.Schema.Types.Mixed },
     estado: {
       type: String,
       enum: ESTADOS_VALIDOS,
@@ -39,7 +39,7 @@ const productionOrderSchema = new mongoose.Schema(
 );
 
 // Auto-incrementar numero_orden antes de guardar
-productionOrderSchema.pre("save", async function (next) {
+productionOrderSchema.pre("save", async function () {
   if (this.isNew && !this.numero_orden) {
     const last = await this.constructor
       .findOne({}, { numero_orden: 1 })
@@ -47,7 +47,6 @@ productionOrderSchema.pre("save", async function (next) {
       .lean();
     this.numero_orden = last?.numero_orden ? last.numero_orden + 1 : 1;
   }
-  next();
 });
 
 module.exports = mongoose.model("ProductionOrder", productionOrderSchema);
