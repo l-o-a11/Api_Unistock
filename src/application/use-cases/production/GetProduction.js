@@ -6,8 +6,8 @@ class GetProduction {
     this.productionRepository = productionRepository;
   }
 
-  execute(filters = {}) {
-    const productions = this.productionRepository.findAll(filters);
-    return productions.map((u) => u.toPublic());
-  }
+  async execute(filters = {}) {
+  const productions = await this.productionRepository.findAll(filters);
+  return productions.map((u) => u.toJSON()); // también cambia toPublic → toJSON
+}
 }
