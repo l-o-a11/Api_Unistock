@@ -34,20 +34,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rutas
-app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
-app.use("/proveedores", suppliersRoutes);
-app.use("/terceros", thirdPartiesRoutes);
-app.use("/produccion", productionRoutes);
-app.use('/compras', purchaseRoutes);
-app.use('/insumos', supplyRoutes);
-app.use('/roles', roleRoutes);
-app.use('/sites', siteRoutes);
-app.use('/categorias-insumos', supplyCategoryRoutes);
-app.use('/modules', moduleRoutes);
-app.use('/privileges', privilegeRoutes);
-app.use("/categorias-productos", productCategoryRoutes);
-app.use("/productos", productRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/suppliers", suppliersRoutes);
+app.use("/api/terceros", thirdPartiesRoutes);
+app.use("/api/produccion", productionRoutes);
+app.use('/api/compras', purchaseRoutes);
+app.use('/api/insumos', supplyRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/sites', siteRoutes);
+app.use('/api/categorias-insumos', supplyCategoryRoutes);
+app.use('/api/modules', moduleRoutes);
+app.use('/api/privileges', privilegeRoutes);
+app.use("/api/categorias-productos", productCategoryRoutes);
+app.use("/api/products", productRoutes);
+
 
 // Health check
 app.get("/health", (_, res) =>

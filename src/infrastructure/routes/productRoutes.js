@@ -38,8 +38,8 @@ const { validate, rules } = require("../../interfaces/middlewares/validationMidd
 
 const router = Router();
 
-// Middleware: Requerir autenticación en todos los endpoints
-router.use(requireAuth);
+// Middleware: Requerir autenticación en todos los endpoints (REMOVIDO para desarrollo público)
+// router.use(requireAuth);
 
 // Rutas producto
 router.get("/", ctrl.getProducts);

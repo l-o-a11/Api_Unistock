@@ -15,7 +15,6 @@ app.use("/api/third-parties", require("./infrastructure/routes/thirdPartiesRoute
 app.use("/api/production", require("./infrastructure/routes/productionRoutes"));
 app.use("/api/sites", require("./infrastructure/routes/siteRoutes"));
 app.use("/api/products", require("./infrastructure/routes/productRoutes"));
-app.use("/api/orders", require("./infrastructure/routes/orderRoutes"));
 
 
 // Health check
