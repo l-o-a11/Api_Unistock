@@ -12,9 +12,12 @@ const repo = new UserRepository();
 
 const login = async (req, res) => {
   try {
-    return ok(res, await new LoginUser(repo).execute(req.body));
+    const result = await new LoginUser(repo).execute(req.body);
+    return ok(res, result);
   } catch (err) {
+    console.error("ERROR LOGIN:", err); // ← agrega esta línea
     if (err.statusCode === 401) return unauthorized(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res);
   }
 };
@@ -23,8 +26,10 @@ const prepareWelcome = (req, res) => ok(res, { password: generatePassword() });
 
 const getUsers = async (req, res) => {
   try {
-    return ok(res, await new GetUser(repo).execute(req.query));
+    const users = await new GetUser(repo).execute(req.query, req.user);
+    return ok(res, users);
   } catch (err) {
+    console.error("ERROR GET USERS:", err); // ← agrega esta línea
     return serverError(res);
   }
 };
@@ -54,6 +59,7 @@ const updateUser = async (req, res) => {
   try {
     return ok(res, await new UpdateUser(repo).execute(req.params.id, req.body));
   } catch (err) {
+    console.error("ERROR UPDATE USER:", err); // ← agrega esta línea
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
@@ -78,6 +84,7 @@ const deleteUser = async (req, res) => {
     await new DeleteUser(repo).execute(req.params.id);
     return noContent(res);
   } catch (err) {
+    console.error("ERROR DELETE USER:", err); // ← agrega esta línea
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
     if (err.statusCode === 422) return unprocessable(res, err.message);

@@ -1,5 +1,4 @@
-﻿const { store } = require("../../Config/database");
-const UserModel = require("../db/UserModel");
+﻿const UserModel = require("../db/UserModel");
 const User = require("../../domain/entities/User");
 
 class UserRepository {
@@ -15,9 +14,11 @@ class UserRepository {
       const re = new RegExp(filters.search, "i");
       query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
     }
-    if (filters.rolId !== undefined) query.rolId = parseInt(filters.rolId);
-    if (filters.sedeId !== undefined) query.sedeId = parseInt(filters.sedeId);
-    if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
+    if (filters.rolId)  query.rolId  = filters.rolId;
+    if (filters.sedeId) query.sedeId = filters.sedeId;
+    if (filters.estado !== undefined) {
+      query.estado = filters.estado === "true" || filters.estado === true;
+    }
     const docs = await UserModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
@@ -37,8 +38,9 @@ class UserRepository {
     return this._toEntity(doc);
   }
 
+  // TODO: usar el ObjectId real del rol Administrador cuando roles esté en dev
   async countActiveAdmins() {
-    return UserModel.countDocuments({ rolId: 2, estado: true });
+    return UserModel.countDocuments({ estado: true });
   }
 
   async save(data) {
@@ -56,11 +58,10 @@ class UserRepository {
     return !!result;
   }
 
-  // Catálogos (sin modelo propio — arrays estáticos por ahora)
-  findAllRoles()     { return []; }
-  findRoleById(id)   { return id ? { id: parseInt(id) } : null; }
-  findAllSedes()     { return []; }
-  findSedeById(id)   { return id ? { id: parseInt(id) } : null; }
+  findAllRoles()   { return []; }
+  findRoleById(id) { return id ? { id } : null; }
+  findAllSedes()   { return []; }
+  findSedeById(id) { return id ? { id } : null; }
 }
 
 module.exports = UserRepository;

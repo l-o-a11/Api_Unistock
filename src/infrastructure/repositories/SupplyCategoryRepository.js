@@ -15,7 +15,10 @@ class SupplyCategoryRepository {
 
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombre: re }, { descripcion: re }];
+      query.$or = [
+        { nombre: re },
+        { descripcion: re }
+      ];
     }
 
     if (filters.estado !== undefined) {
@@ -37,7 +40,12 @@ class SupplyCategoryRepository {
   }
 
   async update(id, changes) {
-    const doc = await SupplyCategoryModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await SupplyCategoryModel.findByIdAndUpdate(
+      id,
+      changes,
+      { new: true }
+    ).catch(() => null);
+
     return this._toEntity(doc);
   }
 

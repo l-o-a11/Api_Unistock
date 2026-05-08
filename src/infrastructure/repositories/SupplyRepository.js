@@ -1,5 +1,4 @@
 // infrastructure/repositories/SupplyRepository.js
-
 const SupplyModel = require("../db/SupplyModel");
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
 const Supply = require("../../domain/entities/Supply");
@@ -16,10 +15,15 @@ class SupplyRepository {
 
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombre: re }, { categoria: re }];
+      query.$or = [
+        { nombre: re },
+        { categoria: re }
+      ];
     }
 
-    if (filters.categoria !== undefined) query.categoria = filters.categoria;
+    if (filters.categoria !== undefined) {
+      query.categoria = filters.categoria;
+    }
 
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
@@ -45,7 +49,12 @@ class SupplyRepository {
   }
 
   async update(id, changes) {
-    const doc = await SupplyModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await SupplyModel.findByIdAndUpdate(
+      id,
+      changes,
+      { new: true }
+    ).catch(() => null);
+
     return this._toEntity(doc);
   }
 
@@ -54,12 +63,15 @@ class SupplyRepository {
     return !!result;
   }
 
+  // Categorías (MongoDB)
   async findAllCategorias() {
     return SupplyCategoryModel.find({ estado: true });
   }
 
   async findCategoriaById(id) {
-    return SupplyCategoryModel.findOne({ _id: id, estado: true }).catch(() => null);
+    return SupplyCategoryModel
+      .findOne({ _id: id, estado: true })
+      .catch(() => null);
   }
 }
 

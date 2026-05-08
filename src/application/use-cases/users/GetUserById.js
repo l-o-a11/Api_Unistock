@@ -1,12 +1,10 @@
-// application/use-cases/users/GetUserById.js
-
 class GetUserById {
   constructor(userRepository) {
     this.userRepository = userRepository;
   }
 
-  execute(id) {
-    const user = this.userRepository.findById(id);
+  async execute(id) {
+    const user = await this.userRepository.findById(id);
 
     if (!user) {
       const error = new Error("Usuario no encontrado");
@@ -17,3 +15,5 @@ class GetUserById {
     return user.toPublic();
   }
 }
+
+module.exports = GetUserById;
