@@ -17,45 +17,47 @@ const rules = {
   createUser: [
     body("tipoDocumento").isIn(["CC", "TI"]).withMessage("Debe ser CC o TI"),
     body("numeroDocumento")
-      .notEmpty()
-      .withMessage("Obligatorio")
-      .isNumeric()
-      .withMessage("Solo números")
-      .isLength({ min: 5, max: 15 })
-      .withMessage("Entre 5 y 15 dígitos"),
+      .notEmpty().withMessage("Obligatorio")
+      .isNumeric().withMessage("Solo números")
+      .isLength({ min: 5, max: 15 }).withMessage("Entre 5 y 15 dígitos"),
     body("nombreCompleto")
-      .notEmpty()
-      .withMessage("Obligatorio")
-      .isLength({ min: 3, max: 100 })
-      .withMessage("Entre 3 y 100 caracteres")
+      .notEmpty().withMessage("Obligatorio")
+      .isLength({ min: 3, max: 100 }).withMessage("Entre 3 y 100 caracteres")
       .trim(),
     body("correo").isEmail().withMessage("Correo inválido").normalizeEmail(),
-    body("rolId").isInt({ min: 1 }).withMessage("Rol requerido"),
-    body("sedeId").isInt({ min: 1 }).withMessage("Sede requerida"),
+    body("rolId")
+      .notEmpty().withMessage("Rol requerido")
+      .isMongoId().withMessage("rolId inválido"),
+    body("sedeId")
+      .notEmpty().withMessage("Sede requerida")
+      .isMongoId().withMessage("sedeId inválido"),
     body("password")
       .optional()
-      .isLength({ min: 6 })
-      .withMessage("Mínimo 6 caracteres"),
+      .isLength({ min: 6 }).withMessage("Mínimo 6 caracteres"),
   ],
 
   updateUser: [
-    param("id").isInt({ min: 1 }).withMessage("ID inválido"),
+    param("id").isMongoId().withMessage("ID inválido"),
     body("tipoDocumento").optional().isIn(["CC", "TI"]),
     body("numeroDocumento")
       .optional()
       .isNumeric()
       .isLength({ min: 5, max: 15 }),
-    body("nombreCompleto").optional().isLength({ min: 3, max: 100 }).trim(),
+    body("nombreCompleto")
+      .optional()
+      .isLength({ min: 3, max: 100 }).trim(),
     body("correo").optional().isEmail().normalizeEmail(),
-    body("rolId").optional().isInt({ min: 1 }),
-    body("sedeId").optional().isInt({ min: 1 }),
+    body("rolId").optional().isMongoId().withMessage("rolId inválido"),
+    body("sedeId").optional().isMongoId().withMessage("sedeId inválido"),
   ],
 
-  idParam: [param("id").isInt({ min: 1 }).withMessage("ID inválido")],
+  idParam: [
+    param("id").isMongoId().withMessage("ID inválido"),
+  ],
 
   listUsers: [
-    query("rolId").optional().isInt({ min: 1 }),
-    query("sedeId").optional().isInt({ min: 1 }),
+    query("rolId").optional().isMongoId(),
+    query("sedeId").optional().isMongoId(),
     query("estado").optional().isIn(["true", "false"]),
   ],
 
