@@ -24,6 +24,11 @@ const router = Router();
 // Middleware: Requerir autenticación en todos los endpoints
 router.use(requireAuth);
 
+// Rutas de catálogos (deben ir ANTES de /:id para evitar conflictos de ruta)
+router.get("/catalogos/medidas",     ctrl.getMedidas);
+router.get("/catalogos/propiedades", ctrl.getPropiedades);
+router.get("/catalogos/categorias",  ctrl.getCategorias);
+
 // Rutas CRUD
 router.get("/", ctrl.getSupplies);
 router.get("/:id", ctrl.getSupplyById);

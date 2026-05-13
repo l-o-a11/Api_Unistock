@@ -21,8 +21,8 @@ const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = Router();
 
-// Middleware: Requerir autenticación en todos los endpoints
-router.use(requireAuth);
+// Middleware: Requerir autenticación en todos los endpoints (REMOVIDO para desarrollo público)
+ // router.use(requireAuth);
 
 // Rutas CRUD
 router.get("/", ctrl.getSuppliers);

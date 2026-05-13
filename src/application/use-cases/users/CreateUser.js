@@ -13,9 +13,8 @@ class CreateUser {
       correo, rolId, sedeId,
     } = data;
 
-    // Si es Admin solo puede crear usuarios de su propia sede
-    if (createdBy.rolId !== "gerente" && 
-        createdBy.sedeId.toString() !== sedeId.toString()) {
+    if (createdBy.rolNombre?.toLowerCase() !== "gerente" &&
+      createdBy.sedeId.toString() !== sedeId.toString()) {
       const error = new Error("Solo puedes crear usuarios de tu sede");
       error.statusCode = 403;
       throw error;
@@ -47,14 +46,20 @@ class CreateUser {
       estado: true,
     });
 
-    // Enviar correo de bienvenida con la contraseña en texto plano
-    await sendWelcomeEmail({
-      nombreCompleto,
-      correo,
-      password: plainPassword,
-    });
+    try {
+      await sendWelcomeEmail({
+        nombreCompleto,
+        correo,
+        password: plainPassword,
+      });
+    } catch (emailError) {
+      console.warn("Correo no enviado:", emailError.message);
+    }
 
-    return user.toPublic();
+    console.log("USER GUARDADO:", user);
+    const userObj = user.toObject ? user.toObject() : user;
+    const { password: _, ...userPublic } = userObj;
+    return userPublic;
   }
 }
 

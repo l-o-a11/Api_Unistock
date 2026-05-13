@@ -3,70 +3,109 @@
  * 
  * Controlador para la gestión de Categorías de Productos.
  * Maneja operaciones CRUD para categorías de productos.
+ * Sigue el patrón de suppliersController para consistencia.
  * 
  * @author Unistock Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 const ProductCategoriesRepository = require("../repositories/ProductCategoryRepository");
-const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+const { ok, created, badRequest, notFound, serverError, conflict } = require("../../shared/utils/response");
 
 const repo = new ProductCategoriesRepository();
 
-const getProductCategories = (req, res) => {
+const getProductCategories = async (req, res) => {
   try {
-    const productCategories = repo.findAll(req.query);
-    return ok(res, productCategories);
+    const productCategories = await repo.findAll(req.query);
+    return ok(res, productCategories.map(cat => cat.toJSON()));
   } catch (err) {
+    console.error("Error en getProductCategories:", err);
     return serverError(res);
   }
 };
 
-const getProductCategoryById = (req, res) => {
+const getProductCategoryById = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
-    return ok(res, productCategory);
+    return ok(res, productCategory.toJSON());
   } catch (err) {
+    console.error("Error en getProductCategoryById:", err);
     return serverError(res);
   }
 };
 
-const createProductCategory = (req, res) => {
+const createProductCategory = async (req, res) => {
   try {
-    const { nombre, descripción } = req.body;
+    // Mapear datos del frontend al backend (acepta múltiples formatos)
+    const backendData = {
+      nombre: req.body.nombre || req.body.name,
+      descripción: req.body.descripción || req.body.description || req.body.descripcion || '',
+    };
+
+    const { nombre, descripción } = backendData;
+
+    // Validar campos requeridos
     if (!nombre || !descripción) {
-      return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
+      return badRequest(res, "Los campos nombre y descripción son requeridos");
     }
-    const productCategory = repo.create({
-      nombre,
-      descripción,
+
+    // Verificar que la categoría no exista ya
+    const existingCategory = await repo.findByName(nombre);
+    if (existingCategory) {
+      return conflict(res, "Ya existe una categoría de producto con ese nombre");
+    }
+
+    // Crear la categoría
+    const productCategory = await repo.create({
+      ...backendData,
       estado: true,
     });
-    return created(res, productCategory);
+
+    return created(res, productCategory.toJSON());
   } catch (err) {
+    console.error("Error en createProductCategory:", err);
     return serverError(res);
   }
 };
 
-const updateProductCategory = (req, res) => {
+const updateProductCategory = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
-    const updated = repo.update(req.params.id, req.body);
-    return ok(res, updated);
+
+    // Si se actualiza el nombre, verificar que no exista otra con ese nombre
+    if (req.body.nombre && req.body.nombre !== productCategory.nombre) {
+      const existingCategory = await repo.findByName(req.body.nombre);
+      if (existingCategory && existingCategory.id !== productCategory.id) {
+        return conflict(res, "Ya existe una categoría de producto con ese nombre");
+      }
+    }
+
+    const updated = await repo.update(req.params.id, req.body);
+    return ok(res, updated.toJSON());
   } catch (err) {
+    console.error("Error en updateProductCategory:", err);
     return serverError(res);
   }
 };
 
-const deleteProductCategory = (req, res) => {
+const deleteProductCategory = async (req, res) => {
   try {
-    const productCategory = repo.findById(req.params.id);
+    const productCategory = await repo.findById(req.params.id);
     if (!productCategory) return notFound(res, "Categoría de producto no encontrada");
-    repo.delete(req.params.id);
+    
+    // Verificar si hay productos asociados
+    const hasProducts = await repo.hasAssociatedProducts(req.params.id);
+    if (hasProducts) {
+      return conflict(res, "No se puede eliminar una categoría que tiene productos asociados");
+    }
+    
+    // Eliminar la categoría
+    await repo.delete(req.params.id);
     return ok(res, { message: "Categoría de producto eliminada exitosamente" });
   } catch (err) {
+    console.error("Error en deleteProductCategory:", err);
     return serverError(res);
   }
 };

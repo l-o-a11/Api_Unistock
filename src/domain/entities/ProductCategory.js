@@ -12,7 +12,7 @@
  * @property {number} id - ID único de la categoría
  * @property {string} nombre - Nombre de la categoría
  * @property {string} descripción - Descripción de la categoría
- * @property {number} cantidad_producto - Cantidad de productos en esta categoría
+ * @property {number} cantidad_productos - Cantidad de productos en esta categoría
  * @property {number} productos_disponibles - Cantidad de productos disponibles en esta categoría
  * @property {boolean} estado - Estado de la categoría (Generalmente activa)
  */
@@ -24,7 +24,7 @@ class ProductCategory {
    * @param {number} data.id - ID único
    * @param {string} data.nombre - Nombre de la categoría
    * @param {string} data.descripción - Descripción de la categoría
-   * @param {number} data.cantidad_producto - Cantidad de productos en esta categoría
+   * @param {number} data.cantidad_productos - Cantidad de productos en esta categoría
    * @param {number} data.productos_disponibles - Cantidad de productos disponibles en esta categoría
    * @param {boolean} data.estado - Estado de la categoría
    */
@@ -32,14 +32,14 @@ class ProductCategory {
     id,
     nombre,
     descripción,
-    cantidad_producto,
+    cantidad_productos,
     productos_disponibles,
     estado,
   }) {
     this.id = id;
     this.nombre = nombre;
     this.descripción = descripción;
-    this.cantidad_producto = cantidad_producto;
+    this.cantidad_productos = cantidad_productos;
     this.productos_disponibles = productos_disponibles;
     this.estado = estado;
   }
@@ -53,7 +53,7 @@ class ProductCategory {
       id: this.id,
       nombre: this.nombre,
       descripción: this.descripción,
-      cantidad_producto: this.cantidad_producto,
+      cantidad_productos: this.cantidad_productos,
       productos_disponibles: this.productos_disponibles,
       estado: this.estado,
     };
