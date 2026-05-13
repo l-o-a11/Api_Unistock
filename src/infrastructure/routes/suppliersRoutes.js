@@ -1,34 +1,15 @@
-/**
- * suppliersRoutes.js
- * 
- * Define las rutas para la gestión de Proveedores.
- * 
- * Endpoints:
- * - GET    /proveedores          - Listar proveedores
- * - GET    /proveedores/:id      - Obtener proveedor
- * - POST   /proveedores          - Crear proveedor
- * - PUT    /proveedores/:id      - Actualizar proveedor
- * - DELETE /proveedores/:id      - Eliminar proveedor
- * 
- * Todos requieren autenticación (JWT token)
- * 
- * @author Unistock Team
- */
-
 const { Router } = require("express");
 const ctrl = require("../controllers/suppliersController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+// const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = Router();
+// router.use(requireAuth);
 
-// Middleware: Requerir autenticación en todos los endpoints (REMOVIDO para desarrollo público)
- // router.use(requireAuth);
-
-// Rutas CRUD
-router.get("/", ctrl.getSuppliers);
-router.get("/:id", ctrl.getSupplierById);
-router.post("/", ctrl.createSupplier);
-router.put("/:id", ctrl.updateSupplier);
-router.delete("/:id", ctrl.deleteSupplier);
+router.get("/",              ctrl.getSuppliers);
+router.get("/:id",           ctrl.getSupplierById);
+router.post("/",             ctrl.createSupplier);
+router.put("/:id",           ctrl.updateSupplier);
+router.delete("/:id",        ctrl.deleteSupplier);
+router.patch("/:id/toggle",  ctrl.toggleSupplier); // ← NUEVO
 
 module.exports = router;
