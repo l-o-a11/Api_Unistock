@@ -1,5 +1,6 @@
 // infrastructure/repositories/ProductCategoryRepository.js
 const ProductCategoryModel = require("../db/ProductCategoryModel");
+const ProductModel = require("../db/ProductModel");
 const ProductCategory = require("../../domain/entities/ProductCategory");
 
 class ProductCategoryRepository {
@@ -27,7 +28,17 @@ class ProductCategoryRepository {
     return this._toEntity(doc);
   }
 
+  async findByName(nombre) {
+    const doc = await ProductCategoryModel.findOne({ nombre });
+    return this._toEntity(doc);
+  }
+
   async save(data) {
+    const doc = await ProductCategoryModel.create(data);
+    return this._toEntity(doc);
+  }
+
+  async create(data) {
     const doc = await ProductCategoryModel.create(data);
     return this._toEntity(doc);
   }
@@ -35,6 +46,11 @@ class ProductCategoryRepository {
   async update(id, changes) {
     const doc = await ProductCategoryModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
     return this._toEntity(doc);
+  }
+
+  async hasAssociatedProducts(categoryId) {
+    const count = await ProductModel.countDocuments({ id_categorias: categoryId });
+    return count > 0;
   }
 
   async delete(id) {

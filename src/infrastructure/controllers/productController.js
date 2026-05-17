@@ -11,7 +11,7 @@
 const productRepository = require("../repositories/ProductRepository");
 const technicalSpecificationsRepository = require("../repositories/TechnicalSpecificationsRepository");
 const materialTechnicalSpecificationsRepository = require("../repositories/MaterialTechnicalSpecificationsRepository");
-const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+const { ok, created, badRequest, notFound, serverError, conflict } = require("../../shared/utils/response");
 
 const repo = new productRepository();
 const techSpecRepo = new technicalSpecificationsRepository();
@@ -38,17 +38,27 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   try {
-    const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } = req.body;
+    const backendData = {
+      id_categorias: req.body.idCategoria || req.body.id_categorias,
+      imagenes_Url: req.body.imagenesUrl || req.body.imagenes_Url || [],
+      referencia: req.body.referencia,
+      nombre: req.body.nombre,
+      precio: req.body.precio,
+      stock: req.body.stock,
+    };
+
+    const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } = backendData;
+    
     if (!id_categorias || !referencia || !nombre || precio === undefined || stock === undefined) {
-      return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
+      return badRequest(res, "Campos requeridos faltantes: id_categorias, referencia, nombre, precio, stock");
     }
+
+    if (await repo.findByReference(referencia)) {
+      return conflict(res, "Ya existe un producto con esa referencia");
+    }
+
     const product = await repo.create({
-      id_categorias,
-      imagenes_Url,
-      referencia,
-      nombre,
-      precio,
-      stock,
+      ...backendData,
       estado: true,
     });
     return created(res, product);
@@ -61,6 +71,14 @@ const updateProduct = async (req, res) => {
   try {
     const product = await repo.findById(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
+    
+    // Validar si la nueva referencia ya existe
+    if (req.body.referencia && req.body.referencia !== product.referencia) {
+      if (await repo.findByReference(req.body.referencia)) {
+        return conflict(res, "Ya existe un producto con esa referencia");
+      }
+    }
+
     const updated = await repo.update(req.params.id, req.body);
     return ok(res, updated);
   } catch (err) {
@@ -82,10 +100,7 @@ const deleteProduct = async (req, res) => {
 const toggleProductStatus = async (req, res) => {
   try {
     const product = await repo.findById(req.params.id);
-
-    if (!product) {
-      return notFound(res, "Producto no encontrado");
-    }
+    if (!product) return notFound(res, "Producto no encontrado");
 
     const updated = await repo.update(req.params.id, {
       estado: !product.estado,
