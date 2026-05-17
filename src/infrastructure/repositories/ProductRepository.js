@@ -27,7 +27,17 @@ class ProductRepository {
     return this._toEntity(doc);
   }
 
+  async findByReference(referencia) {
+    const doc = await ProductModel.findOne({ referencia }).catch(() => null);
+    return this._toEntity(doc);
+  }
+
   async save(data) {
+    const doc = await ProductModel.create(data);
+    return this._toEntity(doc);
+  }
+
+  async create(data) {
     const doc = await ProductModel.create(data);
     return this._toEntity(doc);
   }
