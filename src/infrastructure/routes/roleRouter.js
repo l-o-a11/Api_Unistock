@@ -9,6 +9,7 @@
  * - POST   /roles               - Crear rol
  * - PUT    /roles/:id           - Actualizar rol
  * - DELETE /roles/:id           - Eliminar rol
+ * - PATCH  /roles/:id/status - Cambiar estado del producto
  * 
  * Todos requieren autenticación (JWT token)
  * 
@@ -17,7 +18,8 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/roleController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requireRole } = require("../../interfaces/middlewares/authMiddleware");
+const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
 
@@ -25,8 +27,7 @@ const router = Router();
 router.use(requireAuth);
 
 // Catalog routes
-router.get("/modules", ctrl.getModules);
-router.get("/privileges", ctrl.getPrivileges);
+router.get("/catalogo", ctrl.getCatalogos);
 
 // Rutas CRUD
 router.get("/", ctrl.getRoles);
@@ -34,5 +35,6 @@ router.get("/:id", ctrl.getRoleById);
 router.post("/", ctrl.createRole);
 router.put("/:id", ctrl.updateRole);
 router.delete("/:id", ctrl.deleteRole);
+router.patch("/:id/toggle", ctrl.toggleRole);
 
 module.exports = router;
