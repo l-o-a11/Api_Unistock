@@ -9,7 +9,7 @@
  * - POST   /roles               - Crear rol
  * - PUT    /roles/:id           - Actualizar rol
  * - DELETE /roles/:id           - Eliminar rol
- * - PATCH  /roles/:id/status - Cambiar estado del producto
+ * - PATCH  /roles/:id/status - Cambiar estado del rol
  * 
  * Todos requieren autenticación (JWT token)
  * 
@@ -28,6 +28,8 @@ router.use(requireAuth);
 
 // Catalog routes
 router.get("/catalogo", ctrl.getCatalogos);
+
+router.get("/:id/users-count", ctrl.countUsersByRole);
 
 // Rutas CRUD
 router.get("/", ctrl.getRoles);

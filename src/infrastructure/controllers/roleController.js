@@ -57,11 +57,11 @@ const getRoles = async (req, res) => {
     const result = await new GetRole(roleRepo).execute(req.query);
     // Resultado paginado (objeto) o array plano
     if (Array.isArray(result)) {
-      return ok(res, result.map((r) => r.toPublic()));
+      return ok(res, result.map((r) => r.toJSON()));
     }
     return ok(res, {
       ...result,
-      data: result.data.map((r) => r.toPublic()),
+      data: result.data.map((r) => r.toJSON()),
     });
   } catch (err) {
     return serverError(res);
@@ -71,7 +71,7 @@ const getRoles = async (req, res) => {
 const getRoleById = async (req, res) => {
   try {
     const role = await new GetRoleById(roleRepo).execute(req.params.id);
-    return ok(res, role.toPublic());
+    return ok(res, role.toJSON());
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
     return serverError(res);
@@ -81,7 +81,7 @@ const getRoleById = async (req, res) => {
 const createRole = async (req, res) => {
   try {
     const role = await new CreateRole(roleRepo, moduleRepo, privilegeRepo).execute(req.body);
-    return created(res, role.toPublic());
+    return created(res, role.toJSON());
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 422) return unprocessable(res, err.message);
@@ -92,11 +92,25 @@ const createRole = async (req, res) => {
 const updateRole = async (req, res) => {
   try {
     const role = await new UpdateRole(roleRepo, moduleRepo, privilegeRepo).execute(req.params.id, req.body);
-    return ok(res, role.toPublic());
+    return ok(res, role.toJSON());
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 422) return unprocessable(res, err.message);
+    return serverError(res);
+  }
+};
+
+const countUsersByRole = async (req, res) => {
+  try {
+    const users = await userRepo.findAll({
+      rolId: req.params.id,
+    });
+
+    return ok(res, {
+      total: users.length,
+    });
+  } catch (err) {
     return serverError(res);
   }
 };
@@ -121,7 +135,7 @@ const toggleRole = async (req, res) => {
     const updatedRole = await roleRepo.update(req.params.id, {
       estado: !role.estado
     });
-    return ok(res, updatedRole);
+    return ok(res, updatedRole.toJSON());
   } catch (err) {
     return serverError(res);
   }
@@ -133,6 +147,7 @@ module.exports = {
   getRoleById,
   createRole,
   updateRole,
+  countUsersByRole,
   deleteRole,
   toggleRole,
 };
