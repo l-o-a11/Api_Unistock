@@ -4,9 +4,17 @@ const GetUser = require("../../application/use-cases/users/GetUser");
 const GetUserById = require("../../application/use-cases/users/GetUserById");
 const UpdateUser = require("../../application/use-cases/users/UpdateUser");
 const DeleteUser = require("../../application/use-cases/users/DeleteUser");
-const LoginUser = require("../../application/use-cases/users/LoginUser");
+const LoginUser = require('../../application/use-cases/auth/LoginUser');
+const ForgotPassword = require('../../application/use-cases/auth/ForgotPassword');
+const VerifyCode = require('../../application/use-cases/auth/VerifyCode');
+const ResetPassword = require('../../application/use-cases/auth/ResetPassword');
+const ChangePassword = require('../../application/use-cases/auth/ChangePassword');
 const { generatePassword } = require("../../shared/utils/generatePassword");
-const { ok, created, noContent, notFound, conflict, unprocessable, unauthorized, forbidden, serverError } = require("../../shared/utils/response");
+const {
+  ok, created, noContent, notFound,
+  badRequest, unauthorized, conflict, forbidden,
+  unprocessable, serverError,
+} = require('../../shared/utils/response');
 
 const repo = new UserRepository();
 
@@ -15,7 +23,7 @@ const login = async (req, res) => {
     const result = await new LoginUser(repo).execute(req.body);
     return ok(res, result);
   } catch (err) {
-    console.error("ERROR LOGIN:", err); // ← agrega esta línea
+    console.error("ERROR LOGIN:", err);
     if (err.statusCode === 401) return unauthorized(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res);
@@ -92,7 +100,57 @@ const deleteUser = async (req, res) => {
   }
 };
 
-const getRoles = (req, res) => ok(res, repo.findAllRoles());
-const getSedes = (req, res) => ok(res, repo.findAllSedes());
+const forgotPassword = async (req, res) => {
+  try {
+    const result = await new ForgotPassword(repo).execute(req.body);
+    return ok(res, result);
+  } catch (err) {
+    console.error('ERROR FORGOT PASSWORD:', err);
+    return serverError(res, err.message);
+  }
+};
 
-module.exports = { login, prepareWelcome, getUsers, getUserById, createUser, updateUser, toggleStatus, deleteUser, getRoles, getSedes };
+const verifyCode = async (req, res) => {
+  try {
+    const result = await new VerifyCode().execute(req.body);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 400) return badRequest(res, err.message);
+    return serverError(res, err.message);
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const result = await new ResetPassword(repo).execute(req.body);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 400) return badRequest(res, err.message);
+    return serverError(res, err.message);
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const result = await new ChangePassword(repo).execute({
+      userId: req.user.id,
+      ...req.body,
+    });
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 400) return badRequest(res, err.message);
+    if (err.statusCode === 404) return notFound(res, err.message);
+    return serverError(res, err.message);
+  }
+};
+
+const getRoles = async (req, res) => ok(res, await repo.findAllRoles());
+const getSedes = async (req, res) => ok(res, await repo.findAllSedes());
+
+module.exports = {
+  login, prepareWelcome,
+  getUsers, getUserById, createUser,
+  updateUser, toggleStatus, deleteUser,
+  getRoles, getSedes,
+  forgotPassword, verifyCode, resetPassword, changePassword,
+};

@@ -17,6 +17,7 @@ app.use("/api/sites", require("./infrastructure/routes/siteRoutes"));
 app.use("/api/products", require("./infrastructure/routes/productRoutes"));
 
 
+
 // Health check
 app.get("/", (req, res) => res.json({ message: "Unistock API funcionando " }));
 
