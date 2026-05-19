@@ -46,7 +46,7 @@ app.use('/api/sites', siteRoutes);
 app.use('/api/categorias-insumos', supplyCategoryRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/privileges', privilegeRoutes);
-app.use("/api/categorias-productos", productCategoryRoutes);
+app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
 
