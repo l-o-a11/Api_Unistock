@@ -65,6 +65,30 @@ const rules = {
     body("correo").isEmail().withMessage("Correo inválido").normalizeEmail(),
     body("password").notEmpty().withMessage("Contraseña requerida"),
   ],
+
+  forgotPassword: [
+    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail(),
+  ],
+
+  verifyCode: [
+    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail(),
+    body('codigo')
+      .notEmpty().withMessage('Código requerido')
+      .isLength({ min: 6, max: 6 }).withMessage('El código debe tener 6 dígitos')
+      .isNumeric().withMessage('El código solo debe contener números'),
+  ],
+
+  resetPassword: [
+    body('resetToken').notEmpty().withMessage('Token requerido'),
+    body('password').notEmpty().withMessage('Contraseña requerida'),
+    body('confirmarPassword').notEmpty().withMessage('Confirmar contraseña requerida'),
+  ],
+
+  changePassword: [
+    body('passwordActual').notEmpty().withMessage('Contraseña actual requerida'),
+    body('passwordNueva').notEmpty().withMessage('Nueva contraseña requerida'),
+    body('confirmarPassword').notEmpty().withMessage('Confirmar contraseña requerida'),
+  ],
 };
 
 module.exports = { validate, rules };
