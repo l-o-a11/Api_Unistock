@@ -1,35 +1,35 @@
 {
-  "name": "api_unistock",
+  "name": "unistock",
   "version": "1.0.0",
-  "description": "**Unistock** es una API RESTful desarrollada con **Node.js**, **Express** y **MongoDB** que proporciona un sistema completo de gestión para empresas de producción, incluyendo:",
-  "main": "convert-to-esm.js",
-  "devDependencies": {
-    "nodemon": "^3.1.14"
-  },
+  "description": "## Descripción General",
+  "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.15.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.6.2",
+    "nodemailer": "^8.0.7",
+    "react": "^19.2.5",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/l-o-a11/Api_Unistock.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/l-o-a11/Api_Unistock/issues"
   },
   "homepage": "https://github.com/l-o-a11/Api_Unistock#readme",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "express-validator": "^7.3.2",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.6.2",
-    "nodemailer": "^8.0.7"
-  }
+  "type": "commonjs"
 }
