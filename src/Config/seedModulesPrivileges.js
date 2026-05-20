@@ -3,28 +3,25 @@
  *
  * Siembra los módulos y privilegios base en la BD si aún no existen.
  * Se llama automáticamente al iniciar la app (en app.js).
- *
- * Módulos: corresponden a las rutas del sistema (insumos, compras, etc.)
- * Privilegios: acciones posibles (crear, leer, actualizar, eliminar)
  */
 
-const ModuleModel  = require("../infrastructure/db/ModuleModel");
+const ModuleModel    = require("../infrastructure/db/ModuleModel");
 const PrivilegeModel = require("../infrastructure/db/PrivilegeModel");
 
 const DEFAULT_MODULES = [
   "usuarios",
+  "dashboard",
+  "empleados",
   "roles",
+  "compras",
   "insumos",
   "categorias de insumos",
-  "compras",
   "produccion",
   "proveedores",
   "terceros",
   "sedes",
   "productos",
-  "empleados",
   "categorias de productos",
-  "dashboard"
 ];
 
 const DEFAULT_PRIVILEGES = [
@@ -36,7 +33,6 @@ const DEFAULT_PRIVILEGES = [
 
 async function seedModulesAndPrivileges() {
   try {
-    // Seed módulos
     for (const nombre of DEFAULT_MODULES) {
       const exists = await ModuleModel.findOne({ nombre });
       if (!exists) {
@@ -45,7 +41,6 @@ async function seedModulesAndPrivileges() {
       }
     }
 
-    // Seed privilegios
     for (const nombre of DEFAULT_PRIVILEGES) {
       const exists = await PrivilegeModel.findOne({ nombre });
       if (!exists) {
