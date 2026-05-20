@@ -15,14 +15,16 @@ const DEFAULT_MODULES = [
   "usuarios",
   "roles",
   "insumos",
-  "categoriasInsumos",
+  "categorias de insumos",
   "compras",
   "produccion",
   "proveedores",
   "terceros",
   "sedes",
   "productos",
-  "categoriasProductos",
+  "empleados",
+  "categorias de productos",
+  "dashboard"
 ];
 
 const DEFAULT_PRIVILEGES = [
