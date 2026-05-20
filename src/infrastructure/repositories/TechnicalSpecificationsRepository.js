@@ -6,15 +6,20 @@ class TechnicalSpecificationsRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new TechnicalSpecifications({ ...obj, id: obj._id.toString() });
+    return new TechnicalSpecifications({
+      ...obj,
+      id: obj._id.toString(),
+      id_producto: obj.id_producto?.toString?.() ?? obj.id_producto,
+    });
   }
 
   async findAll(filters = {}) {
     const query = {};
+    if (filters.id_producto) query.id_producto = filters.id_producto;
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await TechnicalSpecificationsModel.find(query);
+    const docs = await TechnicalSpecificationsModel.find(query).sort({ versiones: -1, createdAt: -1 });
     return docs.map((d) => this._toEntity(d));
   }
 
@@ -23,13 +28,17 @@ class TechnicalSpecificationsRepository {
     return this._toEntity(doc);
   }
 
-  async save(data) {
+  async create(data) {
     const doc = await TechnicalSpecificationsModel.create(data);
     return this._toEntity(doc);
   }
 
+  async save(data) {
+    return this.create(data);
+  }
+
   async update(id, changes) {
-    const doc = await TechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await TechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true, runValidators: true }).catch(() => null);
     return this._toEntity(doc);
   }
 
