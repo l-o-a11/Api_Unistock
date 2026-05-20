@@ -49,7 +49,14 @@ router.post("/:id/tecnicas", ctrl.createTechnicalSpecification);
 router.put("/:id/tecnicas/:techSpecId", ctrl.updateTechnicalSpecification);
 router.delete("/:id/tecnicas/:techSpecId", ctrl.deleteTechnicalSpecification);
 
-// Rutas material ficha tÃ©cnica
+// Rutas material ficha técnica, anidadas por ficha técnica
+router.get("/:id/tecnicas/:techSpecId/materiales", ctrl.getMaterialTechnicalSpecifications);
+router.get("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
+router.post("/:id/tecnicas/:techSpecId/materiales", ctrl.createMaterialTechnicalSpecification);
+router.put("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.updateMaterialTechnicalSpecification);
+router.delete("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.deleteMaterialTechnicalSpecification);
+
+// Compatibilidad con rutas antiguas
 router.get("/:id/materiales", ctrl.getMaterialTechnicalSpecifications);
 router.get("/:id/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
 router.post("/:id/materiales", ctrl.createMaterialTechnicalSpecification);

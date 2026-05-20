@@ -1,56 +1,47 @@
 /**
- * MaterialTechnicalSpecifications.js
- * 
- * Entidad de Dominio para Materiales De Las Fichas Técnicas.
- * Representa la información técnica de un producto registrado en el sistema.
- * 
- * Entidad pura del dominio sin dependencias externas.
- * 
- * @class MaterialTechnicalSpecifications
- * @author Unistock Team
- * 
- * @property {number} id - ID único del producto
- * @property {number} id_insumos - ID del insumo que se utilizo
- * @property {number} id_ficha_tecnica - ID de la ficha técnica a la que pertenece
- * @property {number} id_medida - ID de la medida utilizada
- * @property {string} cantidades - Número de cantidades del insumo utilizado
+ * Entidad de Dominio para Materiales de Fichas Tecnicas.
  */
-
 class MaterialTechnicalSpecifications {
-  /**
-   * Crea nueva instancia de TechnicalSpecifications
-   * @param {Object} data - Datos de la ficha técnica
-   * @param {number} data.id - ID único
-   * @param {number} data.id_insumos - ID del insumo que se utilizo
-   * @param {number} data.id_ficha_tecnica - ID de la ficha técnica a la que pertenece
-   * @param {number} data.id_medida - ID de la medida utilizada
-   * @param {string} data.cantidades - Número de cantidades del insumo utilizado
-   */
   constructor({
     id,
-    id_insumos,
+    id_producto,
     id_ficha_tecnica,
+    id_insumo,
+    id_insumos,
     id_medida,
+    nombre,
+    unidad,
     cantidades,
+    observaciones,
+    createdAt,
+    updatedAt,
   }) {
     this.id = id;
-    this.id_insumos = id_insumos;
+    this.id_producto = id_producto;
     this.id_ficha_tecnica = id_ficha_tecnica;
+    this.id_insumo = id_insumo || id_insumos;
     this.id_medida = id_medida;
+    this.nombre = nombre;
+    this.unidad = unidad;
     this.cantidades = cantidades;
+    this.observaciones = observaciones;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
   }
 
-  /**
-   * Convierte a JSON para respuestas HTTP
-   * @returns {Object} Datos de la categoría
-   */
   toJSON() {
     return {
       id: this.id,
-      id_insumos: this.id_insumos,
+      id_producto: this.id_producto,
       id_ficha_tecnica: this.id_ficha_tecnica,
+      id_insumo: this.id_insumo,
       id_medida: this.id_medida,
+      nombre: this.nombre,
+      unidad: this.unidad,
       cantidades: this.cantidades,
+      observaciones: this.observaciones,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }
