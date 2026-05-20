@@ -1,0 +1,37 @@
+{
+  "name": "api-unistock",
+  "version": "1.0.0",
+  "description": "API para gestión de inventario Unistock",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest",
+    "seed": "node src/Config/seedModulesPrivileges.js",
+    "create-user": "node create-user-direct.js",
+    "reset-password": "node reset-password.js"
+  },
+  "keywords": [
+    "api",
+    "inventory",
+    "unistock"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "dotenv": "^16.3.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "nodemailer": "^6.9.3",
+    "express-validator": "^7.0.0",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.7.0"
+  }
+}

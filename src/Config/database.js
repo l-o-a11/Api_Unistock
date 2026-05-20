@@ -87,7 +87,14 @@ const connectDatabase = async () => {
   const uri = process.env.MONGO_URI;
   const dbName = process.env.DATABASE_NAME || "unistock";
 
-  await mongoose.connect(uri, { dbName });
+  if (!uri) {
+    throw new Error("MONGO_URI no esta definida en el archivo .env");
+  }
+
+  await mongoose.connect(uri, {
+    dbName,
+    serverSelectionTimeoutMS: Number(process.env.MONGO_TIMEOUT_MS) || 10000,
+  });
   console.log(` MongoDB conectado → ${dbName}`);
 };
 
