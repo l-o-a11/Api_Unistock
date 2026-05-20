@@ -24,7 +24,7 @@ const rules = {
       .notEmpty().withMessage("Obligatorio")
       .isLength({ min: 3, max: 100 }).withMessage("Entre 3 y 100 caracteres")
       .trim(),
-    body("correo").isEmail().withMessage("Correo inválido").normalizeEmail(),
+    body("correo").isEmail().withMessage("Correo inválido").normalizeEmail({ gmail_remove_dots: false }),
     body("rolId")
       .notEmpty().withMessage("Rol requerido")
       .isMongoId().withMessage("rolId inválido"),
@@ -46,7 +46,7 @@ const rules = {
     body("nombreCompleto")
       .optional()
       .isLength({ min: 3, max: 100 }).trim(),
-    body("correo").optional().isEmail().normalizeEmail(),
+    body("correo").optional().isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body("rolId").optional().isMongoId().withMessage("rolId inválido"),
     body("sedeId").optional().isMongoId().withMessage("sedeId inválido"),
   ],
@@ -62,16 +62,16 @@ const rules = {
   ],
 
   login: [
-    body("correo").isEmail().withMessage("Correo inválido").normalizeEmail(),
+    body("correo").isEmail().withMessage("Correo inválido").normalizeEmail({ gmail_remove_dots: false }),
     body("password").notEmpty().withMessage("Contraseña requerida"),
   ],
 
   forgotPassword: [
-    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail(),
+    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail({ gmail_remove_dots: false }),
   ],
 
   verifyCode: [
-    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail(),
+    body('correo').isEmail().withMessage('Correo inválido').normalizeEmail({ gmail_remove_dots: false }),
     body('codigo')
       .notEmpty().withMessage('Código requerido')
       .isLength({ min: 6, max: 6 }).withMessage('El código debe tener 6 dígitos')
