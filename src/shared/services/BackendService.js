@@ -154,10 +154,33 @@ const supplierAPI = {
   },
 };
 
+const roleAPI = {
+  getAll: (filters = {}) => {
+    return backendClient.get('/api/roles', { params: filters });
+  },
+
+  getById: (id) => {
+    return backendClient.get(`/api/roles/${id}`);
+  },
+
+  create: (data) => {
+    return backendClient.post('/api/roles', data);
+  },
+
+  update: (id, data) => {
+    return backendClient.put(`/api/roles/${id}`, data);
+  },
+
+  delete: (id) => {
+    return backendClient.delete(`/api/roles/${id}`);
+  },
+};
+
 module.exports = {
   backendClient,
   productCategoryAPI,
   productAPI,
   productionAPI,
   supplierAPI,
+  roleAPI,
 };
