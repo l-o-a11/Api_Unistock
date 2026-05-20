@@ -5,7 +5,7 @@
 const SiteRepository = require("../repositories/SiteRepository");
 const UserRepository = require("../repositories/UserRepository");
 const CreateSite = require("../../application/use-cases/sites/CreateSites");
-const GetSite = require("../../application/use-cases/sites/GetSites");
+const GetSites = require("../../application/use-cases/sites/GetSites");
 const GetSiteById = require("../../application/use-cases/sites/GetSedeById");
 const UpdateSite = require("../../application/use-cases/sites/UpdateSites");
 const DeleteSite = require("../../application/use-cases/sites/DeleteSites");
@@ -25,18 +25,18 @@ const siteRepo = new SiteRepository();
 const userRepo = new UserRepository();
 
 // ── Sites CRUD ─────────────────────────────────────────────────────────────────
-const getSites = (req, res) => {
+const getSites = async (req, res) => {
     try {
-        const sites = new GetSite(siteRepo).execute(req.query);
+        const sites = await new GetSite(siteRepo).execute(req.query);
         return ok(res, sites);
     } catch (err) {
         return serverError(res);
     }
 };
 
-const getSiteById = (req, res) => {
+const getSiteById = async (req, res) => {
     try {
-        const site = new GetSiteById(siteRepo).execute(req.params.id);
+        const site = await new GetSiteById(siteRepo).execute(req.params.id);
         return ok(res, site);
     } catch (err) {
         if (err.statusCode === 404) return notFound(res, err.message);
@@ -76,6 +76,20 @@ const deleteSite = async (req, res) => {
         return serverError(res);
     }
 };
+const toggleSite = async (req, res) => {
+  try {
+    const site = await siteRepo.findById(req.params.id);
+    if (!site) {
+      return notFound(res, "Sede no encontrada");
+    }
+    const updatedSite = await siteRepo.update(req.params.id, {
+      estado: !site.estado
+    });
+    return ok(res, updatedSite.toJSON());
+  } catch (err) {
+    return serverError(res);
+  }
+};
 
 module.exports = {
     getSites,
@@ -83,4 +97,5 @@ module.exports = {
     createSite,
     updateSite,
     deleteSite,
+    toggleSite,
 };

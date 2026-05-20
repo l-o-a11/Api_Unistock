@@ -1,13 +1,14 @@
-// application/use-cases/sites/GetSite.js
+// application/use-cases/sites/GetSites.js
 
-class GetSite {
+class GetSites {
   constructor(siteRepository) {
-    this.siteRepository = siteRepository;
+    this.repo = siteRepository;
   }
 
-  execute(filters = {}) {
-    return this.siteRepository.findAll(filters);
+  // async + await: el repositorio hace consultas a MongoDB
+  async execute(filters = {}) {
+    return this.repo.findAll(filters);
   }
 }
 
-module.exports = GetSite;
+module.exports = GetSites;

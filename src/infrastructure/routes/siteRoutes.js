@@ -1,33 +1,32 @@
 // infrastructure/routes/siteRoutes.js
+//
+//  GET    /api/sites                — Lista con filtros + paginación
+//    ?search=    busca en nombre, ciudad, barrio, direccion
+//    ?estado=    "true" | "false"
+//    ?page=      número de página (default 1)
+//    ?limit=     registros por página (default 10, max 100)
+//    ?sortBy=    campo (default "nombre")
+//    ?order=     "asc" | "desc"
+//
+//  GET    /api/sites/:id            — Detalle de una sede
+//  POST   /api/sites                — Crear sede
+//  PUT    /api/sites/:id            — Actualizar sede
+//  DELETE /api/sites/:id            — Eliminar sede
+//  PATCH  /api/sites/:id/toggle     — Activar / Inactivar
 
-const express = require("express");
-const {
-    getSites,
-    getSiteById,
-    createSite,
-    updateSite,
-    deleteSite,
-} = require("../controllers/siteController");
+const { Router }      = require("express");
+const ctrl            = require("../controllers/siteController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 
-const router = express.Router();
+const router = Router();
 
-// Todas las rutas requieren autenticación
 router.use(requireAuth);
 
-// GET /sites - Obtener todas las sedes
-router.get("/", getSites);
-
-// GET /sites/:id - Obtener una sede por ID
-router.get("/:id", getSiteById);
-
-// POST /sites - Crear una nueva sede
-router.post("/", createSite);
-
-// PUT /sites/:id - Actualizar una sede
-router.put("/:id", updateSite);
-
-// DELETE /sites/:id - Eliminar una sede (soft delete)
-router.delete("/:id", deleteSite);
+router.get("/",                ctrl.getSites);
+router.get("/:id",             ctrl.getSiteById);
+router.post("/",               ctrl.createSite);
+router.put("/:id",             ctrl.updateSite);
+router.delete("/:id",          ctrl.deleteSite);
+router.patch("/:id/toggle",    ctrl.toggleSite);
 
 module.exports = router;
