@@ -60,4 +60,17 @@ async function seedModulesAndPrivileges() {
   }
 }
 
+if (require.main === module) {
+  const mongoose = require("mongoose");
+  const { connectDatabase } = require("./database");
+
+  connectDatabase()
+    .then(seedModulesAndPrivileges)
+    .then(() => mongoose.disconnect())
+    .catch((err) => {
+      console.error("[seed] Error:", err.message);
+      process.exit(1);
+    });
+}
+
 module.exports = { seedModulesAndPrivileges };
