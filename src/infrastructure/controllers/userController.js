@@ -1,3 +1,4 @@
+const { compare } = require("../../infrastructure/security/password_encrypter");
 const UserRepository = require("../repositories/UserRepository");
 const CreateUser = require("../../application/use-cases/users/CreateUser");
 const GetUser = require("../../application/use-cases/users/GetUser");
@@ -31,6 +32,24 @@ const login = async (req, res) => {
 };
 
 const prepareWelcome = (req, res) => ok(res, { password: generatePassword() });
+
+const verifyPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return badRequest(res, "La contraseña es requerida");
+
+    const user = await repo.findById(req.user.id);
+    if (!user) return unauthorized(res, "Usuario no encontrado");
+
+    const { compare } = require("../../infrastructure/security/password_encrypter");
+    const match = await compare(password, user.password);
+    if (!match) return unauthorized(res, "Contraseña incorrecta");
+
+    return ok(res, { valid: true });
+  } catch (err) {
+    return serverError(res, err.message);
+  }
+};
 
 const getUsers = async (req, res) => {
   try {
@@ -152,5 +171,5 @@ module.exports = {
   getUsers, getUserById, createUser,
   updateUser, toggleStatus, deleteUser,
   getRoles, getSedes,
-  forgotPassword, verifyCode, resetPassword, changePassword,
+  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword,
 };

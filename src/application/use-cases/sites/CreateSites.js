@@ -1,40 +1,36 @@
-// application/use-cases/sites/CreateSite.js
+// application/use-cases/sites/CreateSites.js
 
 class CreateSite {
   constructor(siteRepository) {
-    this.siteRepository = siteRepository;
+    this.repo = siteRepository;
   }
 
   async execute(data) {
-    const {
-      nombre,
-      ciudad,
-      barrio,
-      direccion,
-      telefono,
-    } = data;
+    const { nombre, ciudad, barrio, direccion, telefono, estado = true } = data;
 
-    // Unicidad de nombre
-    if (this.siteRepository.findAll().some(s => s.nombre.toLowerCase() === nombre.toLowerCase())) {
-      const error = new Error("Ya existe una sede con ese nombre");
-      error.statusCode = 409;
-      throw error;
+    // 1. Validar campos obligatorios PRIMERO (antes de consultar BD)
+    if (!nombre?.trim() || !ciudad?.trim() || !barrio?.trim() || !direccion?.trim() || !telefono) {
+      const err = new Error("Todos los campos son requeridos: nombre, ciudad, barrio, direccion, telefono");
+      err.statusCode = 400;
+      throw err;
     }
 
-    // Validaciones básicas
-    if (!nombre || !ciudad || !barrio || !direccion || !telefono) {
-      const error = new Error("Todos los campos son requeridos");
-      error.statusCode = 422;
-      throw error;
+    // 2. Unicidad de nombre — con await correcto (el original hacía .findAll().some() sin await → TypeError)
+    const existing = await this.repo.findByName(nombre.trim());
+    if (existing) {
+      const err = new Error(`Ya existe una sede con el nombre "${nombre.trim()}"`);
+      err.statusCode = 409;
+      throw err;
     }
 
-    return this.siteRepository.save({
-      nombre,
-      ciudad,
-      barrio,
-      direccion,
-      telefono,
-      estado: true,
+    // 3. Crear — usa repo.create() (el original usaba repo.save() que ya no existe)
+    return this.repo.create({
+      nombre:    nombre.trim(),
+      ciudad:    ciudad.trim(),
+      barrio:    barrio.trim(),
+      direccion: direccion.trim(),
+      telefono:  String(telefono).trim(),
+      estado,
     });
   }
 }
