@@ -1,9 +1,9 @@
 // shared/constants/rolePermissions.js
-// Catálogo de módulos y privilegios que usan los roles.
+// Catálogo canónico de módulos y privilegios del sistema.
 
 const MODULES = [
   "usuarios",
-  "ventas",
+  "dashboard",
   "empleados",
   "roles",
   "compras",
@@ -24,7 +24,4 @@ const PRIVILEGES = [
   "eliminar",
 ];
 
-module.exports = {
-  MODULES,
-  PRIVILEGES,
-};
+module.exports = { MODULES, PRIVILEGES };
