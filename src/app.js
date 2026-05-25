@@ -4,7 +4,6 @@ const { seedModulesAndPrivileges } = require("./Config/seedModulesPrivileges");
 const app = require("./interfaces/server");
 const PORT = process.env.PORT || 3000;
 
-<<<<<<< HEAD
 const startServer = async (dbConnected = true) => {
   if (dbConnected) {
     // Sembrar módulos y privilegios base si no existen
