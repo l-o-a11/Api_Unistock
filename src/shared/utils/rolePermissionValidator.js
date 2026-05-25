@@ -27,16 +27,10 @@ const validatePermissions = async (permisos = [], moduleRepository, privilegeRep
   const validModules    = await moduleRepository.findAll();
   const validPrivileges = await privilegeRepository.findAll();
 
-  /**
-   * Resuelve un módulo por nombre o por _id.
-   * Devuelve el nombre normalizado o null si no existe.
-   */
   const resolveModule = (value) => {
     const norm = normalize(value);
-    // Buscar por nombre
     const byName = validModules.find((m) => normalize(m.nombre) === norm);
     if (byName) return normalize(byName.nombre);
-    // Buscar por id
     const byId = validModules.find((m) => m.id === value || normalize(m.id) === norm);
     return byId ? normalize(byId.nombre) : null;
   };

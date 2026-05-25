@@ -82,10 +82,11 @@ const store = {
 
 const mongoose = require("mongoose");
 
-
 const connectDatabase = async () => {
   const uri = process.env.MONGO_URI;
   const dbName = process.env.DATABASE_NAME || "unistock";
+
+  console.log("URI:", process.env.MONGO_URI);
 
   await mongoose.connect(uri, { dbName });
   console.log(` MongoDB conectado → ${dbName}`);

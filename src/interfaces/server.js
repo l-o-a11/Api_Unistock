@@ -49,9 +49,9 @@ app.use('/api/sites', siteRoutes);
 app.use('/api/categorias-insumos', supplyCategoryRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/privileges', privilegeRoutes);
-app.use("/api/categorias-productos", productCategoryRoutes);
-// Alias en inglés usado por el frontend (productCategoryAPI.js llama /product-categories)
+
 app.use("/api/product-categories", productCategoryRoutes);
+app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
 // Swagger Documentation (después de rutas de API pero antes de 404)

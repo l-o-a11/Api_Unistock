@@ -4,6 +4,7 @@ const { seedModulesAndPrivileges } = require("./Config/seedModulesPrivileges");
 const app = require("./interfaces/server");
 const PORT = process.env.PORT || 3000;
 
+<<<<<<< HEAD
 const startServer = async (dbConnected = true) => {
   if (dbConnected) {
     // Sembrar módulos y privilegios base si no existen
@@ -35,4 +36,5 @@ connectDatabase()
       `  → Revisa MONGO_URI en .env y la whitelist de IPs en MongoDB Atlas.`
     );
     startServer(false);
+
   });

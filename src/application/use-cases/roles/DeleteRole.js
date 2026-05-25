@@ -21,9 +21,8 @@ class DeleteRole {
       error.statusCode = 422;
       throw error;
     }
-
-    // Soft delete — mantiene historial
-    return this.roleRepository.update(id, { estado: false });
+    await this.roleRepository.delete(id);
+    return { deleted: true, id };
   }
 }
 

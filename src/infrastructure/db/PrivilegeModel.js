@@ -4,8 +4,8 @@ const mongoose = require("mongoose");
 
 const privilegeSchema = new mongoose.Schema(
   {
-    nombre: { type: String, required: true, unique: true, lowercase: true },
-    estado: { type: Boolean, default: true },
+      nombre: { type: String, required: true, unique: true, lowercase: true },
+      estado: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

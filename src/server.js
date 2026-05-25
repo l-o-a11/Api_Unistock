@@ -14,7 +14,9 @@ app.use("/api/suppliers", require("./infrastructure/routes/suppliersRoutes"));
 app.use("/api/third-parties", require("./infrastructure/routes/thirdPartiesRoute"));
 app.use("/api/production", require("./infrastructure/routes/productionRoutes"));
 app.use("/api/sites", require("./infrastructure/routes/siteRoutes"));
+app.use("/api/roles", require("./infrastructure/routes/roleRoutes"));
 app.use("/api/products", require("./infrastructure/routes/productRoutes"));
+
 
 
 // Health check

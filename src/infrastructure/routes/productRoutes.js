@@ -11,12 +11,21 @@
  * - DELETE /productos/:id      - Eliminar producto
  * - PATCH  /productos/:id/status - Cambiar estado del producto
  * 
+<<<<<<< HEAD
  * Endpoints Ficha TÃ©cnica:
  * - GET    /productos/:id/fichas-tecnicas          - Listar fichas tÃ©cnicas de un producto
  * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha tÃ©cnica
  * - POST   /productos/:id/fichas-tecnicas          - Crear ficha tÃ©cnica
  * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha tÃ©cnica
  * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha tÃ©cnica
+=======
+ * Endpoints Ficha Técnica:
+ * - GET    /productos/:id/fichas-tecnicas          - Listar fichas técnicas de un producto
+ * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha técnica
+ * - POST   /productos/:id/fichas-tecnicas          - Crear ficha técnica
+ * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha técnica
+ * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha técnica
+>>>>>>> 80b97da8ee0adde32cb78da878a5840af635a203
  * 
  * Todos requieren autenticaciÃ³n (JWT token)
  * 
@@ -49,7 +58,7 @@ router.post("/:id/tecnicas", ctrl.createTechnicalSpecification);
 router.put("/:id/tecnicas/:techSpecId", ctrl.updateTechnicalSpecification);
 router.delete("/:id/tecnicas/:techSpecId", ctrl.deleteTechnicalSpecification);
 
-// Rutas material ficha técnica, anidadas por ficha técnica
+// Rutas material ficha t�cnica, anidadas por ficha t�cnica
 router.get("/:id/tecnicas/:techSpecId/materiales", ctrl.getMaterialTechnicalSpecifications);
 router.get("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
 router.post("/:id/tecnicas/:techSpecId/materiales", ctrl.createMaterialTechnicalSpecification);
