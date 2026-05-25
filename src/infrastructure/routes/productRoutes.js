@@ -1,34 +1,27 @@
 /**
  * productRoutes.js
  * 
- * Define las rutas para la gestión de Productos.
+ * Define las rutas para la gestiÃ³n de Productos.
  * 
- * Endpoints:
+ * Endpoints Productos:
  * - GET    /productos          - Listar productos
  * - GET    /productos/:id      - Obtener producto
  * - POST   /productos          - Crear producto
  * - PUT    /productos/:id      - Actualizar producto
  * - DELETE /productos/:id      - Eliminar producto
+ * - PATCH  /productos/:id/status - Cambiar estado del producto
  * 
- * Endpoints para ficha técnica:
- * - GET    /productos/:id/tecnicas          - Listar fichas técnicas de un producto
- * - GET    /productos/:id/tecnicas/:techSpecId - Obtener ficha técnica por ID
- * - POST   /productos/:id/tecnicas          - Crear ficha técnica para un producto
- * - PUT    /productos/:id/tecnicas/:techSpecId - Actualizar ficha técnica por ID
- * - DELETE /productos/:id/tecnicas/:techSpecId - Eliminar ficha técnica por ID
+ * Endpoints Ficha TÃ©cnica:
+ * - GET    /productos/:id/fichas-tecnicas          - Listar fichas tÃ©cnicas de un producto
+ * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha tÃ©cnica
+ * - POST   /productos/:id/fichas-tecnicas          - Crear ficha tÃ©cnica
+ * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha tÃ©cnica
+ * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha tÃ©cnica
  * 
- * Todos requieren autenticación (JWT token)
+ * Todos requieren autenticaciÃ³n (JWT token)
  * 
  * @author Unistock Team
  * @version 1.0.0
- * - GET    /productos/:id      - Obtener producto
- * - POST   /productos          - Crear producto
- * - PUT    /productos/:id      - Actualizar producto
- * - DELETE /productos/:id      - Eliminar producto
- * 
- * Todos requieren autenticación (JWT token)
- * 
- * @author Unistock Team
  */
 
 const { Router } = require("express");
@@ -38,7 +31,7 @@ const { validate, rules } = require("../../interfaces/middlewares/validationMidd
 
 const router = Router();
 
-// Middleware: Requerir autenticación en todos los endpoints (REMOVIDO para desarrollo público)
+// Middleware: Requerir autenticaciÃ³n en todos los endpoints (REMOVIDO para desarrollo pÃºblico)
 // router.use(requireAuth);
 
 // Rutas producto
@@ -47,26 +40,27 @@ router.get("/:id", ctrl.getProductById);
 router.post("/", ctrl.createProduct);
 router.put("/:id", ctrl.updateProduct);
 router.delete("/:id", ctrl.deleteProduct);
+router.patch("/:id/status", ctrl.toggleProductStatus);
 
-// Rutas ficha técnica
+// Rutas ficha tÃ©cnica
 router.get("/:id/tecnicas", ctrl.getTechnicalSpecifications);
 router.get("/:id/tecnicas/:techSpecId", ctrl.getTechnicalSpecificationById);
 router.post("/:id/tecnicas", ctrl.createTechnicalSpecification);
 router.put("/:id/tecnicas/:techSpecId", ctrl.updateTechnicalSpecification);
 router.delete("/:id/tecnicas/:techSpecId", ctrl.deleteTechnicalSpecification);
-router.patch(
-  "/:id/status",
-  requireRole("Gerente", "Administrador"),
-  rules.idParam,
-  validate,
-  ctrl.toggleProductStatus 
-);
 
-// Rutas material ficha técnica
+// Rutas material ficha técnica, anidadas por ficha técnica
 router.get("/:id/tecnicas/:techSpecId/materiales", ctrl.getMaterialTechnicalSpecifications);
 router.get("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
 router.post("/:id/tecnicas/:techSpecId/materiales", ctrl.createMaterialTechnicalSpecification);
 router.put("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.updateMaterialTechnicalSpecification);
 router.delete("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.deleteMaterialTechnicalSpecification);
+
+// Compatibilidad con rutas antiguas
+router.get("/:id/materiales", ctrl.getMaterialTechnicalSpecifications);
+router.get("/:id/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
+router.post("/:id/materiales", ctrl.createMaterialTechnicalSpecification);
+router.put("/:id/materiales/:materialTechSpecId", ctrl.updateMaterialTechnicalSpecification);
+router.delete("/:id/materiales/:materialTechSpecId", ctrl.deleteMaterialTechnicalSpecification);
 
 module.exports = router;

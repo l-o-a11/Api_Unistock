@@ -3,14 +3,20 @@ const { unauthorized, forbidden } = require("../../shared/utils/response");
 
 const requireAuth = (req, res, next) => {
   const header = req.headers.authorization;
+
+  // En desarrollo: si no hay token, continuar con usuario de prueba
   if (process.env.NODE_ENV !== "production" && (!header || !header.startsWith("Bearer "))) {
     req.user = { id: "000000000000000000000001", nombre: "Dev User" };
     return next();
   }
 
+  // Sin header en cualquier entorno → rechazar con 401 (evita TypeError en split)
+  if (!header || !header.startsWith("Bearer ")) {
+    return unauthorized(res, "Token no proporcionado");
+  }
+
   try {
     req.user = verify(header.split(" ")[1]);
-    console.log("TOKEN DECODIFICADO:", req.user); // ← agrega esta línea
     next();
   } catch (err) {
     const msg = err.name === "TokenExpiredError"
