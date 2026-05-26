@@ -18,6 +18,7 @@ const moduleRoutes = require("../infrastructure/routes/moduleRoutes");
 const privilegeRoutes = require("../infrastructure/routes/privilegeRoutes");
 const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
 const productRoutes = require("../infrastructure/routes/productRoutes");
+const { specs, swaggerUi } = require("../swagger/swagger");
 
 const app = express();
 
@@ -37,6 +38,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/suppliers", suppliersRoutes);
+// Alias usado por el frontend
+app.use("/api/proveedores", suppliersRoutes);
 app.use("/api/terceros", thirdPartiesRoutes);
 app.use("/api/produccion", productionRoutes);
 app.use('/api/compras', purchaseRoutes);
@@ -46,10 +49,20 @@ app.use('/api/sites', siteRoutes);
 app.use('/api/categorias-insumos', supplyCategoryRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/privileges', privilegeRoutes);
+
 app.use("/api/product-categories", productCategoryRoutes);
 app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
+// Swagger Documentation (después de rutas de API pero antes de 404)
+app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, { 
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayOperationId: true
+  }
+}));
+app.use("/api/docs", swaggerUi.serve);
+app.get("/api/docs", swaggerUi.setup(specs));
 
 // Health check
 app.get("/health", (_, res) =>

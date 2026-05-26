@@ -27,7 +27,12 @@ const getOrderById = async (req, res) => {
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const details = await detailRepo.findAll({ id_orden: req.params.id });
-    return ok(res, { ...order.toJSON(), detalles: details.map((d) => d.toJSON()) });
+    const assignments = await assignmentRepo.findAll({ id_orden: req.params.id });
+    return ok(res, { 
+      ...order.toJSON(), 
+      detalles: details.map((d) => d.toJSON()),
+      asignaciones: assignments.map((a) => a.toJSON ? a.toJSON() : a)
+    });
   } catch (err) {
     return serverError(res);
   }
@@ -35,7 +40,13 @@ const getOrderById = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
-    const { fecha_entrega, cliente, id_usuario } = req.body;
+    // Compatibilidad con payloads del frontend (sin tocar frontend)
+    const fecha_entrega =
+      req.body.fecha_entrega ?? req.body.deliveryDate ?? req.body.fechaSolicitud;
+    const cliente = req.body.cliente ?? req.body.client;
+    const id_usuario = req.body.id_usuario ?? req.body.userId;
+    const asignaciones = req.body.asignaciones ?? [];
+
     // Usar id_usuario del body, o del middleware si está disponible, o "anonymous" si nada está disponible
     const userId = id_usuario || req.user?.id || "anonymous";
     
@@ -49,7 +60,29 @@ const createOrder = async (req, res) => {
       estado: "Diseño",
       historial: [{ estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null }],
     });
-    return created(res, order.toJSON());
+
+    // Crear asignaciones si se proporcionan
+    const createdAssignments = [];
+    if (Array.isArray(asignaciones) && asignaciones.length > 0) {
+      for (const asignacion of asignaciones) {
+        try {
+          const assignment = await assignmentRepo.create({
+            id_orden: order.id || order._id,
+            id_tercero: asignacion.id_tercero,
+            cantidad: asignacion.cantidad,
+          });
+          createdAssignments.push(assignment.toJSON ? assignment.toJSON() : assignment);
+        } catch (assignErr) {
+          console.warn("Error creando asignación:", assignErr.message);
+        }
+      }
+    }
+
+    const orderData = order.toJSON();
+    return created(res, { 
+      ...orderData, 
+      asignaciones: createdAssignments 
+    });
   } catch (err) {
   console.error("Error al crear orden:", err);
   const msg = process.env.NODE_ENV === "production"
