@@ -37,7 +37,21 @@ const getProductById = async (req, res) => {
 };
 
 const createProduct = async (req, res) => {
+  let product = null;
+  let techSpec = null;
+
   try {
+    const fichaTecnica = req.body.ficha_tecnica || req.body.technicalSheet || req.body.fichaTecnica;
+    const materiales = fichaTecnica?.materiales || fichaTecnica?.materials || [];
+
+    if (!fichaTecnica) {
+      return badRequest(res, "La ficha tecnica es requerida para crear el producto");
+    }
+
+    if (!Array.isArray(materiales) || materiales.length === 0) {
+      return badRequest(res, "La ficha tecnica debe tener al menos un material");
+    }
+
     const backendData = {
       id_categorias: req.body.idCategoria || req.body.id_categorias,
       imagenes_Url: req.body.imagenesUrl || req.body.imagenes_Url || [],
@@ -47,8 +61,7 @@ const createProduct = async (req, res) => {
       stock: req.body.stock,
     };
 
-    const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } = backendData;
-    
+    const { id_categorias, referencia, nombre, precio, stock } = backendData;
     if (!id_categorias || !referencia || !nombre || precio === undefined || stock === undefined) {
       return badRequest(res, "Campos requeridos faltantes: id_categorias, referencia, nombre, precio, stock");
     }
@@ -57,16 +70,68 @@ const createProduct = async (req, res) => {
       return conflict(res, "Ya existe un producto con esa referencia");
     }
 
-    const product = await repo.create({
+    product = await repo.create({
       ...backendData,
       estado: true,
     });
-    return created(res, product);
+
+    const productId = product.id;
+    const today = new Date().toISOString().split("T")[0];
+
+    techSpec = await techSpecRepo.create({
+      id_producto: productId,
+      responsable: fichaTecnica.responsable || fichaTecnica.createdBy || fichaTecnica.client || "Sin responsable",
+      fecha_inicio: fichaTecnica.fecha_inicio || fichaTecnica.date || today,
+      fecha_fin: fichaTecnica.fecha_fin || fichaTecnica.date || today,
+      versiones: Number(fichaTecnica.versiones || fichaTecnica.version || 1),
+      descripciones: fichaTecnica.descripciones || fichaTecnica.description || fichaTecnica.observations || "Ficha tecnica",
+      client: fichaTecnica.client || "",
+      ref: fichaTecnica.ref || req.body.referencia || "",
+      type: fichaTecnica.type || "",
+      description: fichaTecnica.description || fichaTecnica.descripciones || "",
+      observations: fichaTecnica.observations || "",
+      createdBy: fichaTecnica.createdBy || fichaTecnica.responsable || "",
+      image: fichaTecnica.image || null,
+      fabrics: fichaTecnica.fabrics || [],
+      cups: fichaTecnica.cups || [],
+      closures: fichaTecnica.closures || [],
+      accessories: fichaTecnica.accessories || [],
+      measurements: fichaTecnica.measurements || [],
+    });
+
+    const createdMaterials = [];
+    for (const material of materiales) {
+      const cantidades = material.cantidades ?? material.cantidad;
+      if (!cantidades) {
+        throw new Error("Todos los materiales deben tener cantidades");
+      }
+
+      const createdMaterial = await materialTechSpecRepo.create({
+        id_producto: productId,
+        id_ficha_tecnica: techSpec.id,
+        id_insumo: material.id_insumo || material.id_insumos || undefined,
+        id_medida: material.id_medida || undefined,
+        nombre: material.nombre || material.name || "",
+        unidad: material.unidad || material.medida || "",
+        cantidades: String(cantidades),
+        observaciones: material.observaciones || material.observations || "",
+      });
+      createdMaterials.push(createdMaterial.toJSON());
+    }
+
+    return created(res, {
+      product: product.toJSON ? product.toJSON() : product,
+      ficha_tecnica: {
+        ...(techSpec.toJSON ? techSpec.toJSON() : techSpec),
+        materiales: createdMaterials,
+      },
+    });
   } catch (err) {
-    return serverError(res);
+    if (techSpec?.id) await techSpecRepo.delete(techSpec.id).catch(() => null);
+    if (product?.id) await repo.delete(product.id).catch(() => null);
+    return serverError(res, err.message);
   }
 };
-
 const updateProduct = async (req, res) => {
   try {
     const product = await repo.findById(req.params.id);
@@ -115,19 +180,40 @@ const toggleProductStatus = async (req, res) => {
 const getTechnicalSpecifications = async (req, res) => {
   try {
     const techSpecs = await techSpecRepo.findAll({ id_producto: req.params.id });
-    return ok(res, techSpecs);
+    const withMaterials = await Promise.all(
+      techSpecs.map(async (techSpec) => {
+        const sheet = techSpec.toJSON ? techSpec.toJSON() : techSpec;
+        const materiales = await materialTechSpecRepo.findAll({
+          id_producto: req.params.id,
+          id_ficha_tecnica: sheet.id,
+        });
+        return {
+          ...sheet,
+          materiales: materiales.map((item) => item.toJSON()),
+        };
+      })
+    );
+    return ok(res, withMaterials);
   } catch (err) {
-    return serverError(res);
+    return serverError(res, err.message);
   }
 };
 
 const getTechnicalSpecificationById = async (req, res) => {
   try {
     const techSpec = await techSpecRepo.findById(req.params.techSpecId);
-    if (!techSpec) return notFound(res, "Ficha técnica no encontrada");
-    return ok(res, techSpec);
+    if (!techSpec) return notFound(res, "Ficha tecnica no encontrada");
+    const sheet = techSpec.toJSON ? techSpec.toJSON() : techSpec;
+    const materiales = await materialTechSpecRepo.findAll({
+      id_producto: req.params.id,
+      id_ficha_tecnica: sheet.id,
+    });
+    return ok(res, {
+      ...sheet,
+      materiales: materiales.map((item) => item.toJSON()),
+    });
   } catch (err) {
-    return serverError(res);
+    return serverError(res, err.message);
   }
 };
 
