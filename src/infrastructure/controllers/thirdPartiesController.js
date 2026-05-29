@@ -1,6 +1,6 @@
 // infrastructure/controllers/thirdPartiesController.js
 const ThirdPartiesRepository = require("../repositories/ThirdPartiesRepository");
-const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+const { ok, created, badRequest, notFound, conflict, serverError } = require("../../shared/utils/response");
 
 const repo = new ThirdPartiesRepository();
 
@@ -30,6 +30,11 @@ const createThirdParty = async (req, res) => {
 
     const nombreEmpresa = data.nombre_empresa ?? data.nombre;
     const nombreContacto = data.nombre_contacto ?? data.contacto;
+
+    const duplicatedName = await repo.findByCompanyName(nombreEmpresa);
+    if (duplicatedName) {
+      return conflict(res, "Ya existe un tercero con ese nombre");
+    }
 
     const estadoRaw = data.estado;
     const estadoParsed =
@@ -69,9 +74,17 @@ const updateThirdParty = async (req, res) => {
     const data = req.validatedData || req.body;
 
     const updateData = {};
+    const nextNombreEmpresa = data.nombre || data.nombre_empresa;
+    if (nextNombreEmpresa) {
+      const duplicatedName = await repo.findByCompanyName(nextNombreEmpresa, req.params.id);
+      if (duplicatedName) {
+        return conflict(res, "Ya existe otro tercero con ese nombre");
+      }
+    }
+
     if (data.nit) updateData.nit = data.nit;
-    if (data.nombre || data.nombre_empresa)
-      updateData.nombre_empresa = data.nombre || data.nombre_empresa;
+    if (nextNombreEmpresa)
+      updateData.nombre_empresa = nextNombreEmpresa;
     if (data.contacto || data.nombre_contacto)
       updateData.nombre_contacto = data.contacto || data.nombre_contacto;
 
@@ -131,4 +144,3 @@ module.exports = {
   toggleThirdParty,
   deleteThirdParty,
 };
-
