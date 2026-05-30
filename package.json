@@ -12,7 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.15.2",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
@@ -20,9 +22,7 @@
     "mongoose": "^9.6.2",
     "node": "^22.22.3",
     "nodemailer": "^8.0.7",
-    "react": "^19.2.5",
-    "bcryptjs": "^3.0.3",
-    "dotenv": "^17.4.2"
+    "react": "^19.2.5"
   },
   "repository": {
     "type": "git",
@@ -32,5 +32,8 @@
     "url": "https://github.com/l-o-a11/Api_Unistock/issues"
   },
   "homepage": "https://github.com/l-o-a11/Api_Unistock#readme",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
 }

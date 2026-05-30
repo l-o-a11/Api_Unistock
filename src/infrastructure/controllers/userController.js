@@ -1,5 +1,7 @@
 const { compare } = require("../../infrastructure/security/password_encrypter");
 const UserRepository = require("../repositories/UserRepository");
+const RoleRepository = require("../repositories/RoleRepository");
+const SiteRepository = require("../repositories/SiteRepository");
 const CreateUser = require("../../application/use-cases/users/CreateUser");
 const GetUser = require("../../application/use-cases/users/GetUser");
 const GetUserById = require("../../application/use-cases/users/GetUserById");
@@ -18,6 +20,8 @@ const {
 } = require('../../shared/utils/response');
 
 const repo = new UserRepository();
+const roleRepo = new RoleRepository();
+const siteRepo = new SiteRepository();
 
 const login = async (req, res) => {
   try {
@@ -73,7 +77,7 @@ const getUserById = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    return created(res, await new CreateUser(repo).execute(req.body, req.user));
+    return created(res, await new CreateUser(repo, roleRepo, siteRepo).execute(req.body, req.user));
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
@@ -84,7 +88,7 @@ const createUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    return ok(res, await new UpdateUser(repo).execute(req.params.id, req.body));
+    return ok(res, await new UpdateUser(repo, roleRepo, siteRepo).execute(req.params.id, req.body));
   } catch (err) {
     console.error("ERROR UPDATE USER:", err); // ← agrega esta línea
     if (err.statusCode === 404) return notFound(res, err.message);
