@@ -38,6 +38,14 @@ class Production {
    * @param {string}  data.estado             - Estado actual del flujo
    * @param {string}  [data.motivo_anulacion] - Motivo cuando se anula
    * @param {Array}   [data.historial]        - Historial de cambios de estado
+   * @param {string}  [data.tipo]             - Tipo de orden (produccion/diseno)
+   * @param {Object}  [data.techSpecification] - Especificación técnica
+   * @param {Array}   [data.designImages]    - Imágenes de diseño
+   * @param {boolean} [data.fromDamaged]     - Indica si es reposición de dañados
+   * @param {string}  [data.originalOrderNumber] - Número de orden original
+   * @param {string}  [data.originalOrderStatus] - Estado original
+   * @param {string}  [data.producto]        - Nombre/código del producto
+   * @param {string}  [data.referencia]      - Referencia del producto
    */
   constructor({
     id,
@@ -49,6 +57,14 @@ class Production {
     estado = "Diseño",
     motivo_anulacion = null,
     historial = [],
+    tipo = 'produccion',
+    techSpecification = null,
+    designImages = [],
+    fromDamaged = false,
+    originalOrderNumber = null,
+    originalOrderStatus = null,
+    producto = null,
+    referencia = null,
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -59,6 +75,14 @@ class Production {
     this.estado = estado;
     this.motivo_anulacion = motivo_anulacion;
     this.historial = historial;
+    this.tipo = tipo;
+    this.techSpecification = techSpecification;
+    this.designImages = designImages;
+    this.fromDamaged = fromDamaged;
+    this.originalOrderNumber = originalOrderNumber;
+    this.originalOrderStatus = originalOrderStatus;
+    this.producto = producto;
+    this.referencia = referencia;
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -81,6 +105,14 @@ class Production {
       estado: this.estado,
       motivo_anulacion: this.motivo_anulacion,
       historial: this.historial,
+      tipo: this.tipo,
+      techSpecification: this.techSpecification,
+      designImages: this.designImages,
+      fromDamaged: this.fromDamaged,
+      originalOrderNumber: this.originalOrderNumber,
+      originalOrderStatus: this.originalOrderStatus,
+      producto: this.producto,
+      referencia: this.referencia,
     };
   }
 }

@@ -33,6 +33,14 @@ const productionOrderSchema = new mongoose.Schema(
       default: "Diseño",
     },
     motivo_anulacion: { type: String, default: null },
+    tipo: { type: String, enum: ["produccion", "diseno"], default: "produccion" },
+    techSpecification: { type: mongoose.Schema.Types.Mixed, default: null },
+    designImages: { type: [String], default: [] },
+    fromDamaged: { type: Boolean, default: false },
+    originalOrderNumber: { type: String, default: null },
+    originalOrderStatus: { type: String, default: null },
+    producto: { type: String, default: null },
+    referencia: { type: String, default: null },
     historial: { type: [historialEntrySchema], default: [] },
   },
   { timestamps: true },
@@ -47,6 +55,42 @@ productionOrderSchema.pre("save", async function () {
       .lean();
     this.numero_orden = last?.numero_orden ? last.numero_orden + 1 : 1;
   }
+});
+
+// Normalizar y validar los estados del historial antes de validar/guardar
+productionOrderSchema.pre("validate", function () {
+  if (!Array.isArray(this.historial)) {
+    return;
+  }
+
+  const simpleNormalize = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[^\w\s]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+  for (let i = 0; i < this.historial.length; i++) {
+    const entry = this.historial[i];
+    if (!entry || !entry.estado) {
+      throw new Error("[ProductionOrderModel] historial entry missing estado");
+    }
+
+    const match = ESTADOS_VALIDOS.find(
+      (v) => simpleNormalize(v) === simpleNormalize(entry.estado),
+    );
+
+    if (!match) {
+      throw new Error(`[ProductionOrderModel] historial.estado inválido: ${entry.estado}`);
+    }
+
+    // Assign the canonical enum label
+    if (entry.estado !== match) {
+      entry.estado = match;
+    }
+  }
+
+  return;
 });
 
 module.exports = mongoose.model("ProductionOrder", productionOrderSchema);

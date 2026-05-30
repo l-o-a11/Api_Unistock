@@ -12,20 +12,12 @@
  * - PATCH  /productos/:id/status - Cambiar estado del producto
  * 
 <<<<<<< HEAD
- * Endpoints Ficha TÃ©cnica:
- * - GET    /productos/:id/fichas-tecnicas          - Listar fichas tÃ©cnicas de un producto
- * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha tÃ©cnica
- * - POST   /productos/:id/fichas-tecnicas          - Crear ficha tÃ©cnica
- * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha tÃ©cnica
- * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha tÃ©cnica
-=======
  * Endpoints Ficha Técnica:
  * - GET    /productos/:id/fichas-tecnicas          - Listar fichas técnicas de un producto
  * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha técnica
  * - POST   /productos/:id/fichas-tecnicas          - Crear ficha técnica
  * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha técnica
  * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha técnica
->>>>>>> 80b97da8ee0adde32cb78da878a5840af635a203
  * 
  * Todos requieren autenticaciÃ³n (JWT token)
  * 
