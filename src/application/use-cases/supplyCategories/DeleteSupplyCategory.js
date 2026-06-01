@@ -1,5 +1,7 @@
 // application/use-cases/supplyCategories/DeleteSupplyCategory.js
 
+const mongoose = require("mongoose");
+
 class DeleteSupplyCategory {
   constructor(supplyCategoryRepository, supplyRepository) {
     this.supplyCategoryRepository = supplyCategoryRepository;
@@ -7,6 +9,13 @@ class DeleteSupplyCategory {
   }
 
   async execute(id) {
+    // FIX: validar formato de id antes de consultar
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const error = new Error("ID de categoría inválido");
+      error.statusCode = 400;
+      throw error;
+    }
+
     const category = await this.supplyCategoryRepository.findById(id);
     if (!category) {
       const error = new Error("Categoría no encontrada");
@@ -14,16 +23,26 @@ class DeleteSupplyCategory {
       throw error;
     }
 
-    // Check for active supplies in this category
-    const suppliesInCategory = await this.supplyRepository.findAll({ categoria: id, estado: true });
-    if (suppliesInCategory.length > 0) {
-      const error = new Error("No se puede eliminar la categoría porque tiene insumos activos asignados");
+    // FIX: findAll devuelve un array plano en este repositorio
+    // Pasar estado:true explícitamente para buscar insumos activos
+    const suppliesInCategory = await this.supplyRepository.findAll({
+      categoria: id,
+      estado: true,
+    });
+
+    // FIX: suppliesInCategory es un array, .length funciona correctamente
+    if (Array.isArray(suppliesInCategory) && suppliesInCategory.length > 0) {
+      const error = new Error(
+        "No se puede eliminar la categoría porque tiene insumos activos asignados"
+      );
       error.statusCode = 422;
       throw error;
     }
 
-    // Soft delete
-    return this.supplyCategoryRepository.update(id, { estado: false });
+    // FIX: hard delete — el GET ya filtra por estado:true, soft delete dejaba
+    // el registro visible. Se elimina físicamente.
+    await this.supplyCategoryRepository.delete(id);
+    return { deleted: true, id };
   }
 }
 

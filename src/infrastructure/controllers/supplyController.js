@@ -85,8 +85,16 @@ const getSupplyById = async (req, res) => {
 
 const createSupply = async (req, res) => {
   try {
-    const { nombre, categoria, valor_medida, medida, imagenes_Url, stock = 0, propiedades = [] } = req.body;
-    if (!nombre || !categoria || valor_medida === undefined || !medida || !imagenes_Url || !Array.isArray(imagenes_Url) || imagenes_Url.length === 0) {
+    const { 
+      nombre, 
+      categoria, 
+      valor_medida, 
+      medida, 
+      imagenes_Url = [], 
+      stock = 0, 
+      propiedades = [] } = req.body;
+      
+    if (!nombre || !categoria || valor_medida === undefined || !medida === undefined || stock === undefined) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
     const supply = await repo.create({
