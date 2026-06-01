@@ -1,4 +1,5 @@
 // infrastructure/repositories/TechnicalSpecificationsRepository.js
+const mongoose = require("mongoose");
 const TechnicalSpecificationsModel = require("../db/TechnicalSpecificationsModel");
 const TechnicalSpecifications = require("../../domain/entities/TechnicalSpecifications");
 
@@ -15,7 +16,10 @@ class TechnicalSpecificationsRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.id_producto) query.id_producto = filters.id_producto;
+    if (filters.id_producto) {
+      if (!mongoose.isValidObjectId(filters.id_producto)) return [];
+      query.id_producto = filters.id_producto;
+    }
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }

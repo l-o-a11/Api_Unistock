@@ -12,6 +12,8 @@ class MaterialTechnicalSpecifications {
     nombre,
     unidad,
     cantidades,
+    precio_unitario,
+    precio_total,
     observaciones,
     createdAt,
     updatedAt,
@@ -24,6 +26,8 @@ class MaterialTechnicalSpecifications {
     this.nombre = nombre;
     this.unidad = unidad;
     this.cantidades = cantidades;
+    this.precio_unitario = precio_unitario ?? 0;
+    this.precio_total = precio_total ?? 0;
     this.observaciones = observaciones;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
@@ -39,6 +43,8 @@ class MaterialTechnicalSpecifications {
       nombre: this.nombre,
       unidad: this.unidad,
       cantidades: this.cantidades,
+      precio_unitario: this.precio_unitario,
+      precio_total: this.precio_total,
       observaciones: this.observaciones,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

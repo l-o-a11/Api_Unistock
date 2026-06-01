@@ -1,8 +1,10 @@
 // application/use-cases/users/UpdateUser.js
 
 class UpdateUser {
-  constructor(userRepository) {
+  constructor(userRepository, roleRepository, siteRepository) {
     this.userRepository = userRepository;
+    this.roleRepository = roleRepository;
+    this.siteRepository = siteRepository;
   }
 
   async execute(id, data) {
@@ -40,8 +42,26 @@ class UpdateUser {
     if (numeroDocumento) changes.numeroDocumento  = numeroDocumento;
     if (nombreCompleto)  changes.nombreCompleto   = nombreCompleto.trim();
     if (correo)          changes.correo           = correo;
-    if (rolId)           changes.rolId            = rolId;
-    if (sedeId)          changes.sedeId           = sedeId;
+
+    if (rolId) {
+      const role = await this.roleRepository.findById(rolId);
+      if (!role || !role.estado) {
+        const error = new Error("Rol inválido o inactivo");
+        error.statusCode = 422;
+        throw error;
+      }
+      changes.rolId = rolId;
+    }
+
+    if (sedeId) {
+      const site = await this.siteRepository.findById(sedeId);
+      if (!site || !site.estado) {
+        const error = new Error("Sede inválida o inactiva");
+        error.statusCode = 422;
+        throw error;
+      }
+      changes.sedeId = sedeId;
+    }
 
     const updated = await this.userRepository.update(id, changes);
     const { password, ...userPublic } = updated.toObject ? updated.toObject() : updated;
