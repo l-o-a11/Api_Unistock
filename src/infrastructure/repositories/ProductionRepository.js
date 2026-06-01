@@ -6,7 +6,8 @@ class ProductionRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new Production({ ...obj, id: obj._id.toString() });
+    const id = obj._id ? (obj._id.toString ? obj._id.toString() : String(obj._id)) : obj.id;
+    return new Production({ ...obj, id });
   }
 
   async findAll(filters = {}) {

@@ -8,44 +8,28 @@
  * 
  * @class ThirdParties
  * @author Unistock Team
- * 
- * @property {number} id - ID único
- * @property {string} nombre - Nombre del tercero
- * @property {string} contacto - Persona de contacto
- * @property {string} barrio - Barrio de ubicación
- * @property {string} direccion - Dirección completa
- * @property {string} telefono - Teléfono
- * @property {boolean} estado - Estado (activo/inactivo)
  */
 
 class ThirdParties {
   /**
    * Crea nueva instancia de ThirdParties
    * @param {Object} data - Datos del tercero
-   * @param {number} data.id - ID único
-   * @param {string} data.nombre - Nombre
-   * @param {string} data.contacto - Contacto
-   * @param {string} data.barrio - Barrio
-   * @param {string} data.direccion - Dirección
-   * @param {string} data.telefono - Teléfono
-   * @param {boolean} [data.estado=true] - Estado
    */
-  constructor({
-    id,
-    nombre,
-    contacto,
-    barrio,
-    direccion,
-    telefono,
-    estado = true,
-  }) {
-    this.id = id;
-    this.nombre = nombre;
-    this.contacto = contacto;
-    this.barrio = barrio;
-    this.direccion = direccion;
-    this.telefono = telefono;
-    this.estado = estado;
+  constructor(data = {}) {
+    this.id = data.id || data._id;
+    this.nit = data.nit;
+    this.nombre_empresa = data.nombre_empresa || data.nombre;
+    this.nombre_contacto = data.nombre_contacto || data.contacto;
+    this.correo_empresa = data.correo_empresa;
+    this.correo_contacto = data.correo_contacto;
+    this.telefono = data.telefono;
+    this.direccion = data.direccion;
+    this.barrio = data.barrio;
+    this.codigo_tercero = data.codigo_tercero;
+    this.sitio_web = data.sitio_web;
+    this.estado = data.estado !== undefined ? data.estado : true;
+    this.createdAt = data.createdAt;
+    this.updatedAt = data.updatedAt;
   }
 
   /**
@@ -55,12 +39,19 @@ class ThirdParties {
   toJSON() {
     return {
       id: this.id,
-      nombre: this.nombre,
-      contacto: this.contacto,
-      barrio: this.barrio,
-      direccion: this.direccion,
+      nit: this.nit,
+      nombre_empresa: this.nombre_empresa,
+      nombre_contacto: this.nombre_contacto,
+      correo_empresa: this.correo_empresa,
+      correo_contacto: this.correo_contacto,
       telefono: this.telefono,
+      direccion: this.direccion,
+      barrio: this.barrio,
+      codigo_tercero: this.codigo_tercero,
+      sitio_web: this.sitio_web,
       estado: this.estado,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }

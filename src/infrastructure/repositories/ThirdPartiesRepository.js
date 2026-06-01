@@ -25,6 +25,18 @@ class ThirdPartiesRepository {
     return this._toEntity(doc);
   }
 
+  async findByCompanyName(nombre, excludeId = null) {
+    const normalized = String(nombre || "").trim();
+    if (!normalized) return null;
+
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const query = { nombre_empresa: new RegExp(`^${escaped}$`, "i") };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
+    return this._toEntity(doc);
+  }
+
   async create(data) {
     const doc = await ThirdPartiesModel.create(data);
     return this._toEntity(doc);
