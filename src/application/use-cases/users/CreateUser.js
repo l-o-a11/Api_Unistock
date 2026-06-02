@@ -3,8 +3,10 @@ const { sendWelcomeEmail } = require("../../../shared/utils/emailService");
 const { generatePassword } = require("../../../shared/utils/generatePassword");
 
 class CreateUser {
-  constructor(userRepository) {
+  constructor(userRepository, roleRepository, siteRepository) {
     this.userRepository = userRepository;
+    this.roleRepository = roleRepository;
+    this.siteRepository = siteRepository;
   }
 
   async execute(data, createdBy) {
@@ -29,6 +31,20 @@ class CreateUser {
     if (await this.userRepository.findByDocument(numeroDocumento)) {
       const error = new Error("Ya existe un usuario con ese número de documento");
       error.statusCode = 409;
+      throw error;
+    }
+
+    const role = await this.roleRepository.findById(rolId);
+    if (!role || !role.estado) {
+      const error = new Error("Rol inválido o inactivo");
+      error.statusCode = 422;
+      throw error;
+    }
+
+    const site = await this.siteRepository.findById(sedeId);
+    if (!site || !site.estado) {
+      const error = new Error("Sede inválida o inactiva");
+      error.statusCode = 422;
       throw error;
     }
 

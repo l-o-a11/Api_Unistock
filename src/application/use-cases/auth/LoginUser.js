@@ -26,14 +26,14 @@ class LoginUser {
     const rol = await RoleModel.findById(user.rolId);
     const rolNombre = rol ? rol.nombre : null;
 
-    if (!rolNombre) {
-      const error = new Error("El rol del usuario no existe");
+    if (!rol || !rolNombre || !rol.estado) {
+      const error = new Error("El rol del usuario no existe o está inactivo");
       error.statusCode = 403;
       throw error;
     }
 
     const token = generate({
-      id:             user._id,
+      id:             user.id,
       correo:         user.correo,
       rolId:          user.rolId,
       sedeId:         user.sedeId,

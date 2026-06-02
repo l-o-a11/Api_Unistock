@@ -250,6 +250,39 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Detalle creado
+ *
+ * /produccion/detalle-orden/{id}:
+ *   put:
+ *     summary: Actualizar detalle de orden
+ *     tags: [Producción - Detalles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cantidad: { type: number }
+ *               color: { type: string }
+ *     responses:
+ *       200:
+ *         description: Detalle actualizado
+ *   delete:
+ *     summary: Eliminar detalle de orden
+ *     tags: [Producción - Detalles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Detalle eliminado
  */
 
 /**
@@ -292,6 +325,8 @@ router.patch("/ordenes/:id/anular",  validateSchema(anularOrderSchema), ctrl.anu
 // Detalles
 router.get("/detalle-orden",         ctrl.getOrderDetails);
 router.post("/detalle-orden",        ctrl.createOrderDetail);
+router.put("/detalle-orden/:id",     ctrl.updateOrderDetail);
+router.delete("/detalle-orden/:id",  ctrl.deleteOrderDetail);
 
 // Asignaciones
 router.get("/asignaciones",          ctrl.getAssignments);

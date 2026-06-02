@@ -1,4 +1,5 @@
 // infrastructure/repositories/MaterialTechnicalSpecificationsRepository.js
+const mongoose = require("mongoose");
 const MaterialTechnicalSpecificationsModel = require("../db/MaterialTechnicalSpecificationsModel");
 const MaterialTechnicalSpecifications = require("../../domain/entities/MaterialTechnicalSpecifications");
 
@@ -18,8 +19,14 @@ class MaterialTechnicalSpecificationsRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.id_producto) query.id_producto = filters.id_producto;
-    if (filters.id_ficha_tecnica) query.id_ficha_tecnica = filters.id_ficha_tecnica;
+    if (filters.id_producto) {
+      if (!mongoose.isValidObjectId(filters.id_producto)) return [];
+      query.id_producto = filters.id_producto;
+    }
+    if (filters.id_ficha_tecnica) {
+      if (!mongoose.isValidObjectId(filters.id_ficha_tecnica)) return [];
+      query.id_ficha_tecnica = filters.id_ficha_tecnica;
+    }
     const docs = await MaterialTechnicalSpecificationsModel.find(query).sort({ createdAt: -1 });
     return docs.map((d) => this._toEntity(d));
   }

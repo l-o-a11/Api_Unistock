@@ -20,6 +20,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
+    "node": "^22.22.3",
     "nodemailer": "^8.0.7",
     "react": "^19.2.5",
     "swagger-jsdoc": "^6.2.8",
@@ -34,5 +35,8 @@
     "url": "https://github.com/l-o-a11/Api_Unistock/issues"
   },
   "homepage": "https://github.com/l-o-a11/Api_Unistock#readme",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
 }

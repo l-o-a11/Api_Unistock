@@ -8,6 +8,7 @@
  * @version 1.0.0
  */
 
+const mongoose = require("mongoose");
 const productRepository = require("../repositories/ProductRepository");
 const technicalSpecificationsRepository = require("../repositories/TechnicalSpecificationsRepository");
 const materialTechnicalSpecificationsRepository = require("../repositories/MaterialTechnicalSpecificationsRepository");
@@ -16,6 +17,22 @@ const { ok, created, badRequest, notFound, serverError, conflict } = require("..
 const repo = new productRepository();
 const techSpecRepo = new technicalSpecificationsRepository();
 const materialTechSpecRepo = new materialTechnicalSpecificationsRepository();
+
+const resolveProduct = async (productIdentifier) => {
+  if (!productIdentifier) return null;
+
+  if (mongoose.isValidObjectId(productIdentifier)) {
+    const product = await repo.findById(productIdentifier);
+    if (product) return product;
+  }
+
+  return await repo.findByReference(String(productIdentifier));
+};
+
+const resolveProductId = async (productIdentifier) => {
+  const product = await resolveProduct(productIdentifier);
+  return product?.id ?? null;
+};
 
 const getProducts = async (req, res) => {
   try {
@@ -28,7 +45,7 @@ const getProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const product = await repo.findById(req.params.id);
+    const product = await resolveProduct(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
     return ok(res, product);
   } catch (err) {
@@ -134,7 +151,7 @@ const createProduct = async (req, res) => {
 };
 const updateProduct = async (req, res) => {
   try {
-    const product = await repo.findById(req.params.id);
+    const product = await resolveProduct(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
     
     // Validar si la nueva referencia ya existe
@@ -144,7 +161,7 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    const updated = await repo.update(req.params.id, req.body);
+    const updated = await repo.update(product.id, req.body);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
@@ -153,9 +170,9 @@ const updateProduct = async (req, res) => {
 
 const deleteProduct = async (req, res) => {
   try {
-    const product = await repo.findById(req.params.id);
+    const product = await resolveProduct(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
-    await repo.delete(req.params.id);
+    await repo.delete(product.id);
     return ok(res, { message: "Producto eliminado exitosamente" });
   } catch (err) {
     return serverError(res);
@@ -164,10 +181,10 @@ const deleteProduct = async (req, res) => {
 
 const toggleProductStatus = async (req, res) => {
   try {
-    const product = await repo.findById(req.params.id);
+    const product = await resolveProduct(req.params.id);
     if (!product) return notFound(res, "Producto no encontrado");
 
-    const updated = await repo.update(req.params.id, {
+    const updated = await repo.update(product.id, {
       estado: !product.estado,
     });
 
@@ -179,12 +196,15 @@ const toggleProductStatus = async (req, res) => {
 
 const getTechnicalSpecifications = async (req, res) => {
   try {
-    const techSpecs = await techSpecRepo.findAll({ id_producto: req.params.id });
+    const productId = await resolveProductId(req.params.id);
+    if (!productId) return notFound(res, "Producto no encontrado");
+
+    const techSpecs = await techSpecRepo.findAll({ id_producto: productId });
     const withMaterials = await Promise.all(
       techSpecs.map(async (techSpec) => {
         const sheet = techSpec.toJSON ? techSpec.toJSON() : techSpec;
         const materiales = await materialTechSpecRepo.findAll({
-          id_producto: req.params.id,
+          id_producto: productId,
           id_ficha_tecnica: sheet.id,
         });
         return {
@@ -203,9 +223,13 @@ const getTechnicalSpecificationById = async (req, res) => {
   try {
     const techSpec = await techSpecRepo.findById(req.params.techSpecId);
     if (!techSpec) return notFound(res, "Ficha tecnica no encontrada");
+
+    const productId = await resolveProductId(req.params.id);
+    if (!productId) return notFound(res, "Producto no encontrado");
+
     const sheet = techSpec.toJSON ? techSpec.toJSON() : techSpec;
     const materiales = await materialTechSpecRepo.findAll({
-      id_producto: req.params.id,
+      id_producto: productId,
       id_ficha_tecnica: sheet.id,
     });
     return ok(res, {
@@ -219,12 +243,16 @@ const getTechnicalSpecificationById = async (req, res) => {
 
 const createTechnicalSpecification = async (req, res) => {
   try {
-    const { id_producto, responsable, fecha_inicio, fecha_fin, versiones, descripciones } = req.body;
-    if (!id_producto || !responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
+    const id_producto = req.params.id || req.body.id_producto;
+    const productId = await resolveProductId(id_producto);
+    if (!productId) return notFound(res, "Producto no encontrado");
+
+    const { responsable, fecha_inicio, fecha_fin, versiones, descripciones } = req.body;
+    if (!responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
     const techSpec = await techSpecRepo.create({
-      id_producto,
+      id_producto: productId,
       responsable,
       fecha_inicio,
       fecha_fin,
@@ -261,7 +289,10 @@ const deleteTechnicalSpecification = async (req, res) => {
 
 const getMaterialTechnicalSpecifications = async (req, res) => {
   try {
-    const filters = { id_producto: req.params.id };
+    const productId = await resolveProductId(req.params.id);
+    if (!productId) return notFound(res, "Producto no encontrado");
+
+    const filters = { id_producto: productId };
     if (req.params.techSpecId) filters.id_ficha_tecnica = req.params.techSpecId;
     const materialTechSpecs = await materialTechSpecRepo.findAll(filters);
     return ok(res, materialTechSpecs.map((item) => item.toJSON()));
@@ -282,7 +313,8 @@ const getMaterialTechnicalSpecificationById = async (req, res) => {
 
 const createMaterialTechnicalSpecification = async (req, res) => {
   try {
-    const id_producto = req.params.id || req.body.id_producto;
+    const rawProductId = req.params.id || req.body.id_producto;
+    const id_producto = await resolveProductId(rawProductId);
     const id_ficha_tecnica = req.params.techSpecId || req.body.id_ficha_tecnica;
     const cantidades = req.body.cantidades ?? req.body.cantidad;
 

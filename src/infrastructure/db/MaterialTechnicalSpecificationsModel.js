@@ -11,6 +11,8 @@ const materialTechnicalSpecificationsSchema = new mongoose.Schema(
     nombre: { type: String, trim: true, default: "" },
     unidad: { type: String, trim: true, default: "" },
     cantidades: { type: String, required: true },
+    precio_unitario: { type: Number, default: 0 },
+    precio_total: { type: Number, default: 0 },
     observaciones: { type: String, trim: true, default: "" },
   },
   { timestamps: true },
