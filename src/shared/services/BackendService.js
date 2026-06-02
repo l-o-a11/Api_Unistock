@@ -176,6 +176,29 @@ const roleAPI = {
   },
 };
 
+const siteAPI = {
+  getAll: (filters = {}) => {
+    return backendClient.get('/api/sites', { params: filters });
+  },
+
+  getById: (id) => {
+    return backendClient.get(`/api/sites/${id}`);
+  },
+
+  create: (data) => {
+    return backendClient.post('/api/sites', data);
+  },
+
+  update: (id, data) => {
+    return backendClient.put(`/api/sites/${id}`, data);
+  },
+
+  delete: (id) => {
+    return backendClient.delete(`/api/sites/${id}`);
+  },
+};
+
+
 module.exports = {
   backendClient,
   productCategoryAPI,
@@ -183,4 +206,5 @@ module.exports = {
   productionAPI,
   supplierAPI,
   roleAPI,
+  siteAPI,
 };

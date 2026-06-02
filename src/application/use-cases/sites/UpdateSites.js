@@ -1,44 +1,40 @@
-// application/use-cases/sites/UpdateSite.js
+// application/use-cases/sites/UpdateSites.js
 
 class UpdateSite {
-    constructor(siteRepository) {
-        this.siteRepository = siteRepository;
+  constructor(siteRepository) {
+    this.repo = siteRepository;
+  }
+
+  async execute(id, data) {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      const err = new Error("Sede no encontrada");
+      err.statusCode = 404;
+      throw err;
     }
 
-    async execute(id, data) {
-        const existing = this.siteRepository.findById(id);
-        if (!existing) {
-            const error = new Error("Site no encontrada");
-            error.statusCode = 404;
-            throw error;
-        }
+    const { nombre, ciudad, barrio, direccion, telefono, estado } = data;
 
-        const {
-            nombre,
-            ciudad,
-            barrio,
-            direccion,
-            telefono,
-            estado,
-        } = data;
-
-        // Unicidad de nombre si cambió
-        if (nombre && nombre !== existing.nombre && this.siteRepository.findAll().some(s => s.nombre.toLowerCase() === nombre.toLowerCase() && s.id !== parseInt(id))) {
-            const error = new Error("Ya existe una site con ese nombre");
-            error.statusCode = 409;
-            throw error;
-        }
-
-        const changes = {};
-        if (nombre !== undefined) changes.nombre = nombre;
-        if (ciudad !== undefined) changes.ciudad = ciudad;
-        if (barrio !== undefined) changes.barrio = barrio;
-        if (direccion !== undefined) changes.direccion = direccion;
-        if (telefono !== undefined) changes.telefono = telefono;
-        if (estado !== undefined) changes.estado = estado;
-
-        return this.siteRepository.update(id, changes);
+    // Unicidad de nombre si cambió
+    if (nombre && nombre.trim() !== existing.nombre) {
+      const dup = await this.repo.findByName(nombre.trim());
+      if (dup && dup.id !== id) {
+        const err = new Error(`Ya existe una sede con el nombre "${nombre}"`);
+        err.statusCode = 409;
+        throw err;
+      }
     }
+
+    const changes = {};
+    if (nombre    !== undefined) changes.nombre    = nombre.trim();
+    if (ciudad    !== undefined) changes.ciudad    = ciudad.trim();
+    if (barrio    !== undefined) changes.barrio    = barrio.trim();
+    if (direccion !== undefined) changes.direccion = direccion.trim();
+    if (telefono  !== undefined) changes.telefono  = String(telefono).trim();
+    if (estado    !== undefined) changes.estado    = estado;
+
+    return this.repo.update(id, changes);
+  }
 }
 
 module.exports = UpdateSite;

@@ -1,16 +1,17 @@
-// application/use-cases/sites/GetSiteById.js
+// application/use-cases/sites/GetSedeById.js
 
 class GetSiteById {
   constructor(siteRepository) {
-    this.siteRepository = siteRepository;
+    this.repo = siteRepository;
   }
 
-  execute(id) {
-    const site = this.siteRepository.findById(id);
+  // async + await: el repositorio hace consultas a MongoDB
+  async execute(id) {
+    const site = await this.repo.findById(id);
     if (!site) {
-      const error = new Error("Sede no encontrada");
-      error.statusCode = 404;
-      throw error;
+      const err = new Error("Sede no encontrada");
+      err.statusCode = 404;
+      throw err;
     }
     return site;
   }
