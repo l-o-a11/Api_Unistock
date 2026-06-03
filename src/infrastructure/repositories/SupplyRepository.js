@@ -10,6 +10,11 @@ class SupplyRepository {
     return new Supply({ ...obj, id: obj._id.toString() });
   }
 
+  async findOne(filter) {
+    const doc = await SupplyModel.findOne(filter).catch(() => null);
+    return this._toEntity(doc);
+  }
+
   async findAll(filters = {}) {
     const query = {};
 
