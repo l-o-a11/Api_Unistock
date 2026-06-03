@@ -153,6 +153,23 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// PUT /auth/profile — el usuario autenticado actualiza sus propios datos
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { nombreCompleto, correo } = req.body;
+    const changes = {};
+    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
+    if (correo) changes.correo = correo;
+    const updated = await new UpdateUser(repo, roleRepo, siteRepo).execute(userId, changes);
+    return ok(res, updated);
+  } catch (err) {
+    if (err.statusCode === 409) return conflict(res, err.message);
+    if (err.statusCode === 404) return notFound(res, err.message);
+    return serverError(res);
+  }
+};
+
 const changePassword = async (req, res) => {
   try {
     const result = await new ChangePassword(repo).execute({
@@ -175,5 +192,5 @@ module.exports = {
   getUsers, getUserById, createUser,
   updateUser, toggleStatus, deleteUser,
   getRoles, getSedes,
-  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword,
+  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword, updateProfile,
 };
