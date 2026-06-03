@@ -1,6 +1,4 @@
 // infrastructure/controllers/supplyCategoryController.js
-// Recibe los requests HTTP, delega al use case correspondiente, responde.
-// No contiene lógica de negocio — solo traduce HTTP ↔ use cases.
 
 const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
 const SupplyRepository = require("../repositories/SupplyRepository");
@@ -13,7 +11,6 @@ const DeleteSupplyCategory = require("../../application/use-cases/supplyCategori
 const {
     ok,
     created,
-    noContent,
     badRequest,
     notFound,
     conflict,
@@ -24,12 +21,12 @@ const {
 const categoryRepo = new SupplyCategoryRepository();
 const supplyRepo = new SupplyRepository();
 
-// ── categoryRepo CRUD ─────────────────────────────────────────────────────────────────
 const getSupplyCategories = async (req, res) => {
     try {
         const categories = await new GetSupplyCategory(categoryRepo).execute(req.query);
         return ok(res, categories);
     } catch (err) {
+        console.error("GetSupplyCategories error:", err);
         return serverError(res);
     }
 };
@@ -68,9 +65,13 @@ const updateSupplyCategory = async (req, res) => {
 
 const deleteSupplyCategory = async (req, res) => {
     try {
-        await new DeleteSupplyCategory(categoryRepo, supplyRepo).execute(req.params.id);
-        return noContent(res);
+        // FIX: devolver 200 con resultado en vez de 204 sin body
+        // Facilita debugging y es consistente con el resto de endpoints
+        const result = await new DeleteSupplyCategory(categoryRepo, supplyRepo).execute(req.params.id);
+        return ok(res, result);
     } catch (err) {
+        console.error("DeleteSupplyCategory error:", err.message);
+        if (err.statusCode === 400) return badRequest(res, err.message);
         if (err.statusCode === 404) return notFound(res, err.message);
         if (err.statusCode === 422) return unprocessable(res, err.message);
         return serverError(res);
