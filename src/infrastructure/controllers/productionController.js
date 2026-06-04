@@ -196,13 +196,54 @@ const updateOrder = async (req, res) => {
     if (order.estaAnulada())
       return badRequest(res, "No se puede editar una orden anulada");
 
-    // No permitir cambiar estado ni historial directamente por este endpoint
-    const { estado, historial, motivo_anulacion, ...safeChanges } = req.body;
+    const { estado, historial, motivo_anulacion, ...rest } = req.body;
+    const allowedFields = new Set([
+      "cliente",
+      "fecha_entrega",
+      "id_usuario",
+      "asignaciones",
+      "tipo",
+      "referencia",
+      "producto",
+      "techSpecification",
+      "designImages",
+      "finishedImages",
+      "finishedImageUrl",
+      "fromDamaged",
+      "originalOrderNumber",
+      "originalOrderStatus",
+    ]);
+
+    const safeChanges = {};
+    for (const [key, value] of Object.entries(rest)) {
+      if (allowedFields.has(key) && value !== undefined) {
+        safeChanges[key] = value;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "cliente")) {
+      const cliente = typeof safeChanges.cliente === "string" ? safeChanges.cliente.trim() : safeChanges.cliente;
+      if (!cliente) return badRequest(res, "El cliente no puede estar vacío");
+      safeChanges.cliente = cliente;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "fecha_entrega")) {
+      const fecha = new Date(safeChanges.fecha_entrega);
+      if (!safeChanges.fecha_entrega || Number.isNaN(fecha.getTime())) {
+        return badRequest(res, "La fecha de entrega no es válida");
+      }
+      safeChanges.fecha_entrega = fecha;
+    }
 
     const updated = await prodRepo.update(req.params.id, safeChanges);
+    if (!updated) return serverError(res, "Error al actualizar la orden");
     return ok(res, updated.toJSON());
   } catch (err) {
-    return serverError(res);
+    console.error("Error al actualizar orden:", err);
+    if (err.name === "ValidationError" || err.name === "CastError") {
+      return badRequest(res, err.message);
+    }
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
   }
 };
 
@@ -239,11 +280,12 @@ const deleteOrderDetail = async (req, res) => {
 
 const anularOrder = async (req, res) => {
   try {
-    const { motivo } = req.body;
-    const id_usuario = req.user?.id || null;
+    const { motivo, id_usuario: bodyUser, user: bodyUserName } = req.body;
+    const id_usuario = bodyUser || req.user?.id || null;
+    const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
 
     const useCase = new AnularProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, motivo, id_usuario);
+    const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -257,11 +299,12 @@ const anularOrder = async (req, res) => {
 
 const cambiarEstado = async (req, res) => {
   try {
-    const { estado } = req.body;
-    const id_usuario = req.user?.id || null;
+    const { estado, id_usuario: bodyUser, user: bodyUserName, force, ...rest } = req.body;
+    const id_usuario = bodyUser || req.user?.id || null;
+    const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
 
     const useCase = new CambiarEstadoProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, estado, id_usuario);
+    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
 
     if (estado === "Producción") {
       const details = await detailRepo.findAll({ id_orden: req.params.id });
@@ -273,12 +316,15 @@ const cambiarEstado = async (req, res) => {
           await productRepo.findById(data.id_producto).catch(() => null) ||
           await productRepo.findByReference(data.id_producto).catch(() => null);
 
-        if (product?.id) {
-          stockByProductId.set(
-            product.id,
-            (stockByProductId.get(product.id) || 0) + (Number(data.cantidad) || 0),
-          );
-        }
+        if (!product) return;
+
+        const productId = product.id || (product._id ? String(product._id) : null);
+        if (!productId) return;
+
+        stockByProductId.set(
+          productId,
+          (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
+        );
       }));
 
       await Promise.all(
