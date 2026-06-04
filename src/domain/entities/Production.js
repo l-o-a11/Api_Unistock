@@ -22,6 +22,8 @@ const ESTADOS_VALIDOS = [
   "Corte",
   "Compras",
   "Producción",
+  "Empaque",
+  "Enviado",
   "Anulada",
 ];
 
@@ -41,6 +43,8 @@ class Production {
    * @param {string}  [data.tipo]             - Tipo de orden (produccion/diseno)
    * @param {Object}  [data.techSpecification] - Especificación técnica
    * @param {Array}   [data.designImages]    - Imágenes de diseño
+   * @param {Array}   [data.finishedImages]  - Imágenes del producto terminado
+   * @param {string}  [data.finishedImageUrl] - Imagen principal del producto terminado
    * @param {boolean} [data.fromDamaged]     - Indica si es reposición de dañados
    * @param {string}  [data.originalOrderNumber] - Número de orden original
    * @param {string}  [data.originalOrderStatus] - Estado original
@@ -60,6 +64,8 @@ class Production {
     tipo = 'produccion',
     techSpecification = null,
     designImages = [],
+    finishedImages = [],
+    finishedImageUrl = null,
     fromDamaged = false,
     originalOrderNumber = null,
     originalOrderStatus = null,
@@ -78,6 +84,8 @@ class Production {
     this.tipo = tipo;
     this.techSpecification = techSpecification;
     this.designImages = designImages;
+    this.finishedImages = finishedImages;
+    this.finishedImageUrl = finishedImageUrl;
     this.fromDamaged = fromDamaged;
     this.originalOrderNumber = originalOrderNumber;
     this.originalOrderStatus = originalOrderStatus;
@@ -108,6 +116,8 @@ class Production {
       tipo: this.tipo,
       techSpecification: this.techSpecification,
       designImages: this.designImages,
+      finishedImages: this.finishedImages,
+      finishedImageUrl: this.finishedImageUrl,
       fromDamaged: this.fromDamaged,
       originalOrderNumber: this.originalOrderNumber,
       originalOrderStatus: this.originalOrderStatus,
