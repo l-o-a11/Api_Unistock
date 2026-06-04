@@ -25,7 +25,8 @@ const siteRepo = new SiteRepository();
 
 const login = async (req, res) => {
   try {
-    const result = await new LoginUser(repo).execute(req.body);
+    // LoginUser necesita roleRepository para verificar el rol sin importar RoleModel
+    const result = await new LoginUser(repo, roleRepo).execute(req.body);
     return ok(res, result);
   } catch (err) {
     console.error("ERROR LOGIN:", err);
@@ -42,10 +43,11 @@ const verifyPassword = async (req, res) => {
     const { password } = req.body;
     if (!password) return badRequest(res, "La contraseña es requerida");
 
-    const user = await repo.findById(req.user.id);
+    // findByIdWithPassword garantiza que el hash está presente en la entidad
+    const user = await repo.findByIdWithPassword(req.user.id);
     if (!user) return unauthorized(res, "Usuario no encontrado");
 
-    const { compare } = require("../../infrastructure/security/password_encrypter");
+    // compare ya está importado al tope del archivo — no re-importar aquí
     const match = await compare(password, user.password);
     if (!match) return unauthorized(res, "Contraseña incorrecta");
 

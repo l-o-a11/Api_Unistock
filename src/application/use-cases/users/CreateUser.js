@@ -72,7 +72,6 @@ class CreateUser {
       console.warn("Correo no enviado:", emailError.message);
     }
 
-    console.log("USER GUARDADO:", user);
     const userObj = user.toObject ? user.toObject() : user;
     const { password: _, ...userPublic } = userObj;
     return userPublic;
