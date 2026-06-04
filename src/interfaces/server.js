@@ -31,8 +31,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Rutas
 app.use("/api/auth", authRoutes);
@@ -78,6 +78,12 @@ app.use((req, res) =>
 
 // Error handler global
 app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res
+      .status(413)
+      .json({ success: false, message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB." });
+  }
+
   console.error(err.stack);
   res
     .status(500)

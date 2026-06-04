@@ -1,12 +1,78 @@
 // infrastructure/controllers/thirdPartiesController.js
 const ThirdPartiesRepository = require("../repositories/ThirdPartiesRepository");
+const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
+const ProductionRepository = require("../repositories/ProductionRepository");
 const { ok, created, badRequest, notFound, conflict, serverError } = require("../../shared/utils/response");
 
 const repo = new ThirdPartiesRepository();
+const assignmentRepo = new ThirdPartyAssignmentRepository();
+const productionRepo = new ProductionRepository();
+
+const idToString = (value) => {
+  if (!value) return "";
+  if (value._id) return idToString(value._id);
+  return value.toString ? value.toString() : String(value);
+};
+
+const entityToJSON = (entity) => (entity?.toJSON ? entity.toJSON() : entity);
+
+const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
+  const allowedIds = new Set(thirdPartyIds.map(idToString).filter(Boolean));
+  const allAssignments = await assignmentRepo.findAll();
+  const assignments = allAssignments.filter((assignment) => {
+    const terceroId = idToString(assignment.id_tercero);
+    return !allowedIds.size || allowedIds.has(terceroId);
+  });
+
+  const orderIds = [...new Set(assignments.map((assignment) => idToString(assignment.id_orden)).filter(Boolean))];
+  const orders = await Promise.all(
+    orderIds.map(async (orderId) => [orderId, entityToJSON(await productionRepo.findById(orderId).catch(() => null))]),
+  );
+  const orderById = new Map(orders);
+
+  const grouped = new Map();
+  for (const assignment of assignments) {
+    const terceroId = idToString(assignment.id_tercero);
+    const orderId = idToString(assignment.id_orden);
+    const order = orderById.get(orderId);
+    const producciones = grouped.get(terceroId) || [];
+    const existing = producciones.find((item) => item.produccionId === orderId);
+
+    if (existing) {
+      existing.cantidad += Number(assignment.cantidad) || 0;
+      continue;
+    }
+
+    producciones.push({
+      orden: order?.numero_orden || order?.orderNumber || orderId,
+      orderNumber: order?.numero_orden || order?.orderNumber || orderId,
+      fecha: order?.fecha_entrega || assignment.fecha || "",
+      produccionId: order?.id || orderId,
+      cantidad: Number(assignment.cantidad) || 0,
+    });
+    grouped.set(terceroId, producciones);
+  }
+
+  return grouped;
+};
+
+const attachProducciones = async (thirdParties) => {
+  const list = Array.isArray(thirdParties) ? thirdParties : [thirdParties];
+  const plainList = list.map(entityToJSON).filter(Boolean);
+  const produccionesByThirdParty = await buildProduccionesByThirdParty(plainList.map((tp) => tp.id || tp._id));
+
+  const enriched = plainList.map((tp) => ({
+    ...tp,
+    producciones: produccionesByThirdParty.get(idToString(tp.id || tp._id)) || [],
+  }));
+
+  return Array.isArray(thirdParties) ? enriched : enriched[0];
+};
 
 const getThirdParties = async (req, res) => {
   try {
-    return ok(res, await repo.findAll(req.query));
+    const terceros = await repo.findAll(req.query);
+    return ok(res, await attachProducciones(terceros));
   } catch (err) {
     console.error("[thirdPartiesController] Error getting terceros:", err);
     return serverError(res);
@@ -17,7 +83,7 @@ const getThirdPartyById = async (req, res) => {
   try {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
-    return ok(res, tp);
+    return ok(res, await attachProducciones(tp));
   } catch (err) {
     console.error("[thirdPartiesController] Error getting tercero:", err);
     return serverError(res);
