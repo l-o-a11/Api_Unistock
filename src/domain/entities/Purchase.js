@@ -4,6 +4,7 @@
 class Purchase {
   constructor({
     id,
+    consecutivo = null,
     fecha,
     proveedorId,
     total,
@@ -14,6 +15,7 @@ class Purchase {
     fechaAnulacion = null,
   }) {
     this.id = id;
+    this.consecutivo = consecutivo;   // número legible autoincremental (1, 2, 3...)
     this.fecha = fecha;
     this.proveedorId = proveedorId;
     this.total = total;
