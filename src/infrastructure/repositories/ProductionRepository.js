@@ -31,8 +31,7 @@ class ProductionRepository {
 
   async update(id, changes) {
     const doc = await ProductionOrderModel
-      .findByIdAndUpdate(id, changes, { new: true })
-      .catch(() => null);
+      .findByIdAndUpdate(id, changes, { new: true, runValidators: true });
     return this._toEntity(doc);
   }
 
@@ -40,11 +39,12 @@ class ProductionRepository {
    * Anula una orden: pone estado "Anulada", guarda motivo
    * y agrega entrada al historial.
    */
-  async anular(id, motivo, id_usuario) {
+  async anular(id, motivo, id_usuario, user) {
     const historialEntry = {
       estado: "Anulada",
       fecha: new Date(),
       id_usuario: id_usuario || null,
+      user: user || null,
       motivo: motivo || null,
     };
     const doc = await ProductionOrderModel
@@ -64,21 +64,22 @@ class ProductionRepository {
   /**
    * Cambia el estado de la orden y registra la transición en el historial.
    */
-  async cambiarEstado(id, nuevoEstado, id_usuario) {
+  async cambiarEstado(id, nuevoEstado, id_usuario, user, extra = {}) {
     const historialEntry = {
       estado: nuevoEstado,
       fecha: new Date(),
       id_usuario: id_usuario || null,
+      user: user || null,
       motivo: null,
     };
+
+    const updateDoc = { estado: nuevoEstado, ...extra, $push: { historial: historialEntry } };
+
     const doc = await ProductionOrderModel
       .findByIdAndUpdate(
         id,
-        {
-          estado: nuevoEstado,
-          $push: { historial: historialEntry },
-        },
-        { new: true },
+        updateDoc,
+        { new: true, runValidators: true },
       )
       .catch(() => null);
     return this._toEntity(doc);

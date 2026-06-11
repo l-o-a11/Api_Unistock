@@ -15,17 +15,20 @@ class SupplyCategoryRepository {
 
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [
-        { nombre: re },
-        { descripcion: re }
-      ];
+      query.$or = [{ nombre: re }, { descripcion: re }];
     }
 
-    if (filters.estado !== undefined) {
+    // FIX: por defecto solo mostrar activas (estado:true)
+    // Solo se omite el filtro si se pasa estado="all"
+    if (filters.estado === "all") {
+      // sin filtro de estado
+    } else if (filters.estado !== undefined && filters.estado !== "") {
       query.estado = filters.estado === "true" || filters.estado === true;
+    } else {
+      query.estado = true; // default: solo activas
     }
 
-    const docs = await SupplyCategoryModel.find(query);
+    const docs = await SupplyCategoryModel.find(query).sort({ nombre: 1 });
     return docs.map((d) => this._toEntity(d));
   }
 
@@ -40,12 +43,9 @@ class SupplyCategoryRepository {
   }
 
   async update(id, changes) {
-    const doc = await SupplyCategoryModel.findByIdAndUpdate(
-      id,
-      changes,
-      { new: true }
-    ).catch(() => null);
-
+    const doc = await SupplyCategoryModel
+      .findByIdAndUpdate(id, changes, { new: true })
+      .catch(() => null);
     return this._toEntity(doc);
   }
 

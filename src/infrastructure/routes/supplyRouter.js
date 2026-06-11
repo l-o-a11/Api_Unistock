@@ -35,5 +35,6 @@ router.get("/:id", ctrl.getSupplyById);
 router.post("/", ctrl.createSupply);
 router.put("/:id", ctrl.updateSupply);
 router.delete("/:id", ctrl.deleteSupply);
+router.patch("/:id/toggle", ctrl.toggleSupply);
 
 module.exports = router;

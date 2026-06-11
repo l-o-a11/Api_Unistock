@@ -1,25 +1,27 @@
 // domain/entities/PurchaseDetail.js
 // Entidad pura del dominio — sin dependencias externas.
-// Define la forma canónica de un Detalle de Compra.
 
 class PurchaseDetail {
   constructor({
     id,
     compraId,
     productoId,
+    insumoId,
+    nombre,
     cantidad,
     precioUnitario,
     subtotal,
   }) {
     this.id = id;
     this.compraId = compraId;
-    this.productoId = productoId;
+    this.productoId = productoId ?? null;
+    this.insumoId = insumoId ?? null;
+    this.nombre = nombre ?? null;
     this.cantidad = cantidad;
     this.precioUnitario = precioUnitario;
     this.subtotal = subtotal;
   }
 
-  // Devuelve el objeto público
   toPublic() {
     return { ...this };
   }

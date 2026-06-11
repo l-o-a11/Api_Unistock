@@ -7,6 +7,8 @@ const ESTADOS_VALIDOS = [
   "Corte",
   "Compras",
   "Producción",
+  "Empaque",
+  "Enviado",
   "Anulada",
 ];
 
@@ -15,6 +17,7 @@ const historialEntrySchema = new mongoose.Schema(
     estado: { type: String, enum: ESTADOS_VALIDOS, required: true },
     fecha: { type: Date, default: Date.now },
     id_usuario: { type: mongoose.Schema.Types.Mixed, required: true },
+    user: { type: String, default: null },
     motivo: { type: String, default: null },
   },
   { _id: false },
@@ -36,6 +39,8 @@ const productionOrderSchema = new mongoose.Schema(
     tipo: { type: String, enum: ["produccion", "diseno"], default: "produccion" },
     techSpecification: { type: mongoose.Schema.Types.Mixed, default: null },
     designImages: { type: [String], default: [] },
+    finishedImages: { type: [String], default: [] },
+    finishedImageUrl: { type: String, default: null },
     fromDamaged: { type: Boolean, default: false },
     originalOrderNumber: { type: String, default: null },
     originalOrderStatus: { type: String, default: null },

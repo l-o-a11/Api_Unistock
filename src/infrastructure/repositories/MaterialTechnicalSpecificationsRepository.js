@@ -27,6 +27,10 @@ class MaterialTechnicalSpecificationsRepository {
       if (!mongoose.isValidObjectId(filters.id_ficha_tecnica)) return [];
       query.id_ficha_tecnica = filters.id_ficha_tecnica;
     }
+    if (filters.id_insumo) {
+  if (!mongoose.isValidObjectId(filters.id_insumo)) return [];
+  query.id_insumo = filters.id_insumo;
+}
     const docs = await MaterialTechnicalSpecificationsModel.find(query).sort({ createdAt: -1 });
     return docs.map((d) => this._toEntity(d));
   }
