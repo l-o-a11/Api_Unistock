@@ -2,6 +2,7 @@
 
 const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
 const SupplyRepository = require("../repositories/SupplyRepository");
+const UserRepository = require("../repositories/UserRepository");
 const CreateSupplyCategory = require("../../application/use-cases/supplyCategories/CreateSupplyCategory");
 const GetSupplyCategory = require("../../application/use-cases/supplyCategories/GetSuppliesCategory");
 const GetSupplyCategoryById = require("../../application/use-cases/supplyCategories/GetSupplyCategoryById");
@@ -16,10 +17,17 @@ const {
     conflict,
     unprocessable,
     serverError,
+    forbidden,
 } = require("../../shared/utils/response");
+const {
+    isManagerOrAdmin,
+    extractManagerPassword,
+    verifyManagerPassword,
+} = require("../../shared/utils/managerAuth");
 
 const categoryRepo = new SupplyCategoryRepository();
 const supplyRepo = new SupplyRepository();
+const userRepo = new UserRepository();
 
 const getSupplyCategories = async (req, res) => {
     try {
@@ -65,8 +73,20 @@ const updateSupplyCategory = async (req, res) => {
 
 const deleteSupplyCategory = async (req, res) => {
     try {
-        // FIX: devolver 200 con resultado en vez de 204 sin body
-        // Facilita debugging y es consistente con el resto de endpoints
+        if (!isManagerOrAdmin(req.user?.rolNombre)) {
+            return forbidden(res, "Solo gerentes o administradores pueden eliminar categorías de insumos.");
+        }
+
+        const password = extractManagerPassword(req);
+        if (!password) {
+            return badRequest(res, "Se requiere la contraseña del gerente para eliminar la categoría de insumos.");
+        }
+
+        const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+        if (!passwordOk) {
+            return forbidden(res, "Contraseña del gerente incorrecta.");
+        }
+
         const result = await new DeleteSupplyCategory(categoryRepo, supplyRepo).execute(req.params.id);
         return ok(res, result);
     } catch (err) {

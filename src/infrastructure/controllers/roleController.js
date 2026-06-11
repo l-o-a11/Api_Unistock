@@ -21,8 +21,13 @@ const GetRoleById  = require("../../application/use-cases/roles/GetRoleById");
 const UpdateRole   = require("../../application/use-cases/roles/UpdateRole");
 const DeleteRole   = require("../../application/use-cases/roles/DeleteRole");
 const {
-  ok, created, notFound, conflict, unprocessable, serverError,
+  ok, created, notFound, conflict, unprocessable, serverError, forbidden,
 } = require("../../shared/utils/response");
+const {
+  isManagerOrAdmin,
+  extractManagerPassword,
+  verifyManagerPassword,
+} = require("../../shared/utils/managerAuth");
 
 const roleRepo    = new RoleRepository();
 const userRepo    = new UserRepository();
@@ -117,6 +122,23 @@ const countUsersByRole = async (req, res) => {
 
 const deleteRole = async (req, res) => {
   try {
+    const role = await roleRepo.findById(req.params.id);
+    if (!role) return notFound(res, "Rol no encontrado");
+
+    if (!isManagerOrAdmin(req.user?.rolNombre)) {
+      return forbidden(res, "Solo gerentes o administradores pueden eliminar roles.");
+    }
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del gerente para eliminar el rol.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del gerente incorrecta.");
+    }
+
     await new DeleteRole(roleRepo, userRepo).execute(req.params.id);
     return ok(res, { message: "Rol eliminado exitosamente" });
   } catch (err) {
@@ -132,6 +154,21 @@ const toggleRole = async (req, res) => {
     if (!role) {
       return notFound(res, "Rol no encontrado");
     }
+
+    if (!isManagerOrAdmin(req.user?.rolNombre)) {
+      return forbidden(res, "Solo gerentes o administradores pueden cambiar el estado del rol.");
+    }
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del gerente para cambiar el estado del rol.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del gerente incorrecta.");
+    }
+
     const updatedRole = await roleRepo.update(req.params.id, {
       estado: !role.estado
     });

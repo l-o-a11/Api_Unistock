@@ -10,13 +10,13 @@
  *  6. El valor de cada propiedad se normaliza: mayúscula inicial, resto minúscula.
  */
 
-const mongoose  = require("mongoose");
-const bcrypt    = require("bcryptjs");
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
-const SupplyRepository                      = require("../repositories/SupplyRepository");
-const SupplyCategoryRepository              = require("../repositories/SupplyCategoryRepository");
+const SupplyRepository = require("../repositories/SupplyRepository");
+const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
 const MaterialTechnicalSpecificationsRepository = require("../repositories/MaterialTechnicalSpecificationsRepository");
-const UserRepository                        = require("../repositories/UserRepository");
+const UserRepository = require("../repositories/UserRepository");
 
 const {
   ok,
@@ -28,41 +28,41 @@ const {
   forbidden,
 } = require("../../shared/utils/response");
 
-const repo             = new SupplyRepository();
-const categoryRepo     = new SupplyCategoryRepository();
-const materialRepo     = new MaterialTechnicalSpecificationsRepository();
-const userRepo         = new UserRepository();
+const repo = new SupplyRepository();
+const categoryRepo = new SupplyCategoryRepository();
+const materialRepo = new MaterialTechnicalSpecificationsRepository();
+const userRepo = new UserRepository();
 
 // ── Catálogos estáticos ───────────────────────────────────────────────────────
 
 const MEDIDAS_PREDETERMINADAS = [
-  { valor: "kg",  label: "Kilogramo" },
-  { valor: "g",   label: "Gramo" },
-  { valor: "mg",  label: "Miligramo" },
-  { valor: "l",   label: "Litro" },
-  { valor: "ml",  label: "Mililitro" },
-  { valor: "m",   label: "Metro" },
-  { valor: "cm",  label: "Centímetro" },
-  { valor: "mm",  label: "Milímetro" },
-  { valor: "m2",  label: "Metro cuadrado" },
-  { valor: "m3",  label: "Metro cúbico" },
+  { valor: "kg", label: "Kilogramo" },
+  { valor: "g", label: "Gramo" },
+  { valor: "mg", label: "Miligramo" },
+  { valor: "l", label: "Litro" },
+  { valor: "ml", label: "Mililitro" },
+  { valor: "m", label: "Metro" },
+  { valor: "cm", label: "Centímetro" },
+  { valor: "mm", label: "Milímetro" },
+  { valor: "m2", label: "Metro cuadrado" },
+  { valor: "m3", label: "Metro cúbico" },
   { valor: "und", label: "Unidad" },
   { valor: "par", label: "Par" },
   { valor: "cja", label: "Caja" },
-  { valor: "rl",  label: "Rollo" },
+  { valor: "rl", label: "Rollo" },
   { valor: "blt", label: "Bulto" },
 ];
 
 const PROPIEDADES_PREDETERMINADAS = [
-  { clave: "color",         label: "Color" },
-  { clave: "material",      label: "Material" },
-  { clave: "marca",         label: "Marca" },
-  { clave: "referencia",    label: "Referencia" },
-  { clave: "peso",          label: "Peso" },
-  { clave: "dimensiones",   label: "Dimensiones" },
-  { clave: "proveedor",     label: "Proveedor" },
-  { clave: "lote",          label: "Lote" },
-  { clave: "vencimiento",   label: "Fecha de vencimiento" },
+  { clave: "color", label: "Color" },
+  { clave: "material", label: "Material" },
+  { clave: "marca", label: "Marca" },
+  { clave: "referencia", label: "Referencia" },
+  { clave: "peso", label: "Peso" },
+  { clave: "dimensiones", label: "Dimensiones" },
+  { clave: "proveedor", label: "Proveedor" },
+  { clave: "lote", label: "Lote" },
+  { clave: "vencimiento", label: "Fecha de vencimiento" },
   { clave: "observaciones", label: "Observaciones" },
 ];
 
@@ -93,25 +93,53 @@ const normalizeProperties = (propiedades = []) =>
  * Devuelve true si hay al menos uno.
  */
 const hasAssociatedMaterials = async (supplyId) => {
-  const results = await materialRepo.findAll({ id_insumo: supplyId });
-console.log("supplyId:", supplyId);
-console.log("results:", results);
-console.log("cantidad:", results.length);
+  const results = await materialRepo.findAll({ id_insumo: supplyId, id_insumos: supplyId });
   return Array.isArray(results) && results.length > 0;
 };
+
+const isManagerOrAdmin = (rolNombre) => {
+  const role = typeof rolNombre === "string" ? rolNombre.trim().toLowerCase() : "";
+  return role === "gerente" || role === "administrador";
+};
+
+const extractManagerPassword = (req) =>
+  req.body?.password ||
+  req.body?.managerPassword ||
+  req.body?.adminPassword ||
+  req.body?.data?.password ||
+  req.body?.data?.managerPassword ||
+  req.body?.data?.adminPassword ||
+  req.query?.password ||
+  req.query?.managerPassword ||
+  req.query?.adminPassword ||
+  req.headers["x-manager-password"] ||
+  req.headers["x-admin-password"] ||
+  req.headers["x-password"] ||
+  req.headers.password;
 
 /**
  * Verifica la contraseña del gerente.
  * Busca al usuario autenticado y compara su contraseña hasheada.
- * El frontend debe enviar { password: "..." } en el body del DELETE.
+ * El frontend puede enviar { password: "..." } en el body, query o encabezado.
  */
 const verifyManagerPassword = async (userId, plainPassword) => {
-  if (!plainPassword) return false;
-  const user = await userRepo.findById(userId);
-  if (!user) return false;
+  if (plainPassword === undefined || plainPassword === null) return false;
 
-  // Se asume que el modelo de usuario expone el hash en user.password
-  return bcrypt.compare(plainPassword, user.password);
+  const candidate = String(plainPassword).trim();
+  if (!candidate) return false;
+
+  const user = await userRepo.findById(userId);
+  if (user && user.password) {
+    return bcrypt.compare(candidate, user.password);
+  }
+
+  // En desarrollo el usuario puede ser un mock y no existir en la DB.
+  if (process.env.NODE_ENV !== "production") {
+    const fallbackPassword = process.env.DEV_ADMIN_PASSWORD || "admin123";
+    return candidate === fallbackPassword;
+  }
+
+  return false;
 };
 
 // ── Catálogos ─────────────────────────────────────────────────────────────────
@@ -167,17 +195,17 @@ const createSupply = async (req, res) => {
       valor_medida,
       medida,
       imagenes_Url = [],
-      stock        = 0,
-      propiedades  = [],
+      stock = 0,
+      propiedades = [],
     } = req.body;
 
     // ── Validación de campos obligatorios ────────────────────────────────────
     const missing = [];
-    if (!nombre?.trim())                        missing.push("nombre");
-    if (!categoria)                             missing.push("categoria");
+    if (!nombre?.trim()) missing.push("nombre");
+    if (!categoria) missing.push("categoria");
     if (valor_medida === undefined || valor_medida === null) missing.push("valor_medida");
-    if (!medida?.trim())                        missing.push("medida");
-    if (stock === undefined || stock === null)  missing.push("stock");
+    if (!medida?.trim()) missing.push("medida");
+    if (stock === undefined || stock === null) missing.push("stock");
 
     if (missing.length > 0) {
       return badRequest(
@@ -204,7 +232,7 @@ const createSupply = async (req, res) => {
 
     // ── Regla: no duplicar insumo ────────────────────────────────────────────
     const existing = await repo.findOne({
-      nombre:    { $regex: new RegExp(`^${nombre.trim()}$`, "i") },
+      nombre: { $regex: new RegExp(`^${nombre.trim()}$`, "i") },
       categoria: mongoose.isValidObjectId(categoria) ? new mongoose.Types.ObjectId(categoria) : categoria,
     });
     if (existing) {
@@ -215,13 +243,13 @@ const createSupply = async (req, res) => {
     const propiedadesNorm = normalizeProperties(propiedades);
 
     const supply = await repo.create({
-      nombre:       nombre.trim(),
+      nombre: nombre.trim(),
       categoria,
-      stock:        Number(stock),
+      stock: Number(stock),
       valor_medida: parseFloat(valor_medida),
-      medida:       medida.trim(),
-      estado:       true,
-      propiedades:  propiedadesNorm,
+      medida: medida.trim(),
+      estado: true,
+      propiedades: propiedadesNorm,
       imagenes_Url: Array.isArray(imagenes_Url) ? imagenes_Url : [],
     });
 
@@ -267,13 +295,13 @@ const updateSupply = async (req, res) => {
     }
 
     // ── Si se cambia nombre o categoría, verificar duplicado ─────────────────
-    const newNombre    = updates.nombre    ?? supply.nombre;
+    const newNombre = updates.nombre ?? supply.nombre;
     const newCategoria = updates.categoria ?? supply.categoria?.toString();
 
     if (updates.nombre !== undefined || updates.categoria !== undefined) {
       const duplicate = await repo.findOne({
-        _id:       { $ne: supply._id ?? supply.id },
-        nombre:    { $regex: new RegExp(`^${newNombre.trim()}$`, "i") },
+        _id: { $ne: supply._id ?? supply.id },
+        nombre: { $regex: new RegExp(`^${newNombre.trim()}$`, "i") },
         categoria: mongoose.isValidObjectId(newCategoria)
           ? new mongoose.Types.ObjectId(newCategoria)
           : newCategoria,
@@ -307,13 +335,16 @@ const deleteSupply = async (req, res) => {
     const supply = await repo.findById(req.params.id);
     if (!supply) return notFound(res, "Insumo no encontrado");
 
-    // ── Regla: contraseña del gerente obligatoria ────────────────────────────
-    const { password } = req.body;
+    if (!isManagerOrAdmin(req.user?.rolNombre)) {
+      return forbidden(res, "Solo gerentes o administradores pueden eliminar insumos.");
+    }
+
+    const password = extractManagerPassword(req);
     if (!password) {
       return badRequest(res, "Se requiere la contraseña del gerente para eliminar un insumo.");
     }
 
-    const passwordOk = await verifyManagerPassword(req.user.id, password);
+    const passwordOk = await verifyManagerPassword(req.user?.id, password);
     if (!passwordOk) {
       return forbidden(res, "Contraseña del gerente incorrecta.");
     }
@@ -342,8 +373,22 @@ const deleteSupply = async (req, res) => {
  */
 const toggleSupply = async (req, res) => {
   try {
+    if (!isManagerOrAdmin(req.user?.rolNombre)) {
+      return forbidden(res, "Solo gerentes o administradores pueden cambiar el estado del insumo.");
+    }
+
     const supply = await repo.findById(req.params.id);
     if (!supply) return notFound(res, "Insumo no encontrado");
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del gerente para cambiar el estado del insumo.");
+    }
+
+    const passwordOk = await verifyManagerPassword(req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del gerente incorrecta.");
+    }
 
     // ── Regla: bloquear toggle si tiene registros asociados ──────────────────
     const linked = await hasAssociatedMaterials(req.params.id);
