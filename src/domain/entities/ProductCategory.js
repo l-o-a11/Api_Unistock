@@ -17,45 +17,38 @@
  * @property {boolean} estado - Estado de la categoría (Generalmente activa)
  */
 
+// domain/entities/ProductCategory.js
 class ProductCategory {
-  /**
-   * Crea nueva instancia de ProductCategory
-   * @param {Object} data - Datos de la categoría
-   * @param {number} data.id - ID único
-   * @param {string} data.nombre - Nombre de la categoría
-   * @param {string} data.descripción - Descripción de la categoría
-   * @param {number} data.cantidad_productos - Cantidad de productos en esta categoría
-   * @param {number} data.productos_disponibles - Cantidad de productos disponibles en esta categoría
-   * @param {boolean} data.estado - Estado de la categoría
-   */
-  constructor({
+  constructor({ 
     id,
     nombre,
-    descripción,
+    descripcion,
     cantidad_productos,
     productos_disponibles,
     estado,
+    createdAt,
+    updatedAt,
   }) {
-    this.id = id;
-    this.nombre = nombre;
-    this.descripción = descripción;
-    this.cantidad_productos = cantidad_productos;
-    this.productos_disponibles = productos_disponibles;
-    this.estado = estado;
+    this.id                   = id;
+    this.nombre               = nombre;
+    this.descripcion          = descripcion          ?? "";
+    this.cantidad_productos   = cantidad_productos   ?? 0;
+    this.productos_disponibles = productos_disponibles ?? 0;
+    this.estado               = estado               ?? true;
+    this.createdAt            = createdAt;
+    this.updatedAt            = updatedAt;
   }
 
-  /**
-   * Convierte a JSON para respuestas HTTP
-   * @returns {Object} Datos de la categoría
-   */
   toJSON() {
     return {
-      id: this.id,
-      nombre: this.nombre,
-      descripción: this.descripción,
-      cantidad_productos: this.cantidad_productos,
+      id:                    this.id,
+      nombre:                this.nombre,
+      descripcion:           this.descripcion,
+      cantidad_productos:    this.cantidad_productos,
       productos_disponibles: this.productos_disponibles,
-      estado: this.estado,
+      estado:                this.estado,
+      createdAt:             this.createdAt,
+      updatedAt:             this.updatedAt,
     };
   }
 }
