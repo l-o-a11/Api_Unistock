@@ -8,11 +8,16 @@ const repo = new ThirdPartiesRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
 const productionRepo = new ProductionRepository();
 
-const idToString = (value) => {
+const idToString = (value, depth = 0) => {
   if (!value) return "";
-  if (value._id) return idToString(value._id);
+  if (depth > 5) return value?.toString ? value.toString() : String(value);
+
+  // Evitar recursión infinita si Mongoose/valor se refiere a sí mismo
+  if (value._id && value._id !== value) return idToString(value._id, depth + 1);
+
   return value.toString ? value.toString() : String(value);
 };
+
 
 const entityToJSON = (entity) => (entity?.toJSON ? entity.toJSON() : entity);
 
@@ -49,6 +54,9 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
       fecha: order?.fecha_entrega || assignment.fecha || "",
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
+      // ✅ Incluir estado de la orden para que el frontend pueda filtrar
+      // las que ya pasaron de "Producción" a "Empaque" o posteriores
+      estado: order?.estado || null,
     });
     grouped.set(terceroId, producciones);
   }
@@ -202,6 +210,53 @@ const deleteThirdParty = async (req, res) => {
   }
 };
 
+// ── Vinculación Tercero ↔ Producción ───────────────────────────────────────
+// Endpoint: POST /api/terceros/:id/producciones
+// Payload esperado (frontend): { orden, fecha, produccionId, cantidad }
+// Persistencia real: ThirdPartyAssignment (id_tercero, id_orden, cantidad)
+const linkProduccionToTercero = async (req, res) => {
+  try {
+    const thirdPartyId = req.params.id;
+    if (!thirdPartyId) return badRequest(res, "Falta id del tercero");
+
+    const data = req.body || {};
+    const produccionId = data.produccionId || data.produccion_id || data.id_orden || data.ordenId || data.orden;
+    const cantidad = Number(data.cantidad) || 0;
+
+    if (!produccionId) return badRequest(res, "Falta produccionId (o equivalente)");
+    if (!cantidad || cantidad <= 0) return badRequest(res, "La cantidad debe ser > 0");
+
+    // Validar que la orden exista
+    const production = await productionRepo.findById(produccionId).catch(() => null);
+    if (!production) {
+      return notFound(res, "Producción/orden no encontrada");
+    }
+
+    // Upsert: si ya existe asignación para (id_tercero, id_orden), sumar/actualizar cantidad
+    const all = await assignmentRepo.findAll({ id_tercero: thirdPartyId, id_orden: produccionId });
+    if (all && all.length > 0) {
+      const existing = all[0];
+      const nextCantidad = (Number(existing.cantidad) || 0) + cantidad;
+      // assignmentRepo.update usa id del documento
+      const updated = await assignmentRepo.update(existing.id || existing._id, { cantidad: nextCantidad, fecha: data.fecha || undefined });
+      return ok(res, updated?.toJSON ? updated.toJSON() : updated);
+    }
+
+    const createdAssignment = await assignmentRepo.create({
+      id_tercero: thirdPartyId,
+      id_orden: produccionId,
+      cantidad,
+      fecha: data.fecha ? new Date(data.fecha) : undefined,
+    });
+
+    // Devolver el tercero actualizado con producciones (frontend espera algo, aunque no es crítico)
+    return ok(res, await attachProducciones(await repo.findById(thirdPartyId)));
+  } catch (err) {
+    console.error("[thirdPartiesController] linkProduccionToTercero error:", err);
+    return serverError(res);
+  }
+};
+
 module.exports = {
   getThirdParties,
   getThirdPartyById,
@@ -209,4 +264,6 @@ module.exports = {
   updateThirdParty,
   toggleThirdParty,
   deleteThirdParty,
+  linkProduccionToTercero,
 };
+
