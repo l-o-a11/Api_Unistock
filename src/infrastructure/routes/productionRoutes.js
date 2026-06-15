@@ -332,4 +332,8 @@ router.delete("/detalle-orden/:id",  ctrl.deleteOrderDetail);
 router.get("/asignaciones",          ctrl.getAssignments);
 router.post("/asignaciones",         ctrl.createAssignment);
 
+// Alertas y Calendario (portados del Backend)
+router.get("/alertas",               ctrl.getAlertas);
+router.get("/calendario",            ctrl.getCalendario);
+
 module.exports = router;

@@ -43,7 +43,7 @@ class ThirdPartiesRepository {
   }
 
   async update(id, changes) {
-    const doc = await ThirdPartiesModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await ThirdPartiesModel.findByIdAndUpdate(id, changes, { returnDocument: 'after' }).catch(() => null);
     return this._toEntity(doc);
   }
 

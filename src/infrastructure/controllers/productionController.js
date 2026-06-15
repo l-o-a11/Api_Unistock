@@ -392,6 +392,71 @@ const createAssignment = async (req, res) => {
   }
 };
 
+// ── Alertas ───────────────────────────────────────────────────────────────────
+
+const getAlertas = async (req, res) => {
+  try {
+    const alertas = await prodRepo.findAlertas();
+    return ok(res, alertas);
+  } catch (err) {
+    console.error("Error en getAlertas:", err);
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+  }
+};
+
+// ── Calendario ────────────────────────────────────────────────────────────────
+
+const getCalendario = async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    const ordenes = await prodRepo.findParaCalendario(desde, hasta);
+
+    const COLORES_ESTADO = {
+      'Diseño':        { color: '#7c3aed', tipo: 'diseno'     },
+      'Ficha Técnica': { color: '#7c3aed', tipo: 'diseno'     },
+      'Corte':         { color: '#0891b2', tipo: 'corte'      },
+      'Compras':       { color: '#d97706', tipo: 'calidad'    },
+      'Producción':    { color: '#ec4899', tipo: 'produccion' },
+    };
+
+    const eventos = [];
+    ordenes.forEach((orden) => {
+      const colorInfo = COLORES_ESTADO[orden.estado] || { color: '#6366f1', tipo: 'creacion' };
+
+      eventos.push({
+        id:           `estado-${orden.id}`,
+        title:        `#${orden.numero_orden} ${orden.cliente} — ${orden.estado}`,
+        date:         orden.ultimo_cambio?.fecha
+          ? new Date(orden.ultimo_cambio.fecha).toISOString().split('T')[0]
+          : new Date(orden.fecha_entrega).toISOString().split('T')[0],
+        tipo:         colorInfo.tipo,
+        color:        colorInfo.color,
+        orderId:      orden.id,
+        numero_orden: orden.numero_orden,
+        estado:       orden.estado,
+        cliente:      orden.cliente,
+      });
+
+      eventos.push({
+        id:           `entrega-${orden.id}`,
+        title:        ` Entrega #${orden.numero_orden} — ${orden.cliente}`,
+        date:         new Date(orden.fecha_entrega).toISOString().split('T')[0],
+        tipo:         'entrega',
+        color:        '#16a34a',
+        orderId:      orden.id,
+        numero_orden: orden.numero_orden,
+        estado:       orden.estado,
+        cliente:      orden.cliente,
+      });
+    });
+
+    return ok(res, eventos);
+  } catch (err) {
+    console.error("Error en getCalendario:", err);
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+  }
+};
+
 module.exports = {
   getOrders,
   getOrderById,
@@ -406,4 +471,6 @@ module.exports = {
   createOrderDetail,
   getAssignments,
   createAssignment,
+  getAlertas,
+  getCalendario,
 };
