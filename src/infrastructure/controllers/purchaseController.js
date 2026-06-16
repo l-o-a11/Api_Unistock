@@ -1,14 +1,10 @@
 /**
  * purchaseController.js
- *
- * Controlador para la gestión de Compras.
- * Patrón: igual a productionController — usa repositorios directamente,
- * sin pasar por use-cases intermedios excepto para AnularPurchase y CreatePurchase
- * (que tienen lógica de negocio propia).
  */
 
 const PurchaseRepository = require("../repositories/PurchaseRepository");
 const PurchaseDetailRepository = require("../repositories/PurchaseDetailRepository");
+const SupplyRepository = require("../repositories/SupplyRepository");
 const AnularPurchase = require("../../application/use-cases/purchases/AnularPurchase");
 const CreatePurchase = require("../../application/use-cases/purchases/CreatePurchase");
 
@@ -18,11 +14,11 @@ const {
 
 const purchaseRepo = new PurchaseRepository();
 const purchaseDetailRepo = new PurchaseDetailRepository();
+const supplyRepo = new SupplyRepository();
 const anularUC = new AnularPurchase(purchaseRepo);
 const createUC = new CreatePurchase(purchaseRepo);
 
 // ── GET /api/compras ──────────────────────────────────────────────────────────
-// Query params opcionales: anulada=true|false, proveedorId, numeroFactura
 const obtenerPurchases = async (req, res) => {
   try {
     const purchases = await purchaseRepo.findAll(req.query);
@@ -34,7 +30,6 @@ const obtenerPurchases = async (req, res) => {
 };
 
 // ── GET /api/compras/:id ──────────────────────────────────────────────────────
-// Devuelve la compra + sus detalles embebidos
 const obtenerPurchase = async (req, res) => {
   try {
     const purchase = await purchaseRepo.findById(req.params.id);
@@ -49,13 +44,11 @@ const obtenerPurchase = async (req, res) => {
 };
 
 // ── POST /api/compras ─────────────────────────────────────────────────────────
-// Body: { fecha, proveedorId, total, observaciones, numeroFactura, detalles[] }
-// Crea la compra y sus detalles en una sola llamada (atómico a nivel aplicación)
 const crearPurchase = async (req, res) => {
   try {
     const { detalles = [], ...purchaseData } = req.body;
 
-    // Crear cabecera (use case valida duplicado de factura)
+    // Crear cabecera
     let purchase;
     try {
       purchase = await createUC.execute(purchaseData);
@@ -65,21 +58,48 @@ const crearPurchase = async (req, res) => {
       throw err;
     }
 
-    // Crear detalles
+    // Crear detalles + sincronizar stock
     const detallesCreados = [];
     for (const d of detalles) {
-      if (!d.cantidad || !d.precioUnitario) continue; // silenciar detalles incompletos
+      if (!d.cantidad || !d.precioUnitario) continue;
 
+      const cantidad = parseFloat(d.cantidad);
       const subtotal = d.subtotal !== undefined
         ? parseFloat(d.subtotal)
-        : parseFloat(d.cantidad) * parseFloat(d.precioUnitario);
+        : cantidad * parseFloat(d.precioUnitario);
+
+      // ── Stock: si el insumo existe → incrementar. Si es nuevo → crear. ──
+      let insumoId = d.insumoId ?? null;
+
+      if (insumoId) {
+        // Insumo existente — sumar cantidad al stock actual (atómico con $inc)
+        await supplyRepo.incrementStock(insumoId, cantidad);
+      } else if (d.nombre) {
+        // Insumo nuevo — crearlo con stock = cantidad comprada
+        const nuevoInsumo = await supplyRepo.create({
+          nombre: d.nombre,
+          categoria: d.categoria ?? null,
+          stock: cantidad,
+          medida: d.medida ?? null,
+          valor_medida: d.valor_medida ?? null,
+          estado: true,
+          propiedades: [],
+        }).catch((err) => {
+          // Si falla (categoria requerida, nombre duplicado, etc.)
+          // NO interrumpimos la compra — solo logueamos
+          console.error("[crearPurchase] No se pudo crear insumo automático:", err.message);
+          return null;
+        });
+
+        if (nuevoInsumo) insumoId = nuevoInsumo.id;
+      }
 
       const detalle = await purchaseDetailRepo.create({
         compraId: purchase.id,
         productoId: d.productoId ?? null,
-        insumoId: d.insumoId ?? null,
+        insumoId,
         nombre: d.nombre ?? null,
-        cantidad: parseFloat(d.cantidad),
+        cantidad,
         precioUnitario: parseFloat(d.precioUnitario),
         subtotal,
       });
@@ -103,9 +123,7 @@ const actualizarPurchase = async (req, res) => {
       return badRequest(res, "No se puede editar una compra anulada");
     }
 
-    // No permitir editar campos de anulación por esta ruta
     const { motivoAnulacion, fechaAnulacion, anulada, ...cambiosPermitidos } = req.body;
-
     const updated = await purchaseRepo.update(req.params.id, cambiosPermitidos);
     return ok(res, updated.toPublic());
   } catch (err) {
@@ -120,7 +138,6 @@ const eliminarPurchase = async (req, res) => {
     const purchase = await purchaseRepo.findById(req.params.id);
     if (!purchase) return notFound(res, "Compra no encontrada");
 
-    // Eliminar detalles primero
     await purchaseDetailRepo.deleteByCompraId(req.params.id);
     await purchaseRepo.delete(req.params.id);
 
@@ -132,12 +149,36 @@ const eliminarPurchase = async (req, res) => {
 };
 
 // ── PATCH /api/compras/:id/anular ─────────────────────────────────────────────
-// Body: { motivo: "texto obligatorio" }
+// Al anular, se revierte el stock que la compra había sumado:
+// por cada detalle con insumoId, se resta esa misma cantidad del inventario.
 const anularPurchase = async (req, res) => {
   try {
     const { motivo } = req.body;
 
+    // anularUC ya valida: existe, no está anulada, motivo no vacío
     const updated = await anularUC.execute(req.params.id, motivo);
+
+    // ── Revertir stock ──────────────────────────────────────────────────
+    // Solo se descuenta de insumos que SÍ están vinculados (insumoId presente).
+    // Los detalles sin insumoId (insumo nuevo que falló al crearse) no tienen
+    // nada que revertir porque tampoco sumaron stock en su momento.
+    const detalles = await purchaseDetailRepo.findAll({ compraId: req.params.id });
+
+    for (const d of detalles) {
+      if (d.insumoId) {
+        // incrementStock con cantidad negativa = decremento atómico
+        await supplyRepo.incrementStock(d.insumoId, -d.cantidad).catch((err) => {
+          // No interrumpir la anulación si un insumo puntual falla al revertir
+          // (ej: el insumo fue eliminado después de la compra). Se loguea para
+          // que el equipo revise manualmente ese caso.
+          console.error(
+            `[anularPurchase] No se pudo revertir stock del insumo ${d.insumoId}:`,
+            err.message
+          );
+        });
+      }
+    }
+
     return ok(res, { ...updated, message: "Compra anulada correctamente" });
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -149,7 +190,6 @@ const anularPurchase = async (req, res) => {
 };
 
 // ── GET /api/compras/detalle-purchase ─────────────────────────────────────────
-// Query: ?compraId=xxx o ?purchaseId=xxx
 const getPurchaseDetail = async (req, res) => {
   try {
     const details = await purchaseDetailRepo.findAll(req.query);
@@ -189,16 +229,23 @@ const createPurchaseDetail = async (req, res) => {
       return badRequest(res, "No se pueden agregar detalles a una compra anulada");
     }
 
+    const cantidadNum = parseFloat(cantidad);
+
+    // Incrementar stock si viene insumoId
+    if (insumoId) {
+      await supplyRepo.incrementStock(insumoId, cantidadNum);
+    }
+
     const detail = await purchaseDetailRepo.create({
       compraId: idCompra,
       productoId: productoId ?? null,
       insumoId: insumoId ?? null,
       nombre: nombre ?? null,
-      cantidad: parseFloat(cantidad),
+      cantidad: cantidadNum,
       precioUnitario: parseFloat(precioUnitario),
       subtotal: subtotal !== undefined
         ? parseFloat(subtotal)
-        : parseFloat(cantidad) * parseFloat(precioUnitario),
+        : cantidadNum * parseFloat(precioUnitario),
     });
 
     return created(res, detail.toPublic());
