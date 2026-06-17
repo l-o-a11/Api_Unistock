@@ -23,8 +23,26 @@ const { specs, swaggerUi } = require("../swagger/swagger");
 const app = express();
 
 // CORS Configuration
+// Se aceptan: el frontend web, el emulador Android (10.0.2.2) y cualquier
+// dispositivo físico en red local.  En producción ajusta FRONTEND_URL y
+// MOBILE_URL en el .env en lugar de usar allowAll.
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  // Emulador Android redirige 10.0.2.2 → host de la PC
+  "http://10.0.2.2:3000",
+  // Dispositivos físicos en red local (ajusta la IP de tu PC si es fija)
+  ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
+];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173", //ajusta según sea necesario esto es del fron
+  origin: (origin, callback) => {
+    // Permitir peticiones sin origin (apps móviles nativas, Postman, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // En desarrollo permitir cualquier origen para facilitar pruebas
+    if (process.env.NODE_ENV !== "production") return callback(null, true);
+    callback(new Error(`CORS: origen no permitido → ${origin}`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],

@@ -123,6 +123,8 @@ class Production {
       originalOrderStatus: this.originalOrderStatus,
       producto: this.producto,
       referencia: this.referencia,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }

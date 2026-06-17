@@ -20,6 +20,7 @@ const thirdPartiesSchema = new mongoose.Schema({
   
   // Identificación
   codigo_tercero: { type: String, unique: true, sparse: true }, // Auto-generado si no existe
+  codigo: { type: String, unique: true, sparse: true },
   
   // Web
   sitio_web: { type: String },
