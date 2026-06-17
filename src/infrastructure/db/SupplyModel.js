@@ -8,54 +8,31 @@ const mongoose = require("mongoose");
  */
 const propiedadSchema = new mongoose.Schema(
   {
-    clave:  { type: String, required: true },   // ej: "color", "material"
-    label:  { type: String, required: true },   // ej: "Color", "Material"
-    valor:  { type: String, required: true },   // ej: "Rojo", "Algodón"
+    clave: { type: String, required: true },   // ej: "color", "material"
+    label: { type: String, required: true },   // ej: "Color", "Material"
+    valor: { type: String, required: true },   // ej: "Rojo", "Algodón"
   },
   { _id: false },
 );
 
 const supplySchema = new mongoose.Schema(
   {
-    nombre: {
-      type:     String,
-      required: true,
-      trim:     true,
-    },
-    categoria: {
-      type:     mongoose.Schema.Types.ObjectId,
-      ref:      "SupplyCategory",
-      required: true,
-    },
-    stock: {
-      type:    Number,
-      default: 0,
-      min:     0,
-    },
-    valor_medida: {
-      type: Number,
-      min:  0,
-    },
-    medida: {
-      type: String,
-      trim: true,
-    },
-    imagenes_Url: {
-      type:    [String],
-      default: [],
-    },
-    estado: {
-      type:    Boolean,
-      default: true,
-    },
+    nombre: { type: String, required: true, trim: true, },
+    categoria: {type: mongoose.Schema.Types.ObjectId,ref: "SupplyCategory", required: true, },
+    stock: {type: Number,default: 0, min: 0,},
+    valor_medida: { type: Number, min: 0, },
+    medida: { type: String, trim: true, },
+    // ── NUEVO ──────────────────────────────────────────────────────
+    imagen: { type: String, default: null },           // URL pública de Cloudinary
+    imagenPublicId: { type: String, default: null },   // Para poder eliminarla
+
+    estado: {type: Boolean, default: true, },
     /**
      * Al menos 1 propiedad requerida — validado en el controller/middleware,
      * no a nivel de esquema para permitir flexibilidad en updates parciales.
      */
-    propiedades: {
-      type:    [propiedadSchema],
-      default: [],
-    },
+    propiedades: {type: [propiedadSchema],  default: [], },
+
   },
   { timestamps: true },
 );

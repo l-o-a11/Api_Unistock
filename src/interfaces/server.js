@@ -84,6 +84,12 @@ app.use((err, req, res, next) => {
       .json({ success: false, message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB." });
   }
 
+  // Errores de Multer (tamaño de archivo, campo inesperado, etc.) y del
+  // fileFilter de multer.middleware.js (tipo de archivo no permitido).
+  if (err?.name === "MulterError" || /Solo se permiten imágenes/.test(err?.message || "")) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
   console.error(err.stack);
   res
     .status(500)

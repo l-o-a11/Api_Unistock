@@ -20,7 +20,13 @@ const {
     conflict,
     unprocessable,
     serverError,
+    forbidden,
 } = require("../../shared/utils/response");
+const {
+    isManagerOrAdmin,
+    extractManagerPassword,
+    verifyManagerPassword,
+} = require("../../shared/utils/managerAuth");
 
 const siteRepo = new SiteRepository();
 const userRepo = new UserRepository();
@@ -77,8 +83,23 @@ const updateSite = async (req, res) => {
 // ── DELETE /api/sites/:id ──────────────────────────────────────────────────────
 const deleteSite = async (req, res) => {
     try {
-        // FIX #3: DeleteSite requiere 3 args (siteRepo, userRepo, ProductionOrderModel)
-        // Antes se pasaban solo 2 → ProductionOrderModel era undefined → TypeError
+        const site = await siteRepo.findById(req.params.id);
+        if (!site) return notFound(res, "Sede no encontrada");
+
+        if (!isManagerOrAdmin(req.user?.rolNombre)) {
+            return forbidden(res, "Solo gerentes o administradores pueden eliminar sedes.");
+        }
+
+        const password = extractManagerPassword(req);
+        if (!password) {
+            return badRequest(res, "Se requiere la contraseña del gerente para eliminar la sede.");
+        }
+
+        const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+        if (!passwordOk) {
+            return forbidden(res, "Contraseña del gerente incorrecta.");
+        }
+
         await new DeleteSite(siteRepo, userRepo).execute(req.params.id);
         return noContent(res);
     } catch (err) {
@@ -92,12 +113,24 @@ const deleteSite = async (req, res) => {
 const toggleSite = async (req, res) => {
     try {
         const site = await siteRepo.findById(req.params.id);
-        // FIX #4: antes no se verificaba null → updatedSite.toJSON() explotaba
         if (!site) return notFound(res, "Sede no encontrada");
+
+        if (!isManagerOrAdmin(req.user?.rolNombre)) {
+            return forbidden(res, "Solo gerentes o administradores pueden cambiar el estado de la sede.");
+        }
+
+        const password = extractManagerPassword(req);
+        if (!password) {
+            return badRequest(res, "Se requiere la contraseña del gerente para cambiar el estado de la sede.");
+        }
+
+        const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+        if (!passwordOk) {
+            return forbidden(res, "Contraseña del gerente incorrecta.");
+        }
 
         const updatedSite = await siteRepo.update(req.params.id, { estado: !site.estado });
 
-        // FIX #4: _toEntity puede devolver null si el update falla; lo verificamos
         if (!updatedSite) return serverError(res, "No se pudo actualizar el estado");
 
         return ok(res, updatedSite);
