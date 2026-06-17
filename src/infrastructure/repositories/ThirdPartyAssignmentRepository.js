@@ -11,11 +11,12 @@ class ThirdPartyAssignmentRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.id_orden)   query.id_orden   = filters.id_orden;
+    if (filters.id_orden) query.id_orden = filters.id_orden;
     if (filters.id_tercero) query.id_tercero = filters.id_tercero;
     const docs = await ThirdPartyAssignmentModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
+
 
   async findById(id) {
     const doc = await ThirdPartyAssignmentModel.findById(id).catch(() => null);
@@ -28,7 +29,7 @@ class ThirdPartyAssignmentRepository {
   }
 
   async update(id, changes) {
-    const doc = await ThirdPartyAssignmentModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await ThirdPartyAssignmentModel.findByIdAndUpdate(id, changes, { returnDocument: 'after' }).catch(() => null);
     return this._toEntity(doc);
   }
 

@@ -19,6 +19,9 @@ const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 const validateSchema = require("../middlewares/validateSchema");
 const { createThirdPartySchema, updateThirdPartySchema } = require("../../shared/schemas/thirdPartySchema");
 
+// Asignación de producciones a terceros (frontend usa POST /terceros/:id/producciones)
+
+
 const router = Router();
 
 router.use(requireAuth);
@@ -115,10 +118,15 @@ router.delete("/:id", ctrl.deleteThirdParty);
 // El frontend llama PATCH /api/terceros/:id/toggle
 router.patch("/:id/toggle", ctrl.toggleThirdParty);
 
+// Vincular producciones a un tercero
+// FRONT: thirdPartyAPI.linkProduccion(id, { orden, fecha, produccionId, cantidad })
+router.post("/:id/producciones", ctrl.linkProduccionToTercero);
+
 
 /**
  * @swagger
  * /terceros/{id}:
+
  *   get:
  *     summary: Obtener un tercero por ID
  *     tags: [Terceros]

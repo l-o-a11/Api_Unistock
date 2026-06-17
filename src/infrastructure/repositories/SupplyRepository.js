@@ -63,6 +63,25 @@ class SupplyRepository {
     return this._toEntity(doc);
   }
 
+  /**
+   * Incrementa (o decrementa, si cantidad es negativa) el stock de un insumo
+   * de forma atómica usando $inc — evita condiciones de carrera si dos
+   * operaciones tocan el mismo insumo al mismo tiempo (ej: dos compras
+   * registrándose en simultáneo).
+   *
+   * @param {string} id        — ObjectId del insumo
+   * @param {number} cantidad  — cantidad a sumar al stock actual
+   */
+  async incrementStock(id, cantidad) {
+    const doc = await SupplyModel.findByIdAndUpdate(
+      id,
+      { $inc: { stock: cantidad } },
+      { new: true }
+    ).catch(() => null);
+
+    return this._toEntity(doc);
+  }
+
   async delete(id) {
     const result = await SupplyModel.findByIdAndDelete(id).catch(() => null);
     return !!result;

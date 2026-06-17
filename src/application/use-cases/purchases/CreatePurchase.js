@@ -6,25 +6,32 @@ class CreatePurchase {
   }
 
   async execute(data) {
-    const { fecha, proveedorId, total, estado = true, observaciones, numeroFactura } = data;
+    const { fecha, proveedorId, total, observaciones, numeroFactura } = data;
 
     // Validaciones básicas
-    if (!fecha || !proveedorId || total === undefined) {
-      const error = new Error("Datos incompletos para crear la compra");
+    if (!fecha || !proveedorId || total === undefined || !numeroFactura) {
+      const error = new Error("Faltan campos requeridos: fecha, proveedorId, total, numeroFactura");
       error.statusCode = 422;
       throw error;
     }
 
-    // Aquí podrías validar que el proveedor existe, etc.
-    // Por ahora, asumimos que sí.
+    // Duplicado de factura
+    const existente = await this.purchaseRepository.findByNumeroFactura(numeroFactura.trim());
+    if (existente) {
+      const error = new Error(`Ya existe una compra con la factura "${numeroFactura}"`);
+      error.statusCode = 409;
+      throw error;
+    }
 
-    const purchase = this.purchaseRepository.save({
+    const purchase = await this.purchaseRepository.create({
       fecha,
-      proveedorId: parseInt(proveedorId),
+      proveedorId,           // ObjectId string — Mongoose lo castea solo
       total: parseFloat(total),
-      estado,
+      anulada: false,
       observaciones,
-      numeroFactura,
+      numeroFactura: numeroFactura.trim(),
+      motivoAnulacion: null,
+      fechaAnulacion: null,
     });
 
     return purchase.toPublic();

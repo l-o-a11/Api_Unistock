@@ -25,7 +25,8 @@ const siteRepo = new SiteRepository();
 
 const login = async (req, res) => {
   try {
-    const result = await new LoginUser(repo).execute(req.body);
+    // LoginUser necesita roleRepository para verificar el rol sin importar RoleModel
+    const result = await new LoginUser(repo, roleRepo).execute(req.body);
     return ok(res, result);
   } catch (err) {
     console.error("ERROR LOGIN:", err);
@@ -42,10 +43,11 @@ const verifyPassword = async (req, res) => {
     const { password } = req.body;
     if (!password) return badRequest(res, "La contraseña es requerida");
 
-    const user = await repo.findById(req.user.id);
+    // findByIdWithPassword garantiza que el hash está presente en la entidad
+    const user = await repo.findByIdWithPassword(req.user.id);
     if (!user) return unauthorized(res, "Usuario no encontrado");
 
-    const { compare } = require("../../infrastructure/security/password_encrypter");
+    // compare ya está importado al tope del archivo — no re-importar aquí
     const match = await compare(password, user.password);
     if (!match) return unauthorized(res, "Contraseña incorrecta");
 
@@ -153,6 +155,23 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// PUT /auth/profile — el usuario autenticado actualiza sus propios datos
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { nombreCompleto, correo } = req.body;
+    const changes = {};
+    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
+    if (correo) changes.correo = correo;
+    const updated = await new UpdateUser(repo, roleRepo, siteRepo).execute(userId, changes);
+    return ok(res, updated);
+  } catch (err) {
+    if (err.statusCode === 409) return conflict(res, err.message);
+    if (err.statusCode === 404) return notFound(res, err.message);
+    return serverError(res);
+  }
+};
+
 const changePassword = async (req, res) => {
   try {
     const result = await new ChangePassword(repo).execute({
@@ -175,5 +194,5 @@ module.exports = {
   getUsers, getUserById, createUser,
   updateUser, toggleStatus, deleteUser,
   getRoles, getSedes,
-  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword,
+  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword, updateProfile,
 };

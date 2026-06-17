@@ -31,14 +31,10 @@ class ProductionRepository {
 
   async update(id, changes) {
     const doc = await ProductionOrderModel
-      .findByIdAndUpdate(id, changes, { new: true, runValidators: true });
+      .findByIdAndUpdate(id, changes, { returnDocument: 'after', runValidators: true });
     return this._toEntity(doc);
   }
 
-  /**
-   * Anula una orden: pone estado "Anulada", guarda motivo
-   * y agrega entrada al historial.
-   */
   async anular(id, motivo, id_usuario, user) {
     const historialEntry = {
       estado: "Anulada",
@@ -55,15 +51,12 @@ class ProductionRepository {
           motivo_anulacion: motivo || null,
           $push: { historial: historialEntry },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .catch(() => null);
     return this._toEntity(doc);
   }
 
-  /**
-   * Cambia el estado de la orden y registra la transición en el historial.
-   */
   async cambiarEstado(id, nuevoEstado, id_usuario, user, extra = {}) {
     const historialEntry = {
       estado: nuevoEstado,
@@ -79,10 +72,106 @@ class ProductionRepository {
       .findByIdAndUpdate(
         id,
         updateDoc,
-        { new: true, runValidators: true },
+        { returnDocument: 'after', runValidators: true },
       )
       .catch(() => null);
     return this._toEntity(doc);
+  }
+
+  /**
+   * findAlertas — Devuelve tres grupos de alertas:
+   *   vencidas        — fecha_entrega ya pasó y la orden no está anulada
+   *   proximas_vencer — vencen en los próximos 3 días
+   *   en_espera_larga — llevan más de 7 días en el mismo estado sin avanzar
+   */
+  async findAlertas() {
+    const ahora = new Date();
+    const en3dias = new Date(ahora.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const hace7dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [vencidas, proximasVencer, todasActivas] = await Promise.all([
+      // Vencidas: fecha_entrega pasada y no anuladas
+      ProductionOrderModel.find({
+        estado: { $nin: ["Anulada", "Enviado"] },
+        fecha_entrega: { $lt: ahora },
+      }).lean(),
+
+      // Próximas a vencer: vencen en los próximos 3 días
+      ProductionOrderModel.find({
+        estado: { $nin: ["Anulada", "Enviado"] },
+        fecha_entrega: { $gte: ahora, $lte: en3dias },
+      }).lean(),
+
+      // Para calcular en espera larga: ordenes activas
+      ProductionOrderModel.find({
+        estado: { $nin: ["Anulada", "Enviado"] },
+      }).lean(),
+    ]);
+
+    // En espera larga: último cambio de estado hace más de 7 días
+    const enEsperaLarga = todasActivas.filter((orden) => {
+      if (!orden.historial || orden.historial.length === 0) {
+        // Si no tiene historial, usar createdAt
+        return orden.createdAt && new Date(orden.createdAt) < hace7dias;
+      }
+      const ultimoCambio = orden.historial[orden.historial.length - 1];
+      return ultimoCambio.fecha && new Date(ultimoCambio.fecha) < hace7dias;
+    });
+
+    const toPlain = (doc) => {
+      const id = doc._id ? doc._id.toString() : doc.id;
+      return {
+        id,
+        numero_orden: doc.numero_orden,
+        cliente: doc.cliente,
+        estado: doc.estado,
+        fecha_entrega: doc.fecha_entrega,
+        historial: doc.historial || [],
+        ultimo_cambio: doc.historial?.length
+          ? doc.historial[doc.historial.length - 1]
+          : null,
+      };
+    };
+
+    return {
+      vencidas:       vencidas.map(toPlain),
+      proximas_vencer: proximasVencer.map(toPlain),
+      en_espera_larga: enEsperaLarga.map(toPlain),
+    };
+  }
+
+  /**
+   * findParaCalendario — Devuelve órdenes activas para el calendario.
+   * @param {string} desde  — ISO yyyy-mm-dd (opcional)
+   * @param {string} hasta  — ISO yyyy-mm-dd (opcional)
+   */
+  async findParaCalendario(desde, hasta) {
+    const query = {
+      estado: { $nin: ["Anulada"] },
+    };
+
+    if (desde || hasta) {
+      query.fecha_entrega = {};
+      if (desde) query.fecha_entrega.$gte = new Date(desde);
+      if (hasta) query.fecha_entrega.$lte = new Date(hasta);
+    }
+
+    const docs = await ProductionOrderModel.find(query).lean();
+
+    return docs.map((doc) => {
+      const id = doc._id ? doc._id.toString() : doc.id;
+      const ultimoCambio = doc.historial?.length
+        ? doc.historial[doc.historial.length - 1]
+        : null;
+      return {
+        id,
+        numero_orden: doc.numero_orden,
+        cliente: doc.cliente,
+        estado: doc.estado,
+        fecha_entrega: doc.fecha_entrega,
+        ultimo_cambio: ultimoCambio,
+      };
+    });
   }
 }
 
