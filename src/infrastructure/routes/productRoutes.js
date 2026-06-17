@@ -19,7 +19,7 @@
  * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha técnica
  * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha técnica
  * 
- * Todos requieren autenticaciÃ³n (JWT token)
+ * Todos requieren autenticación (JWT token)
  * 
  * @author Unistock Team
  * @version 1.0.0

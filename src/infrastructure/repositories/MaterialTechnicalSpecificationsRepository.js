@@ -9,7 +9,7 @@ class MaterialTechnicalSpecificationsRepository {
     const obj = doc.toObject ? doc.toObject() : doc;
     return new MaterialTechnicalSpecifications({
       ...obj,
-      id: obj._id.toString(),
+      id: obj._id?.toString?.() ?? obj.id,
       id_producto: obj.id_producto?.toString?.() ?? obj.id_producto,
       id_ficha_tecnica: obj.id_ficha_tecnica?.toString?.() ?? obj.id_ficha_tecnica,
       id_insumo: obj.id_insumo?.toString?.() ?? obj.id_insumo,

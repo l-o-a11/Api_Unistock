@@ -18,7 +18,7 @@ class ProductRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await ProductModel.find(query);
+    const docs = await ProductModel.find(query).sort({ _id: 1 });
     return docs.map((d) => this._toEntity(d));
   }
 

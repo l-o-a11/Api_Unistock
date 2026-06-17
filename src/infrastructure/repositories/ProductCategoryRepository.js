@@ -19,7 +19,7 @@ class ProductCategoryRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await ProductCategoryModel.find(query);
+    const docs = await ProductCategoryModel.find(query).sort({ _id: 1 });
     return docs.map((d) => this._toEntity(d));
   }
 
