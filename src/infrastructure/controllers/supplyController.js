@@ -12,6 +12,7 @@
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { uploadImage, deleteImage } = require("../cloudinary/cloudinary.service");
 
 const SupplyRepository = require("../repositories/SupplyRepository");
 const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
@@ -194,7 +195,6 @@ const createSupply = async (req, res) => {
       categoria,
       valor_medida,
       medida,
-      imagenes_Url = [],
       stock = 0,
       propiedades = [],
     } = req.body;
@@ -215,12 +215,14 @@ const createSupply = async (req, res) => {
     }
 
     // ── Regla: al menos 1 propiedad ──────────────────────────────────────────
-    if (!Array.isArray(propiedades) || propiedades.length === 0) {
+    // multipart/form-data serializa arrays como JSON string; parsear si es necesario.
+    const propiedadesArr = typeof propiedades === "string" ? (() => { try { return JSON.parse(propiedades); } catch { return []; } })() : propiedades;
+    if (!Array.isArray(propiedadesArr) || propiedadesArr.length === 0) {
       return badRequest(res, "El insumo debe tener al menos una propiedad.");
     }
 
     // Verificar que cada propiedad tenga clave, label y valor
-    const invalidProps = propiedades.filter(
+    const invalidProps = propiedadesArr.filter(
       (p) => !p.clave?.trim() || !p.label?.trim() || !p.valor?.toString().trim(),
     );
     if (invalidProps.length > 0) {
@@ -240,9 +242,28 @@ const createSupply = async (req, res) => {
     }
 
     // ── Normalizar propiedades ───────────────────────────────────────────────
-    const propiedadesNorm = normalizeProperties(propiedades);
+    const propiedadesNorm = normalizeProperties(propiedadesArr);
+
+    // ── Subir imagen a Cloudinary (si se envió un archivo en el campo "imagen") ─
+    // Pre-generamos el _id para usarlo como public_id de Cloudinary y así
+    // mantener una relación 1 a 1 estable entre el insumo y su imagen.
+    const newId = new mongoose.Types.ObjectId();
+    let imagen = null;
+    let imagenPublicId = null;
+
+    if (req.file) {
+      try {
+        const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+        const uploaded = await uploadImage(dataUri, newId.toString());
+        imagen = uploaded.url;
+        imagenPublicId = uploaded.public_id;
+      } catch (uploadErr) {
+        return serverError(res, `No se pudo subir la imagen a Cloudinary: ${uploadErr.message}`);
+      }
+    }
 
     const supply = await repo.create({
+      _id: newId,
       nombre: nombre.trim(),
       categoria,
       stock: Number(stock),
@@ -250,7 +271,8 @@ const createSupply = async (req, res) => {
       medida: medida.trim(),
       estado: true,
       propiedades: propiedadesNorm,
-      imagenes_Url: Array.isArray(imagenes_Url) ? imagenes_Url : [],
+      imagen,
+      imagenPublicId,
     });
 
     return created(res, supply.toPublic());
@@ -277,8 +299,40 @@ const updateSupply = async (req, res) => {
     if (!supply) return notFound(res, "Insumo no encontrado");
 
     const updates = { ...req.body };
+    // Campo heredado de un patrón distinto (productos/ImgBB) que no existe
+    // en el esquema de Supply; si llega del frontend, se descarta.
+    delete updates.imagenes_Url;
+
+    // ── Manejo de imagen en Cloudinary ────────────────────────────────────────
+    if (req.file) {
+      // Usamos el ID del insumo (sin prefijo) como public_id: el servicio
+      // uploadImage() ya antepone la carpeta "insumos/" internamente, así
+      // que pasar aquí supply.imagenPublicId (que YA incluye ese prefijo)
+      // duplicaría la carpeta → "insumos/insumos/<id>".
+      try {
+        const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+        const uploaded = await uploadImage(dataUri, supply.id);
+        updates.imagen = uploaded.url;
+        updates.imagenPublicId = uploaded.public_id;
+      } catch (uploadErr) {
+        return serverError(res, `No se pudo subir la imagen a Cloudinary: ${uploadErr.message}`);
+      }
+    } else if (updates.eliminarImagen === "true" || updates.eliminarImagen === true) {
+      // Permite quitar la imagen sin subir una nueva.
+      if (supply.imagenPublicId) {
+        await deleteImage(supply.imagenPublicId).catch(() => {});
+      }
+      updates.imagen = null;
+      updates.imagenPublicId = null;
+    }
+    delete updates.eliminarImagen;
 
     // ── Si se actualizan propiedades, validar y normalizar ───────────────────
+    // multipart/form-data serializa arrays como JSON string; parsear si es necesario.
+    if (updates.propiedades !== undefined && typeof updates.propiedades === "string") {
+      try { updates.propiedades = JSON.parse(updates.propiedades); } catch { updates.propiedades = []; }
+    }
+
     if (updates.propiedades !== undefined) {
       if (!Array.isArray(updates.propiedades) || updates.propiedades.length === 0) {
         return badRequest(res, "El insumo debe mantener al menos una propiedad.");
@@ -359,6 +413,12 @@ const deleteSupply = async (req, res) => {
     }
 
     await repo.delete(req.params.id);
+
+    // Limpieza: eliminar también la imagen asociada en Cloudinary.
+    if (supply.imagenPublicId) {
+      await deleteImage(supply.imagenPublicId).catch(() => {});
+    }
+
     return ok(res, { message: "Insumo eliminado exitosamente." });
   } catch (err) {
     return serverError(res, err.message);
