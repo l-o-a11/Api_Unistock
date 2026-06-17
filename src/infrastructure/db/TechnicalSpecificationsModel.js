@@ -9,7 +9,6 @@ const technicalSpecificationSchema = new mongoose.Schema(
     fecha_inicio: { type: String, required: true },
     fecha_fin: { type: String, required: true },
     versiones: { type: Number, required: true, default: 1 },
-    descripciones: { type: mongoose.Schema.Types.Mixed, default: null },
     client: { type: String, default: "" },
     ref: { type: String, default: "" },
     type: { type: String, default: "" },
