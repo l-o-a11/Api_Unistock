@@ -18,7 +18,7 @@
 const { Router } = require("express");
 const ctrl = require("../controllers/supplyController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
-
+const upload   = require('../cloudinary/multer.middleware');
 const router = Router();
 
 // Middleware: Requerir autenticación en todos los endpoints
@@ -32,8 +32,10 @@ router.get("/catalogos/categorias",  ctrl.getCategorias);
 // Rutas CRUD
 router.get("/", ctrl.getSupplies);
 router.get("/:id", ctrl.getSupplyById);
-router.post("/", ctrl.createSupply);
-router.put("/:id", ctrl.updateSupply);
+// upload.single('imagen') intercepta el archivo con campo "imagen"
+// Si no se envía imagen, req.file será undefined (sin error)
+router.post("/", upload.single("imagen"), ctrl.createSupply);
+router.put("/:id", upload.single("imagen"), ctrl.updateSupply);
 router.delete("/:id", ctrl.deleteSupply);
 router.patch("/:id/toggle", ctrl.toggleSupply);
 

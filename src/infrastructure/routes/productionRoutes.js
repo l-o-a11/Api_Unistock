@@ -329,11 +329,10 @@ router.put("/detalle-orden/:id",     ctrl.updateOrderDetail);
 router.delete("/detalle-orden/:id",  ctrl.deleteOrderDetail);
 
 // Asignaciones
-router.get("/asignaciones",          ctrl.getAssignments);
-router.post("/asignaciones",         ctrl.createAssignment);
-
-// Alertas y Calendario (portados del Backend)
-router.get("/alertas",               ctrl.getAlertas);
-router.get("/calendario",            ctrl.getCalendario);
+router.get("/asignaciones",               ctrl.getAssignments);
+router.post("/asignaciones",              ctrl.createAssignment);
+// ✅ DELETE para limpiar asignaciones antes de reasignar (evita sobre-suma)
+router.delete("/asignaciones/:id",        ctrl.deleteAssignment);
+router.delete("/asignaciones/orden/:id_orden", ctrl.deleteAssignmentsByOrder);
 
 module.exports = router;

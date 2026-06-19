@@ -21,13 +21,14 @@ const getSupplierById = async (req, res) => {
 
 const createSupplier = async (req, res) => {
   try {
-    // NIT puede venir con guiones (ej: 11111118-3). Persistimos como String.
-    const nitNorm = req.body.nit !== undefined && req.body.nit !== null
-      ? String(req.body.nit).replace(/-/g, "").trim()
+    // ✅ Fix: el NIT se guarda EXACTAMENTE como lo escribió el usuario (con guión si lo incluyó).
+    // La normalización (quitar guiones) solo se usa para comparar duplicados, no para persistir.
+    const nitOriginal = req.body.nit !== undefined && req.body.nit !== null
+      ? String(req.body.nit).trim()
       : req.body.nit;
 
     const backendData = {
-      nit:                 nitNorm,
+      nit:                 nitOriginal,
       nombre_de_empresa:   req.body.nombreEmpresa,
       nombre_del_contacto: req.body.nombreContacto || "",
       direccion:           req.body.direccion,

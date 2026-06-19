@@ -50,7 +50,7 @@ class MaterialTechnicalSpecificationsRepository {
   }
 
   async update(id, changes) {
-    const doc = await MaterialTechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true, runValidators: true }).catch(() => null);
+    const doc = await MaterialTechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { returnDocument: 'after', runValidators: true }).catch(() => null);
     return this._toEntity(doc);
   }
 

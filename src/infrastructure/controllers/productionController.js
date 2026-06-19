@@ -1,4 +1,5 @@
 // infrastructure/controllers/productionController.js
+const mongoose = require("mongoose");
 const ProductionRepository            = require("../repositories/ProductionRepository");
 const ProductionOrderDetailRepository = require("../repositories/ProductionOrderDetailRepository");
 const ThirdPartyAssignmentRepository  = require("../repositories/ThirdPartyAssignmentRepository");
@@ -110,8 +111,16 @@ const createOrder = async (req, res) => {
     if (isProduccion && !techSpecification && referencia) {
       console.log(`[ProductionController] Buscando tech sheet para referencia="${referencia}"`);
       let product = null;
-      product = await productRepo.findById(referencia).catch(() => null);
-      if (!product) product = await productRepo.findByReference(referencia).catch(() => null);
+      const refTrimmed = String(referencia).trim();
+      // ✅ Fix: validar ObjectId explícitamente en vez de confiar solo en el catch,
+      // y probar también la referencia sin espacios/con mayúsculas distintas
+      if (mongoose.isValidObjectId(refTrimmed)) {
+        product = await productRepo.findById(refTrimmed).catch(() => null);
+      }
+      if (!product) product = await productRepo.findByReference(refTrimmed).catch(() => null);
+      if (!product && refTrimmed !== referencia) {
+        product = await productRepo.findByReference(referencia).catch(() => null);
+      }
       if (product) {
         const specs = await techSpecRepo.findAll({ id_producto: product.id });
         const activeSpec = specs && specs.length ? specs[0] : null;
@@ -122,7 +131,11 @@ const createOrder = async (req, res) => {
             materiales: materiales.map((m) => (m.toJSON ? m.toJSON() : m)),
           };
           console.log(`[ProductionController] Tech sheet encontrada para producto`);
+        } else {
+          console.warn(`[ProductionController] Producto encontrado pero SIN ficha técnica registrada (id=${product.id})`);
         }
+      } else {
+        console.warn(`[ProductionController] No se encontró el producto con referencia="${referencia}"`);
       }
     }
 
@@ -392,6 +405,33 @@ const createAssignment = async (req, res) => {
   }
 };
 
+// ✅ Eliminar una asignación específica por su ID
+const deleteAssignment = async (req, res) => {
+  try {
+    const deleted = await assignmentRepo.delete(req.params.id);
+    if (!deleted) return notFound(res, "Asignación no encontrada");
+    return ok(res, { message: "Asignación eliminada" });
+  } catch (err) {
+    console.error("deleteAssignment error:", err);
+    return serverError(res);
+  }
+};
+
+// ✅ Eliminar TODAS las asignaciones de una orden — usado antes de reasignar
+// para evitar que se acumulen al retroceder y volver a avanzar estado
+const deleteAssignmentsByOrder = async (req, res) => {
+  try {
+    const { id_orden } = req.params;
+    if (!id_orden) return badRequest(res, "id_orden es requerido");
+    const existing = await assignmentRepo.findAll({ id_orden });
+    await Promise.all(existing.map((a) => assignmentRepo.delete(a.id)));
+    return ok(res, { message: `${existing.length} asignaciones eliminadas`, count: existing.length });
+  } catch (err) {
+    console.error("deleteAssignmentsByOrder error:", err);
+    return serverError(res);
+  }
+};
+
 // ── Alertas ───────────────────────────────────────────────────────────────────
 
 const getAlertas = async (req, res) => {
@@ -458,19 +498,9 @@ const getCalendario = async (req, res) => {
 };
 
 module.exports = {
-  getOrders,
-  getOrderById,
-  createOrder,
-  updateOrder,
-  updateOrderDetail,
-  deleteOrderDetail,
-  anularOrder,
-  cambiarEstado,
-  getEstados,
-  getOrderDetails,
-  createOrderDetail,
-  getAssignments,
-  createAssignment,
-  getAlertas,
-  getCalendario,
+  getOrders, getOrderById, createOrder, updateOrder,
+  updateOrderDetail, deleteOrderDetail, anularOrder, cambiarEstado, getEstados,
+  getOrderDetails, createOrderDetail,
+  getAssignments, createAssignment, deleteAssignment, deleteAssignmentsByOrder,
+  getAlertas, getCalendario,
 };

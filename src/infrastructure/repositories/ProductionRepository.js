@@ -35,6 +35,10 @@ class ProductionRepository {
     return this._toEntity(doc);
   }
 
+  /**
+   * Anula una orden: pone estado "Anulada", guarda motivo
+   * y agrega entrada al historial.
+   */
   async anular(id, motivo, id_usuario, user) {
     const historialEntry = {
       estado: "Anulada",
@@ -57,6 +61,9 @@ class ProductionRepository {
     return this._toEntity(doc);
   }
 
+  /**
+   * Cambia el estado de la orden y registra la transición en el historial.
+   */
   async cambiarEstado(id, nuevoEstado, id_usuario, user, extra = {}) {
     const historialEntry = {
       estado: nuevoEstado,
@@ -90,28 +97,23 @@ class ProductionRepository {
     const hace7dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const [vencidas, proximasVencer, todasActivas] = await Promise.all([
-      // Vencidas: fecha_entrega pasada y no anuladas
       ProductionOrderModel.find({
         estado: { $nin: ["Anulada", "Enviado"] },
         fecha_entrega: { $lt: ahora },
       }).lean(),
 
-      // Próximas a vencer: vencen en los próximos 3 días
       ProductionOrderModel.find({
         estado: { $nin: ["Anulada", "Enviado"] },
         fecha_entrega: { $gte: ahora, $lte: en3dias },
       }).lean(),
 
-      // Para calcular en espera larga: ordenes activas
       ProductionOrderModel.find({
         estado: { $nin: ["Anulada", "Enviado"] },
       }).lean(),
     ]);
 
-    // En espera larga: último cambio de estado hace más de 7 días
     const enEsperaLarga = todasActivas.filter((orden) => {
       if (!orden.historial || orden.historial.length === 0) {
-        // Si no tiene historial, usar createdAt
         return orden.createdAt && new Date(orden.createdAt) < hace7dias;
       }
       const ultimoCambio = orden.historial[orden.historial.length - 1];
@@ -142,8 +144,6 @@ class ProductionRepository {
 
   /**
    * findParaCalendario — Devuelve órdenes activas para el calendario.
-   * @param {string} desde  — ISO yyyy-mm-dd (opcional)
-   * @param {string} hasta  — ISO yyyy-mm-dd (opcional)
    */
   async findParaCalendario(desde, hasta) {
     const query = {

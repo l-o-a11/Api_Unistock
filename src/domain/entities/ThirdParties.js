@@ -25,6 +25,7 @@ class ThirdParties {
     this.telefono = data.telefono;
     this.direccion = data.direccion;
     this.barrio = data.barrio;
+    this.codigo = data.codigo || data.codigo_tercero || '';
     this.codigo_tercero = data.codigo_tercero;
     this.sitio_web = data.sitio_web;
     this.estado = data.estado !== undefined ? data.estado : true;
@@ -47,6 +48,7 @@ class ThirdParties {
       telefono: this.telefono,
       direccion: this.direccion,
       barrio: this.barrio,
+      codigo: this.codigo,
       codigo_tercero: this.codigo_tercero,
       sitio_web: this.sitio_web,
       estado: this.estado,

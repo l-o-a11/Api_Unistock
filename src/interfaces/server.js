@@ -22,6 +22,18 @@ const { specs, swaggerUi } = require("../swagger/swagger");
 
 const app = express();
 
+// Middleware: fail-fast si MongoDB no está conectado.
+// Evita que Mongoose entre en modo "buffering" y luego haga timeout.
+const { isDbConnected } = require("../Config/database");
+app.use((req, res, next) => {
+  if (!isDbConnected()) {
+    return res
+      .status(503)
+      .json({ success: false, message: "MongoDB no está disponible" });
+  }
+  next();
+});
+
 // CORS Configuration
 // Se aceptan: el frontend web, el emulador Android (10.0.2.2) y cualquier
 // dispositivo físico en red local.  En producción ajusta FRONTEND_URL y
@@ -100,6 +112,12 @@ app.use((err, req, res, next) => {
     return res
       .status(413)
       .json({ success: false, message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB." });
+  }
+
+  // Errores de Multer (tamaño de archivo, campo inesperado, etc.) y del
+  // fileFilter de multer.middleware.js (tipo de archivo no permitido).
+  if (err?.name === "MulterError" || /Solo se permiten imágenes/.test(err?.message || "")) {
+    return res.status(400).json({ success: false, message: err.message });
   }
 
   console.error(err.stack);
