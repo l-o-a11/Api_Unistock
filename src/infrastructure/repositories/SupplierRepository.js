@@ -41,7 +41,7 @@ class SupplierRepository {
   }
 
   async update(id, changes) {
-    const doc = await SuppliersModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await SuppliersModel.findByIdAndUpdate(id, changes, { returnDocument: 'after' }).catch(() => null);
     return this._toEntity(doc);
   }
 
