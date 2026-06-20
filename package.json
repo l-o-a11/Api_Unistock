@@ -21,7 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "node": "^22.22.3",
     "nodemailer": "^8.0.7",
     "react": "^19.2.5",
@@ -39,6 +39,8 @@
   "homepage": "https://github.com/l-o-a11/Api_Unistock#readme",
   "type": "commonjs",
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^26.0.0",
     "nodemon": "^3.1.14"
   }
 }
