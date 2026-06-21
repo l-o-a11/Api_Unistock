@@ -18,7 +18,7 @@ class ProductRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await ProductModel.find(query).sort({ _id: 1 });
+    const docs = await ProductModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
 
@@ -43,7 +43,7 @@ class ProductRepository {
   }
 
   async update(id, changes) {
-    const doc = await ProductModel.findByIdAndUpdate(id, changes, { new: true }).catch(() => null);
+    const doc = await ProductModel.findByIdAndUpdate(id, changes, { returnDocument: 'after' }).catch(() => null);
     return this._toEntity(doc);
   }
 

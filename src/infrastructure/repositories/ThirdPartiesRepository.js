@@ -6,14 +6,18 @@ class ThirdPartiesRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new ThirdParties({ ...obj, id: obj._id.toString() });
+    return new ThirdParties({
+      ...obj,
+      id: obj._id.toString(),
+      codigo: obj.codigo ?? obj.codigo_tercero ?? '',
+    });
   }
 
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombre: re }, { contacto: re }];
+      query.$or = [{ nombre_empresa: re }, { nombre_contacto: re }, { nombre: re }, { contacto: re }];
     }
     if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
     const docs = await ThirdPartiesModel.find(query);

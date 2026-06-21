@@ -42,7 +42,7 @@ class TechnicalSpecificationsRepository {
   }
 
   async update(id, changes) {
-    const doc = await TechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true, runValidators: true }).catch(() => null);
+    const doc = await TechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { returnDocument: 'after', runValidators: true }).catch(() => null);
     return this._toEntity(doc);
   }
 

@@ -242,26 +242,72 @@ const getTechnicalSpecificationById = async (req, res) => {
 };
 
 const createTechnicalSpecification = async (req, res) => {
+  let techSpec = null;
   try {
     const id_producto = req.params.id || req.body.id_producto;
     const productId = await resolveProductId(id_producto);
     if (!productId) return notFound(res, "Producto no encontrado");
 
-    const { responsable, fecha_inicio, fecha_fin, versiones, descripciones } = req.body;
+    // ✅ Fix: aceptar el payload completo de la ficha técnica (igual que createProduct),
+    // no solo los 5 campos básicos. Antes se ignoraban materiales/fabrics/cups/etc.
+    const body = req.body || {};
+    const { responsable, fecha_inicio, fecha_fin, versiones, descripciones } = body;
     if (!responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
     }
-    const techSpec = await techSpecRepo.create({
+
+    const materiales = body.materiales || body.materials || [];
+    const today = new Date().toISOString().split("T")[0];
+
+    techSpec = await techSpecRepo.create({
       id_producto: productId,
       responsable,
       fecha_inicio,
       fecha_fin,
       versiones,
       descripciones,
+      // ✅ Campos enriquecidos — antes se perdían al crear una nueva versión
+      client:       body.client || "",
+      ref:          body.ref || "",
+      type:         body.type || "",
+      description:  body.description || descripciones || "",
+      observations: body.observations || "",
+      createdBy:    body.createdBy || responsable || "",
+      image:        body.image || null,
+      fabrics:      Array.isArray(body.fabrics) ? body.fabrics : [],
+      cups:         Array.isArray(body.cups) ? body.cups : [],
+      closures:     Array.isArray(body.closures) ? body.closures : [],
+      accessories:  Array.isArray(body.accessories) ? body.accessories : [],
+      measurements: Array.isArray(body.measurements) ? body.measurements : [],
     });
-    return created(res, techSpec);
+
+    // ✅ Crear cada material asociado a esta ficha — antes se descartaban por completo
+    const createdMaterials = [];
+    for (const material of materiales) {
+      const cantidades = material.cantidades ?? material.cantidad;
+      if (!cantidades) continue; // material incompleto, se omite en vez de fallar toda la ficha
+
+      const createdMaterial = await materialTechSpecRepo.create({
+        id_producto: productId,
+        id_ficha_tecnica: techSpec.id,
+        id_insumo: material.id_insumo || material.id_insumos || undefined,
+        id_medida: material.id_medida || undefined,
+        nombre: material.nombre || material.name || "",
+        unidad: material.unidad || material.medida || "",
+        cantidades: String(cantidades),
+        observaciones: material.observaciones || material.observations || "",
+      });
+      createdMaterials.push(createdMaterial.toJSON ? createdMaterial.toJSON() : createdMaterial);
+    }
+
+    return created(res, {
+      ...(techSpec.toJSON ? techSpec.toJSON() : techSpec),
+      materiales: createdMaterials,
+    });
   } catch (err) {
-    return serverError(res);
+    // Si algo falla a mitad de camino, revertir la ficha creada para no dejar datos huérfanos
+    if (techSpec?.id) await techSpecRepo.delete(techSpec.id).catch(() => null);
+    return serverError(res, err.message);
   }
 };
 
@@ -269,10 +315,54 @@ const updateTechnicalSpecification = async (req, res) => {
   try {
     const techSpec = await techSpecRepo.findById(req.params.techSpecId);
     if (!techSpec) return notFound(res, "Ficha técnica no encontrada");
-    const updated = await techSpecRepo.update(req.params.techSpecId, req.body);
-    return ok(res, updated);
+
+    const body = req.body || {};
+    // ✅ Fix: permitir actualizar también los campos enriquecidos, no solo los básicos
+    const updateData = { ...body };
+    delete updateData.materiales; // se procesan aparte
+    delete updateData.materials;
+
+    const updated = await techSpecRepo.update(req.params.techSpecId, updateData);
+
+    // ✅ Fix: si se envían materiales, sincronizarlos — reemplaza los existentes
+    // por los nuevos para que la edición de una versión sí persista sus elementos
+    const materiales = body.materiales || body.materials;
+    let materialesFinal = null;
+    if (Array.isArray(materiales)) {
+      const productId = updated.id_producto || techSpec.id_producto;
+
+      // Borrar materiales previos de esta ficha técnica
+      const existentes = await materialTechSpecRepo.findAll({
+        id_producto: productId,
+        id_ficha_tecnica: req.params.techSpecId,
+      });
+      await Promise.all(existentes.map((m) => materialTechSpecRepo.delete(m.id).catch(() => null)));
+
+      // Crear los materiales actualizados
+      const createdMaterials = [];
+      for (const material of materiales) {
+        const cantidades = material.cantidades ?? material.cantidad;
+        if (!cantidades) continue;
+        const createdMaterial = await materialTechSpecRepo.create({
+          id_producto: productId,
+          id_ficha_tecnica: req.params.techSpecId,
+          id_insumo: material.id_insumo || material.id_insumos || undefined,
+          id_medida: material.id_medida || undefined,
+          nombre: material.nombre || material.name || "",
+          unidad: material.unidad || material.medida || "",
+          cantidades: String(cantidades),
+          observaciones: material.observaciones || material.observations || "",
+        });
+        createdMaterials.push(createdMaterial.toJSON ? createdMaterial.toJSON() : createdMaterial);
+      }
+      materialesFinal = createdMaterials;
+    }
+
+    const updatedJson = updated.toJSON ? updated.toJSON() : updated;
+    return ok(res, materialesFinal ? { ...updatedJson, materiales: materialesFinal } : updatedJson);
   } catch (err) {
-    return serverError(res);
+    console.error("updateTechnicalSpecification error:", err);
+    return serverError(res, err.message);
   }
 };
 

@@ -22,8 +22,32 @@ const { specs, swaggerUi } = require("../swagger/swagger");
 
 const app = express();
 
+// Middleware: fail-fast si MongoDB no está conectado.
+// Evita que Mongoose entre en modo "buffering" y luego haga timeout.
+const { isDbConnected } = require("../Config/database");
+app.use((req, res, next) => {
+  if (!isDbConnected()) {
+    return res
+      .status(503)
+      .json({ success: false, message: "MongoDB no está disponible" });
+  }
+  next();
+});
+
 // CORS Configuration
+// Se aceptan: el frontend web, el emulador Android (10.0.2.2) y cualquier
+// dispositivo físico en red local.  En producción ajusta FRONTEND_URL y
+// MOBILE_URL en el .env en lugar de usar allowAll.
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  // Emulador Android redirige 10.0.2.2 → host de la PC
+  "http://10.0.2.2:3000",
+  // Dispositivos físicos en red local (ajusta la IP de tu PC si es fija)
+  ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
+];
+
 const corsOptions = {
+
   // FIX: antes solo permitía un origin (5173, el de React). Flutter Web
   // corre en otro puerto, así que se agregó como segundo origin permitido.
   //

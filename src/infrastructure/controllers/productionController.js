@@ -1,4 +1,5 @@
 // infrastructure/controllers/productionController.js
+const mongoose = require("mongoose");
 const ProductionRepository            = require("../repositories/ProductionRepository");
 const ProductionOrderDetailRepository = require("../repositories/ProductionOrderDetailRepository");
 const ThirdPartyAssignmentRepository  = require("../repositories/ThirdPartyAssignmentRepository");
@@ -110,8 +111,16 @@ const createOrder = async (req, res) => {
     if (isProduccion && !techSpecification && referencia) {
       console.log(`[ProductionController] Buscando tech sheet para referencia="${referencia}"`);
       let product = null;
-      product = await productRepo.findById(referencia).catch(() => null);
-      if (!product) product = await productRepo.findByReference(referencia).catch(() => null);
+      const refTrimmed = String(referencia).trim();
+      // ✅ Fix: validar ObjectId explícitamente en vez de confiar solo en el catch,
+      // y probar también la referencia sin espacios/con mayúsculas distintas
+      if (mongoose.isValidObjectId(refTrimmed)) {
+        product = await productRepo.findById(refTrimmed).catch(() => null);
+      }
+      if (!product) product = await productRepo.findByReference(refTrimmed).catch(() => null);
+      if (!product && refTrimmed !== referencia) {
+        product = await productRepo.findByReference(referencia).catch(() => null);
+      }
       if (product) {
         const specs = await techSpecRepo.findAll({ id_producto: product.id });
         const activeSpec = specs && specs.length ? specs[0] : null;
@@ -122,7 +131,11 @@ const createOrder = async (req, res) => {
             materiales: materiales.map((m) => (m.toJSON ? m.toJSON() : m)),
           };
           console.log(`[ProductionController] Tech sheet encontrada para producto`);
+        } else {
+          console.warn(`[ProductionController] Producto encontrado pero SIN ficha técnica registrada (id=${product.id})`);
         }
+      } else {
+        console.warn(`[ProductionController] No se encontró el producto con referencia="${referencia}"`);
       }
     }
 
@@ -212,6 +225,9 @@ const updateOrder = async (req, res) => {
       "fromDamaged",
       "originalOrderNumber",
       "originalOrderStatus",
+      // ✅ Persistir asignaciones de sede/tercero en la BD en vez de solo localStorage
+      "sedeAsignaciones",
+      "terceroAsignaciones",
     ]);
 
     const safeChanges = {};
@@ -260,6 +276,24 @@ const updateOrderDetail = async (req, res) => {
       return badRequest(res, "No se proporcionaron cambios válidos para el detalle");
 
     const updatedDetail = await detailRepo.update(req.params.id, changes);
+
+    // ✅ Fix: registrar en el historial que se editó un artículo del detalle
+    const detailJson = detail.toJSON ? detail.toJSON() : detail;
+    const id_orden = detailJson.id_orden;
+    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      const cambiosTexto = Object.entries(changes).map(([k, v]) => `${k}: ${v}`).join(", ");
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se editó el artículo "${detailJson.id_producto}" (${cambiosTexto})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de updateOrderDetail:", e?.message));
+    }
+
     return ok(res, updatedDetail.toJSON());
   } catch (err) {
     return serverError(res);
@@ -268,8 +302,28 @@ const updateOrderDetail = async (req, res) => {
 
 const deleteOrderDetail = async (req, res) => {
   try {
+    // ✅ Fix: capturar el detalle ANTES de eliminarlo para poder describirlo en el historial
+    const detail = await detailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, "Detalle de orden no encontrado");
+    const detailJson = detail.toJSON ? detail.toJSON() : detail;
+
     const deleted = await detailRepo.delete(req.params.id);
     if (!deleted) return notFound(res, "Detalle de orden no encontrado");
+
+    const id_orden = detailJson.id_orden;
+    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se eliminó el artículo "${detailJson.id_producto}" (cantidad: ${detailJson.cantidad}${detailJson.color ? `, color: ${detailJson.color}` : ""})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de deleteOrderDetail:", e?.message));
+    }
+
     return ok(res, { id: req.params.id, deleted: true });
   } catch (err) {
     return serverError(res);
@@ -365,7 +419,24 @@ const createOrderDetail = async (req, res) => {
     const { id_orden, id_producto, cantidad, color } = req.body;
     if (!id_orden || !id_producto || !cantidad)
       return badRequest(res, "Los campos id_orden, id_producto y cantidad son requeridos");
-    return created(res, await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true }));
+    const newDetail = await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true });
+
+    // ✅ Fix: registrar en el historial de la orden que se agregó un artículo —
+    // antes esta acción no dejaba ningún rastro visible para el usuario.
+    const order = await prodRepo.findById(id_orden).catch(() => null);
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se agregó el artículo "${id_producto}" (cantidad: ${cantidad}${color ? `, color: ${color}` : ""})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de createOrderDetail:", e?.message));
+    }
+
+    return created(res, newDetail);
   } catch (err) {
     return serverError(res);
   }
@@ -388,6 +459,33 @@ const createAssignment = async (req, res) => {
       return badRequest(res, "Los campos id_orden, id_tercero y cantidad son requeridos");
     return created(res, await assignmentRepo.create({ id_orden, id_tercero, cantidad }));
   } catch (err) {
+    return serverError(res);
+  }
+};
+
+// ✅ Eliminar una asignación específica por su ID
+const deleteAssignment = async (req, res) => {
+  try {
+    const deleted = await assignmentRepo.delete(req.params.id);
+    if (!deleted) return notFound(res, "Asignación no encontrada");
+    return ok(res, { message: "Asignación eliminada" });
+  } catch (err) {
+    console.error("deleteAssignment error:", err);
+    return serverError(res);
+  }
+};
+
+// ✅ Eliminar TODAS las asignaciones de una orden — usado antes de reasignar
+// para evitar que se acumulen al retroceder y volver a avanzar estado
+const deleteAssignmentsByOrder = async (req, res) => {
+  try {
+    const { id_orden } = req.params;
+    if (!id_orden) return badRequest(res, "id_orden es requerido");
+    const existing = await assignmentRepo.findAll({ id_orden });
+    await Promise.all(existing.map((a) => assignmentRepo.delete(a.id)));
+    return ok(res, { message: `${existing.length} asignaciones eliminadas`, count: existing.length });
+  } catch (err) {
+    console.error("deleteAssignmentsByOrder error:", err);
     return serverError(res);
   }
 };
@@ -471,6 +569,8 @@ module.exports = {
   createOrderDetail,
   getAssignments,
   createAssignment,
+  deleteAssignment,
+  deleteAssignmentsByOrder,
   getAlertas,
   getCalendario,
 };

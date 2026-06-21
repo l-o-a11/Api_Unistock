@@ -34,6 +34,6 @@ connectDatabase()
       `[mongo] Error de conexión: ${err?.message || err}\n` +
       `  → Revisa MONGO_URI en .env y la whitelist de IPs en MongoDB Atlas.`
     );
-    startServer(false);
-
+    // No arrancar el servidor cuando Mongo falle para evitar timeouts de buffering.
+    process.exit(1);
   });

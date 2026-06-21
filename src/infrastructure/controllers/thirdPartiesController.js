@@ -121,6 +121,31 @@ const createThirdParty = async (req, res) => {
         ? String(data.telefono)
         : undefined;
 
+    // Mongo tiene índice único sobre `codigo` y el error indica que está quedando `null`.
+    // Para evitarlo: calculamos `codigo` SIEMPRE como string no-vacío.
+    // Tomamos el máximo valor numérico existente (y si no hay, arrancamos en 1).
+    const codigo = await (async () => {
+      const incoming = data.codigo ?? data.codigo_tercero;
+      if (incoming !== undefined && incoming !== null && String(incoming).trim() !== '') {
+        return String(incoming).trim();
+      }
+
+      const all = await repo.findAll({}).catch(() => []);
+      const nums = (all || [])
+        .map((x) => x?.codigo ?? x?.codigo_tercero)
+        .map((v) => {
+          if (v === undefined || v === null) return NaN;
+          const s = String(v).trim();
+          if (!s) return NaN;
+          const n = parseInt(s.replace(/\D+/g, ''), 10);
+          return Number.isFinite(n) ? n : NaN;
+        })
+        .filter((n) => Number.isFinite(n));
+
+      const max = nums.length ? Math.max(...nums) : 0;
+      return String(max + 1);
+    })();
+
     const tp = await repo.create({
       nit: data.nit !== undefined && data.nit !== null ? String(data.nit) : undefined,
       nombre_empresa: nombreEmpresa,
@@ -131,6 +156,7 @@ const createThirdParty = async (req, res) => {
       telefono,
       sitio_web: data.sitio_web,
       estado: estadoParsed,
+      codigo,
     });
 
     return created(res, tp);

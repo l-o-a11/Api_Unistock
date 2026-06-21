@@ -9,7 +9,7 @@ class MaterialTechnicalSpecificationsRepository {
     const obj = doc.toObject ? doc.toObject() : doc;
     return new MaterialTechnicalSpecifications({
       ...obj,
-      id: obj._id?.toString?.() ?? obj.id,
+      id: obj._id.toString(),
       id_producto: obj.id_producto?.toString?.() ?? obj.id_producto,
       id_ficha_tecnica: obj.id_ficha_tecnica?.toString?.() ?? obj.id_ficha_tecnica,
       id_insumo: obj.id_insumo?.toString?.() ?? obj.id_insumo,
@@ -27,11 +27,10 @@ class MaterialTechnicalSpecificationsRepository {
       if (!mongoose.isValidObjectId(filters.id_ficha_tecnica)) return [];
       query.id_ficha_tecnica = filters.id_ficha_tecnica;
     }
-    const materialId = filters.id_insumo || filters.id_insumos;
-    if (materialId) {
-      if (!mongoose.isValidObjectId(materialId)) return [];
-      query.id_insumo = materialId;
-    }
+    if (filters.id_insumo) {
+  if (!mongoose.isValidObjectId(filters.id_insumo)) return [];
+  query.id_insumo = filters.id_insumo;
+}
     const docs = await MaterialTechnicalSpecificationsModel.find(query).sort({ createdAt: -1 });
     return docs.map((d) => this._toEntity(d));
   }
@@ -51,7 +50,7 @@ class MaterialTechnicalSpecificationsRepository {
   }
 
   async update(id, changes) {
-    const doc = await MaterialTechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { new: true, runValidators: true }).catch(() => null);
+    const doc = await MaterialTechnicalSpecificationsModel.findByIdAndUpdate(id, changes, { returnDocument: 'after', runValidators: true }).catch(() => null);
     return this._toEntity(doc);
   }
 
