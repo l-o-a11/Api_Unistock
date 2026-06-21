@@ -47,14 +47,18 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Permitir peticiones sin origin (apps móviles nativas, Postman, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // En desarrollo permitir cualquier origen para facilitar pruebas
-    if (process.env.NODE_ENV !== "production") return callback(null, true);
-    callback(new Error(`CORS: origen no permitido → ${origin}`));
-  },
+
+  // FIX: antes solo permitía un origin (5173, el de React). Flutter Web
+  // corre en otro puerto, así que se agregó como segundo origin permitido.
+  //
+  // IMPORTANTE: flutter run -d chrome SIN --web-port asigna un puerto
+  // ALEATORIO cada vez (ej: 62919), lo que rompe esta lista en cada corrida.
+  // Por eso hay que fijar el puerto siempre igual al levantar Flutter Web:
+  //
+  //   flutter run -d chrome --web-port=5000
+  //
+  // Así el origin siempre es http://localhost:5000 y coincide con esta lista.
+  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:5000"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -85,7 +89,7 @@ app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
 // Swagger Documentation (después de rutas de API pero antes de 404)
-app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, { 
+app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, {
   swaggerOptions: {
     persistAuthorization: true,
     displayOperationId: true
@@ -112,12 +116,6 @@ app.use((err, req, res, next) => {
     return res
       .status(413)
       .json({ success: false, message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB." });
-  }
-
-  // Errores de Multer (tamaño de archivo, campo inesperado, etc.) y del
-  // fileFilter de multer.middleware.js (tipo de archivo no permitido).
-  if (err?.name === "MulterError" || /Solo se permiten imágenes/.test(err?.message || "")) {
-    return res.status(400).json({ success: false, message: err.message });
   }
 
   console.error(err.stack);
