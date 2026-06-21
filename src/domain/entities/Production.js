@@ -71,6 +71,9 @@ class Production {
     originalOrderStatus = null,
     producto = null,
     referencia = null,
+    // ✅ Persistidas en BD — antes solo vivían en localStorage del navegador
+    sedeAsignaciones = [],
+    terceroAsignaciones = [],
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -91,6 +94,8 @@ class Production {
     this.originalOrderStatus = originalOrderStatus;
     this.producto = producto;
     this.referencia = referencia;
+    this.sedeAsignaciones = sedeAsignaciones;
+    this.terceroAsignaciones = terceroAsignaciones;
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -123,8 +128,8 @@ class Production {
       originalOrderStatus: this.originalOrderStatus,
       producto: this.producto,
       referencia: this.referencia,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      sedeAsignaciones: this.sedeAsignaciones,
+      terceroAsignaciones: this.terceroAsignaciones,
     };
   }
 }

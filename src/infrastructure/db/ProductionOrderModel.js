@@ -46,6 +46,11 @@ const productionOrderSchema = new mongoose.Schema(
     originalOrderStatus: { type: String, default: null },
     producto: { type: String, default: null },
     referencia: { type: String, default: null },
+    // ✅ Antes estas asignaciones solo vivían en localStorage del navegador,
+    // por lo que el dashboard (y cualquier otra vista) nunca podía leerlas
+    // realmente desde el backend. Ahora se persisten en la orden.
+    sedeAsignaciones:   { type: [mongoose.Schema.Types.Mixed], default: [] },
+    terceroAsignaciones: { type: [mongoose.Schema.Types.Mixed], default: [] },
     historial: { type: [historialEntrySchema], default: [] },
   },
   { timestamps: true },

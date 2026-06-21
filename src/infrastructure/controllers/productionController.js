@@ -225,6 +225,9 @@ const updateOrder = async (req, res) => {
       "fromDamaged",
       "originalOrderNumber",
       "originalOrderStatus",
+      // ✅ Persistir asignaciones de sede/tercero en la BD en vez de solo localStorage
+      "sedeAsignaciones",
+      "terceroAsignaciones",
     ]);
 
     const safeChanges = {};
@@ -273,6 +276,24 @@ const updateOrderDetail = async (req, res) => {
       return badRequest(res, "No se proporcionaron cambios válidos para el detalle");
 
     const updatedDetail = await detailRepo.update(req.params.id, changes);
+
+    // ✅ Fix: registrar en el historial que se editó un artículo del detalle
+    const detailJson = detail.toJSON ? detail.toJSON() : detail;
+    const id_orden = detailJson.id_orden;
+    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      const cambiosTexto = Object.entries(changes).map(([k, v]) => `${k}: ${v}`).join(", ");
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se editó el artículo "${detailJson.id_producto}" (${cambiosTexto})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de updateOrderDetail:", e?.message));
+    }
+
     return ok(res, updatedDetail.toJSON());
   } catch (err) {
     return serverError(res);
@@ -281,8 +302,28 @@ const updateOrderDetail = async (req, res) => {
 
 const deleteOrderDetail = async (req, res) => {
   try {
+    // ✅ Fix: capturar el detalle ANTES de eliminarlo para poder describirlo en el historial
+    const detail = await detailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, "Detalle de orden no encontrado");
+    const detailJson = detail.toJSON ? detail.toJSON() : detail;
+
     const deleted = await detailRepo.delete(req.params.id);
     if (!deleted) return notFound(res, "Detalle de orden no encontrado");
+
+    const id_orden = detailJson.id_orden;
+    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se eliminó el artículo "${detailJson.id_producto}" (cantidad: ${detailJson.cantidad}${detailJson.color ? `, color: ${detailJson.color}` : ""})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de deleteOrderDetail:", e?.message));
+    }
+
     return ok(res, { id: req.params.id, deleted: true });
   } catch (err) {
     return serverError(res);
@@ -378,7 +419,24 @@ const createOrderDetail = async (req, res) => {
     const { id_orden, id_producto, cantidad, color } = req.body;
     if (!id_orden || !id_producto || !cantidad)
       return badRequest(res, "Los campos id_orden, id_producto y cantidad son requeridos");
-    return created(res, await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true }));
+    const newDetail = await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true });
+
+    // ✅ Fix: registrar en el historial de la orden que se agregó un artículo —
+    // antes esta acción no dejaba ningún rastro visible para el usuario.
+    const order = await prodRepo.findById(id_orden).catch(() => null);
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      await prodRepo.agregarHistorial(
+        id_orden,
+        `Se agregó el artículo "${id_producto}" (cantidad: ${cantidad}${color ? `, color: ${color}` : ""})`,
+        id_usuario,
+        user,
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de createOrderDetail:", e?.message));
+    }
+
+    return created(res, newDetail);
   } catch (err) {
     return serverError(res);
   }
@@ -498,9 +556,21 @@ const getCalendario = async (req, res) => {
 };
 
 module.exports = {
-  getOrders, getOrderById, createOrder, updateOrder,
-  updateOrderDetail, deleteOrderDetail, anularOrder, cambiarEstado, getEstados,
-  getOrderDetails, createOrderDetail,
-  getAssignments, createAssignment, deleteAssignment, deleteAssignmentsByOrder,
-  getAlertas, getCalendario,
+  getOrders,
+  getOrderById,
+  createOrder,
+  updateOrder,
+  updateOrderDetail,
+  deleteOrderDetail,
+  anularOrder,
+  cambiarEstado,
+  getEstados,
+  getOrderDetails,
+  createOrderDetail,
+  getAssignments,
+  createAssignment,
+  deleteAssignment,
+  deleteAssignmentsByOrder,
+  getAlertas,
+  getCalendario,
 };

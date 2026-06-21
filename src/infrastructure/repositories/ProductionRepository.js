@@ -64,6 +64,29 @@ class ProductionRepository {
   /**
    * Cambia el estado de la orden y registra la transición en el historial.
    */
+  /**
+   * ✅ Agrega una entrada al historial SIN cambiar el estado actual de la orden.
+   * Se usa para registrar acciones como agregar/editar/eliminar artículos del
+   * detalle — antes estas acciones no dejaban ningún rastro en el historial.
+   */
+  async agregarHistorial(id, motivo, id_usuario, user, estadoActualParaRegistro) {
+    const historialEntry = {
+      estado: estadoActualParaRegistro || null,
+      fecha: new Date(),
+      id_usuario: id_usuario || null,
+      user: user || null,
+      motivo: motivo || null,
+    };
+    const doc = await ProductionOrderModel
+      .findByIdAndUpdate(
+        id,
+        { $push: { historial: historialEntry } },
+        { returnDocument: 'after' },
+      )
+      .catch(() => null);
+    return this._toEntity(doc);
+  }
+
   async cambiarEstado(id, nuevoEstado, id_usuario, user, extra = {}) {
     const historialEntry = {
       estado: nuevoEstado,
