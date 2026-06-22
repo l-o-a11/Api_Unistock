@@ -22,9 +22,22 @@ class LoginUser {
     const user = await this.userRepository.findByEmailWithPassword(correo);
 
     // Respuesta genérica — no revelar si el correo existe o no
-    if (!user || !user.estado) {
+    if (!user) {
       const error = new Error("Credenciales inválidas");
       error.statusCode = 401;
+      throw error;
+    }
+
+    // FIX: caso pedido explícitamente por negocio — un usuario desactivado
+    // que intenta entrar debe ver un mensaje claro, no el genérico de
+    // "credenciales inválidas". Nota: esto sacrifica un poco de protección
+    // anti-enumeración (confirma que el correo existe y está inactivo),
+    // pero en un sistema interno sin registro público ese riesgo es bajo
+    // comparado con la confusión de un usuario que no entiende por qué
+    // no puede entrar.
+    if (!user.estado) {
+      const error = new Error("Tu usuario está desactivado. Por favor comunícate con un administrador o gerente.");
+      error.statusCode = 403;
       throw error;
     }
 
