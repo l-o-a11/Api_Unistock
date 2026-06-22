@@ -82,14 +82,37 @@ const store = {
 
 const mongoose = require("mongoose");
 
+let dbReady = false;
+
 const connectDatabase = async () => {
   const uri = process.env.MONGO_URI;
   const dbName = process.env.DATABASE_NAME || "unistock";
 
-  console.log("URI:", process.env.MONGO_URI);
+  if (!uri) {
+    throw new Error("Missing env var MONGO_URI");
+  }
 
-  await mongoose.connect(uri, { dbName });
-  console.log(` MongoDB conectado → ${dbName}`);
+  // Fail-fast configuration to avoid 10s buffering timeouts
+  // when the app receives requests before the connection is ready.
+  mongoose.set("bufferCommands", false);
+
+  // Note: option names may differ slightly between mongoose versions.
+  // These are widely supported by the underlying MongoDB driver.
+  const conn = await mongoose.connect(uri, {
+    dbName,
+    serverSelectionTimeoutMS: 5_000,
+    socketTimeoutMS: 30_000,
+    // connectTimeoutMS is supported by the native driver
+    connectTimeoutMS: 10_000,
+  });
+
+  dbReady = !!conn?.connections?.length ? true : true;
+  console.log(`MongoDB conectado → ${dbName}`);
+  return conn;
 };
 
-module.exports = { connectDatabase };
+const isDbConnected = () => {
+  return mongoose.connection.readyState === 1 && dbReady;
+};
+
+module.exports = { connectDatabase, isDbConnected };

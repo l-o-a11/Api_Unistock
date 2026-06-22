@@ -25,6 +25,8 @@ class ProductionOrderDetail {
       cantidad: this.cantidad,
       color: this.color,
       estado: this.estado,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }
