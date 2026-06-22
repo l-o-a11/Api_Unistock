@@ -9,7 +9,8 @@ class Supply {
     stock = 0,
     valor_medida,
     medida,
-    imagenes_Url,
+    imagen = null,
+    imagenPublicId = null,
     estado = true,
     propiedades = [],
     createdAt,
@@ -21,7 +22,8 @@ class Supply {
     this.stock = stock;
     this.valor_medida = valor_medida;
     this.medida = medida;
-    this.imagenes_Url = imagenes_Url;
+    this.imagen = imagen;
+    this.imagenPublicId = imagenPublicId;
     this.estado = estado;
     this.propiedades = propiedades;
     this.createdAt = createdAt;
