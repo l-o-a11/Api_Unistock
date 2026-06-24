@@ -59,6 +59,7 @@ const rules = {
     query("rolId").optional().isMongoId(),
     query("sedeId").optional().isMongoId(),
     query("estado").optional().isIn(["true", "false"]),
+    query("excludeRoleNames").optional().isString(),
   ],
 
   login: [
