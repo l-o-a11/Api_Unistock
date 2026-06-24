@@ -48,7 +48,8 @@ const normalizeProductionPayload = (raw) => {
 };
 
 // Estados válidos para órdenes de producción
-const VALID_ESTADOS = ['Diseño', 'Ficha Técnica', 'Corte', 'Compras', 'Producción', 'Empaque', 'Enviado', 'Anulada'];
+// ✅ Fix: "Empaque" renombrado a "Recepción"
+const VALID_ESTADOS = ['Diseño', 'Ficha Técnica', 'Corte', 'Compras', 'Producción', 'Recepción', 'Enviado', 'Anulada'];
 
 const createOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
   cliente: z.string()

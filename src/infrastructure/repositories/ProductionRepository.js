@@ -15,7 +15,9 @@ class ProductionRepository {
     if (filters.cliente)    query.cliente    = new RegExp(filters.cliente, "i");
     if (filters.id_usuario) query.id_usuario = filters.id_usuario;
     if (filters.estado)     query.estado     = filters.estado;
-    const docs = await ProductionOrderModel.find(query).sort({ createdAt: -1 });
+    // ✅ Fix: mostrar primero las órdenes más antiguas, las más recientes
+    // al final (antes era al revés)
+    const docs = await ProductionOrderModel.find(query).sort({ createdAt: 1 });
     return docs.map((d) => this._toEntity(d));
   }
 

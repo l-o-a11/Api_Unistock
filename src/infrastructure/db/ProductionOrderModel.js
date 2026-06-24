@@ -1,13 +1,18 @@
 // infrastructure/db/ProductionOrderModel.js
 const mongoose = require("mongoose");
 
+// ✅ Fix: "Empaque" renombrado a "Recepción". Se conserva "Empaque" en el
+// enum únicamente por compatibilidad retroactiva con órdenes/historial ya
+// guardados en la BD antes de este cambio — las nuevas transiciones usan
+// siempre "Recepción".
 const ESTADOS_VALIDOS = [
   "Diseño",
   "Ficha Técnica",
   "Corte",
   "Compras",
   "Producción",
-  "Empaque",
+  "Recepción",
+  "Empaque", // legado — no usar para nuevas órdenes
   "Enviado",
   "Anulada",
 ];

@@ -55,7 +55,7 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
       // ✅ Incluir estado de la orden para que el frontend pueda filtrar
-      // las que ya pasaron de "Producción" a "Empaque" o posteriores
+      // las que ya pasaron de "Producción" a "Recepción" o posteriores
       estado: order?.estado || null,
     });
     grouped.set(terceroId, producciones);

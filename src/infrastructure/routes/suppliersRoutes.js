@@ -6,6 +6,7 @@ const router = Router();
 // router.use(requireAuth);
 
 router.get("/",              ctrl.getSuppliers);
+router.get("/:id/has-purchases", ctrl.checkSupplierHasPurchases); // ✅ NUEVO — antes de /:id
 router.get("/:id",           ctrl.getSupplierById);
 router.post("/",             ctrl.createSupplier);
 router.put("/:id",           ctrl.updateSupplier);

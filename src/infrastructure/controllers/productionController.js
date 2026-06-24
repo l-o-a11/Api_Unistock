@@ -103,6 +103,18 @@ const createOrder = async (req, res) => {
       return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
     }
 
+    // ✅ Fix: la fecha de entrega debe tener al menos 1 mes de diferencia
+    // respecto a hoy. Antes solo se validaba en el frontend, lo cual podía
+    // evadirse manipulando la petición directamente.
+    {
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const minFecha = new Date(hoy); minFecha.setMonth(minFecha.getMonth() + 1);
+      const fechaElegida = new Date(fecha_entrega);
+      if (isNaN(fechaElegida.getTime()) || fechaElegida < minFecha) {
+        return badRequest(res, "La fecha de entrega debe tener al menos 1 mes de diferencia respecto a hoy");
+      }
+    }
+
     let techSpecification = req.body.techSpecification || req.body.techSheet || null;
     const isProduccion = tipo === 'produccion';
 
@@ -357,8 +369,37 @@ const cambiarEstado = async (req, res) => {
     const id_usuario = bodyUser || req.user?.id || null;
     const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
 
+    // ✅ Fix: una vez que la orden llega a Recepción (o el legado "Empaque"),
+    // no se permite retroceder a una etapa anterior, sin excepción — ni
+    // siquiera con force=true, ya que esto debe ser una regla dura.
+    const STEPS_ORDER = ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Recepción", "Enviado"];
+    const normalizeStep = (s) => (s === "Empaque" ? "Recepción" : s);
+    const orden = await prodRepo.findById(req.params.id);
+    if (orden) {
+      const ordenJson = orden.toJSON ? orden.toJSON() : orden;
+      const fromIdx = STEPS_ORDER.indexOf(normalizeStep(ordenJson.estado));
+      const toIdx = STEPS_ORDER.indexOf(normalizeStep(estado));
+      if (fromIdx >= STEPS_ORDER.indexOf("Recepción") && toIdx !== -1 && toIdx < fromIdx) {
+        return badRequest(res, "No se puede retroceder: la orden ya llegó a la etapa de Recepción.");
+      }
+    }
+
     const useCase = new CambiarEstadoProduction(prodRepo);
     const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+
+    // ✅ Fix: asignar la referencia de corte con consecutivo (ej. "REF-001-1")
+    // la primera vez que la orden llega a la etapa de Corte. Si el detalle
+    // ya tiene refCorte (orden que retrocedió y volvió a avanzar), no se
+    // reasigna — conserva el número que ya tenía.
+    if (estado === "Corte") {
+      const details = await detailRepo.findAll({ id_orden: req.params.id });
+      for (const detail of details) {
+        const data = detail.toJSON ? detail.toJSON() : detail;
+        if (data.refCorte) continue; // ya tiene consecutivo asignado
+        const siguiente = (await detailRepo.countRefCorteByProducto(data.id_producto)) + 1;
+        await detailRepo.update(data.id, { refCorte: `${data.id_producto}-${siguiente}` });
+      }
+    }
 
     if (estado === "Producción") {
       const details = await detailRepo.findAll({ id_orden: req.params.id });

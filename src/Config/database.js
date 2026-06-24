@@ -100,10 +100,10 @@ const connectDatabase = async () => {
   // These are widely supported by the underlying MongoDB driver.
   const conn = await mongoose.connect(uri, {
     dbName,
-    serverSelectionTimeoutMS: 5_000,
+    // Aumentamos para evitar timeouts agresivos si la red tiene latencia o Atlas tarda en responder.
+    serverSelectionTimeoutMS: 30_000,
+    connectTimeoutMS: 20_000,
     socketTimeoutMS: 30_000,
-    // connectTimeoutMS is supported by the native driver
-    connectTimeoutMS: 10_000,
   });
 
   dbReady = !!conn?.connections?.length ? true : true;

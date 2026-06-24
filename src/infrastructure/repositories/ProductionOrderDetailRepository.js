@@ -35,6 +35,21 @@ class ProductionOrderDetailRepository {
     const result = await ProductionOrderDetailModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
   }
+
+  /**
+   * ✅ Cuenta cuántos detalles YA tienen un refCorte asignado para esta
+   * referencia de producto. refCorte solo se asigna cuando el detalle
+   * REALMENTE llega a la etapa de Corte, así que las órdenes anuladas
+   * antes de Corte nunca consumen un consecutivo — simplemente no tienen
+   * refCorte asignado y no se cuentan aquí.
+   */
+  async countRefCorteByProducto(id_producto) {
+    const regex = new RegExp(`^${id_producto}-\\d+$`);
+    return ProductionOrderDetailModel.countDocuments({
+      id_producto,
+      refCorte: { $regex: regex },
+    });
+  }
 }
 
 module.exports = ProductionOrderDetailRepository;

@@ -11,7 +11,7 @@ const BASE_URL = 'http://localhost:3000/api';
 export default function () {
 
     const routes = [
-        '/auth/login',   // login (POST no probado aquí, solo GET para ver si existe)
+        '/auth/login',   
         '/users',
         '/suppliers',
         '/proveedores',
@@ -34,7 +34,7 @@ export default function () {
             [`${route} status < 500`]: (r) => r.status < 500,
         });
 
-        console.log(`👉 ${route} => ${res.status}`);
+        console.log(` ${route} => ${res.status}`);
     });
 
 }

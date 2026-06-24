@@ -50,7 +50,7 @@ const router = Router();
  *                 data:
  *                   type: array
  *                   items: { type: string }
- *                   example: ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Empaque", "Enviado", "Anulada"]
+ *                   example: ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Recepción", "Enviado", "Anulada"]
  */
 
 /**
@@ -182,7 +182,7 @@ const router = Router();
  *             properties:
  *               estado:
  *                 type: string
- *                 enum: ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Empaque", "Enviado"]
+ *                 enum: ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Recepción", "Enviado"]
  *     responses:
  *       200:
  *         description: Estado actualizado
