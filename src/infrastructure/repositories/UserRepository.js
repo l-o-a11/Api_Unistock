@@ -44,6 +44,34 @@ class UserRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
+
+    // Excluir roles por nombre (ej. vista "empleados": todo rol que no sea
+    // Gerente/Administrador). Recibe un array o string separado por comas.
+    if (filters.excludeRoleNames) {
+      const nombres = Array.isArray(filters.excludeRoleNames)
+        ? filters.excludeRoleNames
+        : String(filters.excludeRoleNames).split(",").map((n) => n.trim()).filter(Boolean);
+
+      if (nombres.length) {
+        const RoleModel = require("../db/RoleModel");
+        const rolesAExcluir = await RoleModel.find({ nombre: { $in: nombres } })
+          .select("_id")
+          .lean();
+        const idsAExcluir = rolesAExcluir.map((r) => r._id);
+
+        if (idsAExcluir.length) {
+          // Si ya había un filtro de rolId puntual, combinamos con $and
+          // para no pisarlo accidentalmente.
+          if (query.rolId) {
+            query.$and = [{ rolId: query.rolId }, { rolId: { $nin: idsAExcluir } }];
+            delete query.rolId;
+          } else {
+            query.rolId = { $nin: idsAExcluir };
+          }
+        }
+      }
+    }
+
     const docs = await UserModel.find(query).populate("rolId", "nombre");
     return docs.map((d) => this._toEntity(d));
   }
