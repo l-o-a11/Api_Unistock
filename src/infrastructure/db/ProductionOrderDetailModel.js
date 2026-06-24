@@ -10,6 +10,9 @@ const productionOrderDetailSchema = new mongoose.Schema(
     cantidad: { type: Number, required: true },
     color: { type: String },
     estado: { type: Boolean, default: true },
+    // ✅ Fix: referencia de corte con consecutivo (ej. "REF-001-1", "REF-001-2").
+    // Se asigna una sola vez cuando el detalle pasa por la etapa de Corte.
+    refCorte: { type: String, default: null },
   },
   { timestamps: true },
 );

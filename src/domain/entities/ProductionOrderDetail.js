@@ -8,6 +8,7 @@ class ProductionOrderDetail {
     cantidad,
     color,
     estado = true,
+    refCorte = null,
   }) {
     this.id = id;
     this.id_orden = id_orden;
@@ -15,6 +16,7 @@ class ProductionOrderDetail {
     this.cantidad = cantidad;
     this.color = color;
     this.estado = estado;
+    this.refCorte = refCorte;
   }
 
   toJSON() {
@@ -25,6 +27,7 @@ class ProductionOrderDetail {
       cantidad: this.cantidad,
       color: this.color,
       estado: this.estado,
+      refCorte: this.refCorte,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

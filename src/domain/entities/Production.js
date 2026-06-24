@@ -22,7 +22,8 @@ const ESTADOS_VALIDOS = [
   "Corte",
   "Compras",
   "Producción",
-  "Empaque",
+  "Recepción",
+  "Empaque", // legado — no usar para nuevas órdenes
   "Enviado",
   "Anulada",
 ];
