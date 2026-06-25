@@ -36,6 +36,7 @@ const createSupplier = async (req, res) => {
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa,
+      correo_del_contacto: req.body.correoContacto || req.body.correo_del_contacto || null,
       sitio_web:           req.body.sitioWeb,
     };
     const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo } = backendData;
@@ -83,6 +84,7 @@ const updateSupplier = async (req, res) => {
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa    ?? req.body.correo,
+      correo_del_contacto:   req.body.correoContacto   ?? req.body.correo_del_contacto,
       sitio_web:           req.body.sitioWeb         ?? req.body.sitio_web,
     };
     Object.keys(changes).forEach(k => changes[k] === undefined && delete changes[k]);
