@@ -14,6 +14,11 @@ const { ok, created, badRequest, notFound, serverError, conflict } = require("..
 
 const repo = new ProductCategoriesRepository();
 
+const normalizeCategoryInput = (body = {}) => ({
+  nombre: body.nombre || body.name || "",
+  descripcion: body.descripcion ?? body.description ?? body.descripción ?? "",
+});
+
 const getProductCategories = async (req, res) => {
   try {
     const productCategories = await repo.findAll(req.query);
@@ -37,16 +42,10 @@ const getProductCategoryById = async (req, res) => {
 
 const createProductCategory = async (req, res) => {
   try {
-    // Mapear datos del frontend al backend (acepta múltiples formatos)
-    const backendData = {
-      nombre: req.body.nombre || req.body.name,
-      descripción: req.body.descripción || req.body.description || req.body.descripcion || '',
-    };
-
-    const { nombre, descripción } = backendData;
+    const { nombre, descripcion } = normalizeCategoryInput(req.body);
 
     // Validar campos requeridos
-    if (!nombre || !descripción) {
+    if (!nombre || !descripcion) {
       return badRequest(res, "Los campos nombre y descripción son requeridos");
     }
 
@@ -58,7 +57,8 @@ const createProductCategory = async (req, res) => {
 
     // Crear la categoría
     const productCategory = await repo.create({
-      ...backendData,
+      nombre,
+      descripcion,
       estado: true,
     });
 
@@ -82,7 +82,16 @@ const updateProductCategory = async (req, res) => {
       }
     }
 
-    const updated = await repo.update(req.params.id, req.body);
+    const normalized = normalizeCategoryInput(req.body);
+    const changes = {};
+    const hasDescription = ["descripcion", "description", "descripción"].some(
+      (key) => Object.prototype.hasOwnProperty.call(req.body, key)
+    );
+
+    if (normalized.nombre) changes.nombre = normalized.nombre;
+    if (hasDescription) changes.descripcion = normalized.descripcion;
+
+    const updated = await repo.update(req.params.id, changes);
     return ok(res, updated.toJSON());
   } catch (err) {
     console.error("Error en updateProductCategory:", err);
