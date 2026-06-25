@@ -26,7 +26,18 @@ const getOrders = async (req, res) => {
     return ok(res, orders.map((o) => o.toJSON()));
   } catch (err) {
     console.error("Error en getOrders:", err);
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+
+    // Mitigación: si Mongo está caído o no se puede conectar (timeout/whitelist/URI),
+    // responder 503 en vez de 500 genérico.
+    const msg = String(err?.message || err || "");
+    const looksLikeMongoTimeout =
+      /timeout|timed out|ECONN|ECONNREFUSED|ECONNRESET|serverSelection|ETIMEDOUT/i.test(msg);
+
+    if (looksLikeMongoTimeout) {
+      return res.status(503).json({ success: false, message: "Base de datos no disponible. Intenta en unos segundos." });
+    }
+
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : msg);
   }
 };
 
@@ -294,8 +305,8 @@ const updateOrderDetail = async (req, res) => {
     const id_orden = detailJson.id_orden;
     const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
     if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
+      const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
       const cambiosTexto = Object.entries(changes).map(([k, v]) => `${k}: ${v}`).join(", ");
       await prodRepo.agregarHistorial(
         id_orden,
@@ -313,33 +324,51 @@ const updateOrderDetail = async (req, res) => {
 };
 
 const deleteOrderDetail = async (req, res) => {
-  try {
-    // ✅ Fix: capturar el detalle ANTES de eliminarlo para poder describirlo en el historial
-    const detail = await detailRepo.findById(req.params.id);
-    if (!detail) return notFound(res, "Detalle de orden no encontrado");
-    const detailJson = detail.toJSON ? detail.toJSON() : detail;
+  // Capturar el detalle antes de eliminarlo para poder describirlo en el historial.
+  const detail = await detailRepo.findById(req.params.id).catch((err) => {
+    console.error("deleteOrderDetail/findById:", err);
+    return null;
+  });
+  if (!detail) return notFound(res, "Detalle de orden no encontrado");
 
-    const deleted = await detailRepo.delete(req.params.id);
-    if (!deleted) return notFound(res, "Detalle de orden no encontrado");
+  const detailJson = detail.toJSON ? detail.toJSON() : detail;
+  const id_orden = detailJson.id_orden;
+  const order = id_orden ? await prodRepo.findById(id_orden).catch((err) => {
+    console.warn("deleteOrderDetail/findOrder:", err?.message || err);
+    return null;
+  }) : null;
 
-    const id_orden = detailJson.id_orden;
-    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
-    if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
-      await prodRepo.agregarHistorial(
+  const deleted = await detailRepo.delete(req.params.id).catch((err) => {
+    console.error("deleteOrderDetail/delete:", err);
+    return false;
+  });
+  if (!deleted) return notFound(res, "Detalle de orden no encontrado");
+
+  let historialRegistrado = false;
+  if (order && id_orden) {
+    const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
+    const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
+    const estadoRegistro = Production.ESTADOS_VALIDOS.includes(order.estado) ? order.estado : "Diseño";
+
+    try {
+      const updatedOrder = await prodRepo.agregarHistorial(
         id_orden,
         `Se eliminó el artículo "${detailJson.id_producto}" (cantidad: ${detailJson.cantidad}${detailJson.color ? `, color: ${detailJson.color}` : ""})`,
         id_usuario,
         user,
-        order.estado,
-      ).catch((e) => console.warn("No se pudo registrar historial de deleteOrderDetail:", e?.message));
+        estadoRegistro,
+      );
+      historialRegistrado = !!updatedOrder;
+    } catch (err) {
+      console.warn("No se pudo registrar historial de deleteOrderDetail:", err?.message || err);
     }
-
-    return ok(res, { id: req.params.id, deleted: true });
-  } catch (err) {
-    return serverError(res);
   }
+
+  return ok(res, {
+    id: req.params.id,
+    deleted: true,
+    historialRegistrado,
+  });
 };
 
 // ── Anular orden (reemplaza deleteOrder) ─────────────────────────────────────
@@ -466,8 +495,8 @@ const createOrderDetail = async (req, res) => {
     // antes esta acción no dejaba ningún rastro visible para el usuario.
     const order = await prodRepo.findById(id_orden).catch(() => null);
     if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
+      const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
       await prodRepo.agregarHistorial(
         id_orden,
         `Se agregó el artículo "${id_producto}" (cantidad: ${cantidad}${color ? `, color: ${color}` : ""})`,
@@ -475,9 +504,22 @@ const createOrderDetail = async (req, res) => {
         user,
         order.estado,
       ).catch((e) => console.warn("No se pudo registrar historial de createOrderDetail:", e?.message));
+
+      // ✅ Fix: si la orden ya está en etapa Corte, asignar refCorte automáticamente
+      // al nuevo detalle (mismo mecanismo que se usa al avanzar el estado a Corte).
+      if (order.estado === "Corte" && !newDetail.refCorte) {
+        try {
+          const siguiente = (await detailRepo.countRefCorteByProducto(id_producto)) + 1;
+          await detailRepo.update(newDetail.id || newDetail._id, { refCorte: `${id_producto}-${siguiente}` });
+          const updated = await detailRepo.findById(newDetail.id || newDetail._id);
+          return created(res, updated ? updated.toJSON() : newDetail.toJSON());
+        } catch (e) {
+          console.warn("No se pudo asignar refCorte automáticamente:", e?.message);
+        }
+      }
     }
 
-    return created(res, newDetail);
+    return created(res, newDetail.toJSON ? newDetail.toJSON() : newDetail);
   } catch (err) {
     return serverError(res);
   }
