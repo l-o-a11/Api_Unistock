@@ -149,8 +149,16 @@ const createOrder = async (req, res) => {
         const activeSpec = specs && specs.length ? specs[0] : null;
         if (activeSpec) {
           const materiales = await materialTechSpecRepo.findAll({ id_producto: product.id, id_ficha_tecnica: activeSpec.id });
+          const activeSpecJson = activeSpec.toJSON ? activeSpec.toJSON() : activeSpec;
+          const makeLocalDate = (val) => {
+            if (!val) return null;
+            const d = new Date(val);
+            if (Number.isNaN(d.getTime())) return null;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          };
           techSpecification = {
-            ...(activeSpec.toJSON ? activeSpec.toJSON() : activeSpec),
+            ...activeSpecJson,
+            date: activeSpecJson.fecha_inicio || makeLocalDate(activeSpecJson.createdAt) || makeLocalDate(new Date()),
             materiales: materiales.map((m) => (m.toJSON ? m.toJSON() : m)),
           };
           console.log(`[ProductionController] Tech sheet encontrada para producto`);
