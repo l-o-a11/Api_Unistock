@@ -96,9 +96,38 @@ const sendPasswordChangedEmail = async ({ nombreCompleto, correo }) => {
   });
 };
 
+const sendEmailChangedEmail = async ({ nombreCompleto, correoNuevo, correoAnterior }) => {
+  await transporter.sendMail({
+    from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
+    to: correoNuevo,
+    subject: 'Tu correo electrónico fue actualizado — Unistock',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+        <h2>Hola, ${nombreCompleto}</h2>
+        <p>El correo electrónico asociado a tu cuenta en <strong>Unistock</strong> fue actualizado.</p>
+        <table style="margin: 16px 0; border-collapse: collapse; width: 100%;">
+          <tr>
+            <td style="padding: 6px 12px; font-weight: bold; color: #555;">Correo anterior:</td>
+            <td style="padding: 6px 12px; color: #333;">${correoAnterior}</td>
+          </tr>
+          <tr style="background: #f9fafb;">
+            <td style="padding: 6px 12px; font-weight: bold; color: #555;">Correo nuevo:</td>
+            <td style="padding: 6px 12px; color: #333;">${correoNuevo}</td>
+          </tr>
+        </table>
+        <p>A partir de ahora debes usar <strong>${correoNuevo}</strong> para iniciar sesión.</p>
+        <p>Si <strong>no realizaste este cambio</strong>, contacta al administrador del sistema inmediatamente.</p>
+        <hr/>
+        <p><strong>Equipo de Unistock</strong></p>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendForgotPasswordEmail,
   sendAlertEmail,
   sendPasswordChangedEmail,
+  sendEmailChangedEmail,
 };
