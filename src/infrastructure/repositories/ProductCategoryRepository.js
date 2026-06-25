@@ -4,17 +4,25 @@ const ProductModel = require("../db/ProductModel");
 const ProductCategory = require("../../domain/entities/ProductCategory");
 
 class ProductCategoryRepository {
+  _normalizeDescription(obj = {}) {
+    return obj.descripcion ?? obj.descripción ?? obj.description ?? "";
+  }
+
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    return new ProductCategory({ ...obj, id: obj._id.toString() });
+    return new ProductCategory({
+      ...obj,
+      id: obj._id.toString(),
+      descripcion: this._normalizeDescription(obj),
+    });
   }
 
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombre: re }, { descripción: re }];
+      query.$or = [{ nombre: re }, { descripcion: re }, { descripción: re }];
     }
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
