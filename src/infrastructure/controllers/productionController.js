@@ -438,33 +438,40 @@ const cambiarEstado = async (req, res) => {
       }
     }
 
-    if (estado === "Producción") {
+    // ✅ Inventario: solo incrementar stock cuando la orden llega a "Enviado".
+    // 1) No sobrescribe el stock actual: usa $inc.
+    // 2) Evita duplicar incrementos si el usuario retrocede: el backend no
+    //    ejecuta esto para estados anteriores.
+    if (estado === "Enviado") {
       const details = await detailRepo.findAll({ id_orden: req.params.id });
       const stockByProductId = new Map();
 
-      await Promise.all(details.map(async (detail) => {
-        const data = detail.toJSON ? detail.toJSON() : detail;
-        const product =
-          await productRepo.findById(data.id_producto).catch(() => null) ||
-          await productRepo.findByReference(data.id_producto).catch(() => null);
+      await Promise.all(
+        details.map(async (detail) => {
+          const data = detail.toJSON ? detail.toJSON() : detail;
+          const product =
+            (await productRepo.findById(data.id_producto).catch(() => null)) ||
+            (await productRepo.findByReference(data.id_producto).catch(() => null));
 
-        if (!product) return;
+          if (!product) return;
 
-        const productId = product.id || (product._id ? String(product._id) : null);
-        if (!productId) return;
+          const productId = product.id || (product._id ? String(product._id) : null);
+          if (!productId) return;
 
-        stockByProductId.set(
-          productId,
-          (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
-        );
-      }));
+          stockByProductId.set(
+            productId,
+            (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
+          );
+        }),
+      );
 
       await Promise.all(
-        [...stockByProductId.entries()].map(([productId, stock]) =>
-          productRepo.update(productId, { stock }),
+        [...stockByProductId.entries()].map(([productId, qty]) =>
+          productRepo.incrementStock(productId, qty),
         ),
       );
     }
+
 
     return ok(res, result);
   } catch (err) {
