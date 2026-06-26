@@ -1,4 +1,11 @@
 // application/use-cases/users/UpdateUser.js
+const mongoose = require('mongoose');
+const { sendEmailChangedEmail } = require('../../../shared/utils/emailService');
+
+// Valida que un string sea un ObjectId válido de MongoDB.
+// Evita que Mongoose lance un CastError no controlado cuando llega
+// un string basura como rolId o sedeId.
+const isValidId = (id) => id && mongoose.Types.ObjectId.isValid(id);
 
 class UpdateUser {
   constructor(userRepository, roleRepository, siteRepository) {
@@ -8,6 +15,12 @@ class UpdateUser {
   }
 
   async execute(id, data) {
+    if (!isValidId(id)) {
+      const error = new Error("ID de usuario inválido");
+      error.statusCode = 400;
+      throw error;
+    }
+
     const existing = await this.userRepository.findById(id);
     if (!existing) {
       const error = new Error("Usuario no encontrado");
@@ -17,8 +30,11 @@ class UpdateUser {
 
     const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId } = data;
 
+    // Detectar si el correo va a cambiar (para enviar notificación después)
+    const emailChanged = correo && correo !== existing.correo;
+
     // Unicidad de correo (excluye el usuario actual)
-    if (correo && correo !== existing.correo) {
+    if (emailChanged) {
       const byEmail = await this.userRepository.findByEmail(correo);
       if (byEmail && byEmail.id.toString() !== id.toString()) {
         const error = new Error("Ya existe otro usuario con ese correo electrónico");
@@ -38,12 +54,17 @@ class UpdateUser {
     }
 
     const changes = {};
-    if (tipoDocumento)   changes.tipoDocumento   = tipoDocumento;
-    if (numeroDocumento) changes.numeroDocumento  = numeroDocumento;
-    if (nombreCompleto)  changes.nombreCompleto   = nombreCompleto.trim();
-    if (correo)          changes.correo           = correo;
+    if (tipoDocumento) changes.tipoDocumento = tipoDocumento;
+    if (numeroDocumento) changes.numeroDocumento = numeroDocumento;
+    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
+    if (correo) changes.correo = correo;
 
     if (rolId) {
+      if (!isValidId(rolId)) {
+        const error = new Error("ID de rol inválido");
+        error.statusCode = 422;
+        throw error;
+      }
       const role = await this.roleRepository.findById(rolId);
       if (!role || !role.estado) {
         const error = new Error("Rol inválido o inactivo");
@@ -54,6 +75,11 @@ class UpdateUser {
     }
 
     if (sedeId) {
+      if (!isValidId(sedeId)) {
+        const error = new Error("ID de sede inválido");
+        error.statusCode = 422;
+        throw error;
+      }
       const site = await this.siteRepository.findById(sedeId);
       if (!site || !site.estado) {
         const error = new Error("Sede inválida o inactiva");
@@ -63,8 +89,27 @@ class UpdateUser {
       changes.sedeId = sedeId;
     }
 
+    // Si no hay nada que cambiar, devolver el usuario actual sin tocar BD
+    if (Object.keys(changes).length === 0) {
+      return existing.toPublic ? existing.toPublic() : existing;
+    }
+
     const updated = await this.userRepository.update(id, changes);
-    const { password, ...userPublic } = updated.toObject ? updated.toObject() : updated;
+    // toPublic() garantiza que nunca se filtre el hash de contraseña
+    const userPublic = updated.toPublic
+      ? updated.toPublic()
+      : (() => { const { password, ...rest } = updated.toObject ? updated.toObject() : updated; return rest; })();
+
+    // Notificar al NUEVO correo si cambió.
+    // No lanzamos si el email falla — el update ya fue exitoso.
+    if (emailChanged) {
+      sendEmailChangedEmail({
+        nombreCompleto: userPublic.nombreCompleto ?? existing.nombreCompleto,
+        correoNuevo: correo,
+        correoAnterior: existing.correo,
+      }).catch((err) => console.error('Error enviando correo de cambio de email:', err));
+    }
+
     return userPublic;
   }
 }
