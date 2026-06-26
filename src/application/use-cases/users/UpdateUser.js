@@ -1,5 +1,4 @@
 // application/use-cases/users/UpdateUser.js
-
 const mongoose = require('mongoose');
 const { sendEmailChangedEmail } = require('../../../shared/utils/emailService');
 
@@ -16,7 +15,6 @@ class UpdateUser {
   }
 
   async execute(id, data) {
-    // Validar que el propio ID del usuario sea un ObjectId válido
     if (!isValidId(id)) {
       const error = new Error("ID de usuario inválido");
       error.statusCode = 400;
