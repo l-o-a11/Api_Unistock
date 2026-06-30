@@ -1,4 +1,3 @@
-// application/use-cases/users/UpdateUser.js
 const mongoose = require('mongoose');
 const { sendEmailChangedEmail } = require('../../../shared/utils/emailService');
 
@@ -109,7 +108,6 @@ class UpdateUser {
         correoAnterior: existing.correo,
       }).catch((err) => console.error('Error enviando correo de cambio de email:', err));
     }
-
     return userPublic;
   }
 }
