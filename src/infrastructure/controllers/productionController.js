@@ -18,12 +18,45 @@ const productRepo    = new ProductRepository();
 const techSpecRepo   = new TechnicalSpecificationsRepo();
 const materialTechSpecRepo = new MaterialTechnicalSpecificationsRepo();
 
+const summarizeOrderDetails = (details = []) => {
+  const totalQty = details.reduce((sum, det) => sum + (Number(det.cantidad) || 0), 0);
+  const colors = [...new Set(
+    (details || []).map((det) => String(det.color || '').trim()).filter(Boolean)
+  )];
+  const firstRef = details?.[0]?.id_producto || '';
+  return {
+    cantidad: totalQty,
+    color: colors[0] || '',
+    referencia: firstRef,
+    producto: firstRef || null,
+  };
+};
+
 // ── Órdenes ───────────────────────────────────────────────────────────────────
 
 const getOrders = async (req, res) => {
   try {
     const orders = await prodRepo.findAll(req.query);
-    return ok(res, orders.map((o) => o.toJSON()));
+
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        const orderJson = order.toJSON ? order.toJSON() : order;
+        const orderId = orderJson._id || orderJson.id;
+        if (!orderId) return orderJson;
+
+        const details = await detailRepo.findAll({ id_orden: orderId });
+        const detalles = details.map((d) => (d.toJSON ? d.toJSON() : d));
+        const resumen = summarizeOrderDetails(detalles);
+
+        return {
+          ...orderJson,
+          detalles,
+          ...resumen,
+        };
+      })
+    );
+
+    return ok(res, ordersWithDetails);
   } catch (err) {
     console.error("Error en getOrders:", err);
 
