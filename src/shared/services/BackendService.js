@@ -11,7 +11,7 @@
 const axios = require('axios');
 
 // Configurar la URL base del backend
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3020';
 
 // Crear instancia de axios con configuración
 const backendClient = axios.create({
