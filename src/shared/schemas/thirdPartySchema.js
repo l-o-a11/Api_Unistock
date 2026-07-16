@@ -8,8 +8,32 @@ const baseThirdParty = z.object({
   nit: z
     .union([z.string(), z.number()])
     .transform((v) => (v === null || v === undefined ? '' : String(v)))
-    .refine((s) => s.trim().length >= 5, 'NIT debe tener al menos 5 caracteres')
-    .refine((s) => s.trim().length <= 15, 'NIT no puede exceder 15 caracteres'),
+    .superRefine((s, ctx) => {
+      const cleaned = s.replace(/\s+/g, '');
+      const digitsOnly = cleaned.replace(/\D/g, '');
+
+      // Mínimo y máximo por dígitos (permite que venga con '-')
+      if (digitsOnly.length < 6) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 10 dígitos' });
+        return;
+      }
+
+      if (digitsOnly.length > 10) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 10 dígitos' });
+        return;
+      }
+
+      // Si contiene '-', validar formato (opcional) como: <digits>-<digits>
+      // Ej válido: 900123456-7
+      // Permitimos un solo guion y que haya al menos un dígito a ambos lados.
+      if (cleaned.includes('-') && !/^\d+-\d+$/.test(cleaned)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nit'],
+          message: 'NIT inválido. Ejemplo permitido: 900123456-7',
+        });
+      }
+    }),
 
   // Alias soportados por el frontend: nombre_empresa -> nombre, nombre_contacto -> contacto
   nombre: z
@@ -133,11 +157,8 @@ const updateThirdPartySchema = baseThirdParty
     const nombreFinal = data.nombre ?? data.nombre_empresa;
     const contactoFinal = data.contacto ?? data.nombre_contacto;
 
-    // Si viene alguno de los campos relacionados, exige que exista el par correspondiente.
-    const hasNombreRelated =
-      data.nombre !== undefined || data.nombre_empresa !== undefined;
-    const hasContactoRelated =
-      data.contacto !== undefined || data.nombre_contacto !== undefined;
+    const hasNombreRelated = data.nombre !== undefined || data.nombre_empresa !== undefined;
+    const hasContactoRelated = data.contacto !== undefined || data.nombre_contacto !== undefined;
 
     if (hasNombreRelated && !nombreFinal) {
       ctx.addIssue({
