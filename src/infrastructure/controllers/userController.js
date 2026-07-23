@@ -135,6 +135,8 @@ const forgotPassword = async (req, res) => {
     return ok(res, result);
   } catch (err) {
     console.error('ERROR FORGOT PASSWORD:', err);
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res, err.message);
   }
 };
