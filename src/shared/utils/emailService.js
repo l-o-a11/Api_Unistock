@@ -124,10 +124,56 @@ const sendEmailChangedEmail = async ({ nombreCompleto, correoNuevo, correoAnteri
   });
 };
 
+const sendProductionAssignedEmail = async ({ nombreCompleto, correo, numeroOrden, etapa }) => {
+  await transporter.sendMail({
+    from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
+    to: correo,
+    subject: `Te asignaron la orden #${numeroOrden} — Unistock`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+        <h2>Hola, ${nombreCompleto}</h2>
+        <p>Te asignaron la etapa <strong>${etapa}</strong> de la orden de producción <strong>#${numeroOrden}</strong>.</p>
+        <p>Ingresa a Unistock para ver el detalle y avanzar cuando termines tu parte.</p>
+        <p>
+          <a href="${process.env.APP_URL || "http://localhost:5173/login"}">
+            Ingresar a Unistock
+          </a>
+        </p>
+        <hr/>
+        <p><strong>Equipo de Unistock</strong></p>
+      </div>
+    `,
+  });
+};
+
+const sendProductionStageCompletedEmail = async ({ nombreCompleto, correo, numeroOrden, etapaCompletada, empleadoNombre }) => {
+  await transporter.sendMail({
+    from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
+    to: correo,
+    subject: `Orden #${numeroOrden} — etapa "${etapaCompletada}" finalizada`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+        <h2>Hola, ${nombreCompleto}</h2>
+        <p><strong>${empleadoNombre}</strong> finalizó la etapa <strong>${etapaCompletada}</strong> de la orden de producción <strong>#${numeroOrden}</strong>.</p>
+        <p>Ingresa a Unistock para asignar al siguiente responsable.</p>
+        <p>
+          <a href="${process.env.APP_URL || "http://localhost:5173/login"}">
+            Ingresar a Unistock
+          </a>
+        </p>
+        <hr/>
+        <p><strong>Equipo de Unistock</strong></p>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendForgotPasswordEmail,
   sendAlertEmail,
   sendPasswordChangedEmail,
   sendEmailChangedEmail,
+  sendProductionAssignedEmail,
+  sendProductionStageCompletedEmail,
 };

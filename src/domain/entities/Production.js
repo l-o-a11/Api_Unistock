@@ -75,6 +75,11 @@ class Production {
     // ✅ Persistidas en BD — antes solo vivían en localStorage del navegador
     sedeAsignaciones = [],
     terceroAsignaciones = [],
+    // ✅ Empleado asignado a la etapa actual del flujo
+    empleadoAsignadoId = null,
+    // ✅ Sede dueña de la producción desde su creación (no confundir con
+    // sedeAsignaciones, que es el reparto del producto terminado)
+    sedeId = null,
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -97,6 +102,8 @@ class Production {
     this.referencia = referencia;
     this.sedeAsignaciones = sedeAsignaciones;
     this.terceroAsignaciones = terceroAsignaciones;
+    this.empleadoAsignadoId = empleadoAsignadoId;
+    this.sedeId = sedeId;
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -131,6 +138,8 @@ class Production {
       referencia: this.referencia,
       sedeAsignaciones: this.sedeAsignaciones,
       terceroAsignaciones: this.terceroAsignaciones,
+      empleadoAsignadoId: this.empleadoAsignadoId,
+      sedeId: this.sedeId,
     };
   }
 }

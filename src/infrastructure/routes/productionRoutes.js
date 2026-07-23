@@ -314,25 +314,26 @@ const router = Router();
  */
 
 // Órdenes
-router.get("/ordenes/estados",       ctrl.getEstados);        // Debe ir antes de /:id
-router.get("/ordenes",               ctrl.getOrders);
-router.get("/ordenes/:id",           ctrl.getOrderById);
-router.post("/ordenes",              validateSchema(createOrderSchema), ctrl.createOrder);
-router.put("/ordenes/:id",           validateSchema(updateOrderSchema), ctrl.updateOrder);
-router.patch("/ordenes/:id/estado",  validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
-router.patch("/ordenes/:id/anular",  validateSchema(anularOrderSchema), ctrl.anularOrder);
+router.get("/ordenes/estados", ctrl.getEstados);        // Debe ir antes de /:id
+router.get("/ordenes", ctrl.getOrders);
+router.get("/ordenes/:id", ctrl.getOrderById);
+router.post("/ordenes", validateSchema(createOrderSchema), ctrl.createOrder);
+router.put("/ordenes/:id", validateSchema(updateOrderSchema), ctrl.updateOrder);
+router.patch("/ordenes/:id/estado", requireAuth, validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
+router.patch("/ordenes/:id/asignar-empleado", requireAuth, ctrl.asignarEmpleado);
+router.patch("/ordenes/:id/anular", validateSchema(anularOrderSchema), ctrl.anularOrder);
 
 // Detalles
-router.get("/detalle-orden",         ctrl.getOrderDetails);
-router.post("/detalle-orden",        ctrl.createOrderDetail);
-router.put("/detalle-orden/:id",     ctrl.updateOrderDetail);
-router.delete("/detalle-orden/:id",  ctrl.deleteOrderDetail);
+router.get("/detalle-orden", ctrl.getOrderDetails);
+router.post("/detalle-orden", ctrl.createOrderDetail);
+router.put("/detalle-orden/:id", ctrl.updateOrderDetail);
+router.delete("/detalle-orden/:id", ctrl.deleteOrderDetail);
 
 // Asignaciones
-router.get("/asignaciones",               ctrl.getAssignments);
-router.post("/asignaciones",              ctrl.createAssignment);
+router.get("/asignaciones", ctrl.getAssignments);
+router.post("/asignaciones", ctrl.createAssignment);
 // ✅ DELETE para limpiar asignaciones antes de reasignar (evita sobre-suma)
-router.delete("/asignaciones/:id",        ctrl.deleteAssignment);
+router.delete("/asignaciones/:id", ctrl.deleteAssignment);
 router.delete("/asignaciones/orden/:id_orden", ctrl.deleteAssignmentsByOrder);
 
 module.exports = router;

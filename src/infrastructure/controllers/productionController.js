@@ -1,22 +1,25 @@
 // infrastructure/controllers/productionController.js
 const mongoose = require("mongoose");
-const ProductionRepository            = require("../repositories/ProductionRepository");
+const ProductionRepository = require("../repositories/ProductionRepository");
 const ProductionOrderDetailRepository = require("../repositories/ProductionOrderDetailRepository");
-const ThirdPartyAssignmentRepository  = require("../repositories/ThirdPartyAssignmentRepository");
-const ProductRepository                = require("../repositories/ProductRepository");
-const TechnicalSpecificationsRepo      = require("../repositories/TechnicalSpecificationsRepository");
+const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
+const ProductRepository = require("../repositories/ProductRepository");
+const TechnicalSpecificationsRepo = require("../repositories/TechnicalSpecificationsRepository");
 const MaterialTechnicalSpecificationsRepo = require("../repositories/MaterialTechnicalSpecificationsRepository");
-const AnularProduction                = require("../../application/use-cases/production/AnularProduction");
-const CambiarEstadoProduction         = require("../../application/use-cases/production/CambiarEstadoProduction");
-const Production                      = require("../../domain/entities/Production");
-const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+const AnularProduction = require("../../application/use-cases/production/AnularProduction");
+const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
+const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const UserRepository = require("../repositories/UserRepository");
+const Production = require("../../domain/entities/Production");
+const { ok, created, badRequest, notFound, serverError, forbidden } = require("../../shared/utils/response");
 
-const prodRepo       = new ProductionRepository();
-const detailRepo     = new ProductionOrderDetailRepository();
+const prodRepo = new ProductionRepository();
+const detailRepo = new ProductionOrderDetailRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
-const productRepo    = new ProductRepository();
-const techSpecRepo   = new TechnicalSpecificationsRepo();
+const productRepo = new ProductRepository();
+const techSpecRepo = new TechnicalSpecificationsRepo();
 const materialTechSpecRepo = new MaterialTechnicalSpecificationsRepo();
+const userRepo = new UserRepository();
 
 const summarizeOrderDetails = (details = []) => {
   const totalQty = details.reduce((sum, det) => sum + (Number(det.cantidad) || 0), 0);
@@ -136,12 +139,16 @@ const createOrder = async (req, res) => {
     const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === 'true';
     const originalOrderNumber = req.body.originalOrderNumber || req.body.original_order_number || null;
     const originalOrderStatus = req.body.originalOrderStatus || req.body.original_order_status || null;
+    // ✅ Sede dueña de la producción — de dónde son los empleados que la
+    // trabajarán en cada etapa. La exige el frontend (Gerente elige,
+    // Administrador la trae precargada con la suya).
+    const sedeId = req.body.sedeId || null;
 
     console.log(`[ProductionController] Creando orden tipo="${tipo}", cliente="${cliente}", ref="${referencia}"`);
 
     // Usar id_usuario del body, o del middleware si está disponible, o "anonymous" si nada está disponible
     const userId = id_usuario || req.user?.id || "anonymous";
-    
+
     if (!fecha_entrega || !cliente) {
       console.warn(`[ProductionController] Validación fallida: fecha_entrega="${fecha_entrega}", cliente="${cliente}"`);
       return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
@@ -203,14 +210,19 @@ const createOrder = async (req, res) => {
       }
     }
 
+    // ✅ Las órdenes tipo "producción" ya traen una ficha técnica EXISTENTE
+    // (referencian un producto que ya la tiene) — no requieren que nadie
+    // "trabaje" esa etapa, así que arrancan directo en "Corte", el primer
+    // paso que sí necesita a alguien asignado. Las de tipo "diseño" sí
+    // arrancan en "Diseño" porque ahí se CREA la ficha técnica.
     const historial = isProduccion
       ? [
-          { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
-          { estado: "Ficha Técnica", fecha: new Date(), id_usuario: userId, motivo: null },
-        ]
+        { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
+        { estado: "Ficha Técnica", fecha: new Date(), id_usuario: userId, motivo: null },
+      ]
       : [
-          { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
-        ];
+        { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
+      ];
 
     console.log(`[ProductionController] Creando documento con historial de ${historial.length} estados`);
 
@@ -226,8 +238,9 @@ const createOrder = async (req, res) => {
       fromDamaged,
       originalOrderNumber,
       originalOrderStatus,
-      estado: isProduccion ? "Ficha Técnica" : "Diseño",
+      estado: isProduccion ? "Corte" : "Diseño",
       historial,
+      sedeId,
     });
 
     console.log(`[ProductionController] Orden creada con ID: ${order.id || order._id}, numero_orden=${order.numero_orden}`);
@@ -251,9 +264,9 @@ const createOrder = async (req, res) => {
 
     const orderData = order.toJSON();
     console.log(`[ProductionController] Orden convertida a JSON exitosamente`);
-    return created(res, { 
-      ...orderData, 
-      asignaciones: createdAssignments 
+    return created(res, {
+      ...orderData,
+      asignaciones: createdAssignments
     });
   } catch (err) {
     console.error("Error al crear orden:", err);
@@ -421,7 +434,7 @@ const anularOrder = async (req, res) => {
     const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
 
     const useCase = new AnularProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
+    const result = await useCase.execute(req.params.id, motivo, id_usuario, user);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -454,8 +467,9 @@ const cambiarEstado = async (req, res) => {
       }
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+    const useCase = new CambiarEstadoProduction(prodRepo, userRepo);
+    const solicitante = req.user ? { id: req.user.id, rolNombre: req.user.rolNombre } : null;
+    const result = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest, solicitante });
 
     // ✅ Fix: asignar la referencia de corte con consecutivo (ej. "REF-001-1")
     // la primera vez que la orden llega a la etapa de Corte. Si el detalle
@@ -506,6 +520,25 @@ const cambiarEstado = async (req, res) => {
     }
 
 
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 400 || err.statusCode === 422)
+      return badRequest(res, err.message);
+    return serverError(res);
+  }
+};
+
+// ── Asignar empleado a la etapa actual ────────────────────────────────────────
+
+const asignarEmpleado = async (req, res) => {
+  try {
+    const { empleadoId } = req.body;
+    if (!empleadoId) return badRequest(res, "empleadoId es requerido");
+
+    const useCase = new AsignarEmpleadoProduccion(prodRepo, userRepo);
+    const result = await useCase.execute(req.params.id, empleadoId);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -641,11 +674,11 @@ const getCalendario = async (req, res) => {
     const ordenes = await prodRepo.findParaCalendario(desde, hasta);
 
     const COLORES_ESTADO = {
-      'Diseño':        { color: '#7c3aed', tipo: 'diseno'     },
-      'Ficha Técnica': { color: '#7c3aed', tipo: 'diseno'     },
-      'Corte':         { color: '#0891b2', tipo: 'corte'      },
-      'Compras':       { color: '#d97706', tipo: 'calidad'    },
-      'Producción':    { color: '#ec4899', tipo: 'produccion' },
+      'Diseño': { color: '#7c3aed', tipo: 'diseno' },
+      'Ficha Técnica': { color: '#7c3aed', tipo: 'diseno' },
+      'Corte': { color: '#0891b2', tipo: 'corte' },
+      'Compras': { color: '#d97706', tipo: 'calidad' },
+      'Producción': { color: '#ec4899', tipo: 'produccion' },
     };
 
     const eventos = [];
@@ -653,29 +686,29 @@ const getCalendario = async (req, res) => {
       const colorInfo = COLORES_ESTADO[orden.estado] || { color: '#6366f1', tipo: 'creacion' };
 
       eventos.push({
-        id:           `estado-${orden.id}`,
-        title:        `#${orden.numero_orden} ${orden.cliente} — ${orden.estado}`,
-        date:         orden.ultimo_cambio?.fecha
+        id: `estado-${orden.id}`,
+        title: `#${orden.numero_orden} ${orden.cliente} — ${orden.estado}`,
+        date: orden.ultimo_cambio?.fecha
           ? new Date(orden.ultimo_cambio.fecha).toISOString().split('T')[0]
           : new Date(orden.fecha_entrega).toISOString().split('T')[0],
-        tipo:         colorInfo.tipo,
-        color:        colorInfo.color,
-        orderId:      orden.id,
+        tipo: colorInfo.tipo,
+        color: colorInfo.color,
+        orderId: orden.id,
         numero_orden: orden.numero_orden,
-        estado:       orden.estado,
-        cliente:      orden.cliente,
+        estado: orden.estado,
+        cliente: orden.cliente,
       });
 
       eventos.push({
-        id:           `entrega-${orden.id}`,
-        title:        ` Entrega #${orden.numero_orden} — ${orden.cliente}`,
-        date:         new Date(orden.fecha_entrega).toISOString().split('T')[0],
-        tipo:         'entrega',
-        color:        '#16a34a',
-        orderId:      orden.id,
+        id: `entrega-${orden.id}`,
+        title: ` Entrega #${orden.numero_orden} — ${orden.cliente}`,
+        date: new Date(orden.fecha_entrega).toISOString().split('T')[0],
+        tipo: 'entrega',
+        color: '#16a34a',
+        orderId: orden.id,
         numero_orden: orden.numero_orden,
-        estado:       orden.estado,
-        cliente:      orden.cliente,
+        estado: orden.estado,
+        cliente: orden.cliente,
       });
     });
 
@@ -695,6 +728,7 @@ module.exports = {
   deleteOrderDetail,
   anularOrder,
   cambiarEstado,
+  asignarEmpleado,
   getEstados,
   getOrderDetails,
   createOrderDetail,
