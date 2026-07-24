@@ -34,7 +34,6 @@ class Suppliers {
    * @param {string} data.direccion - Dirección
    * @param {number} data.telefono - Teléfono
    * @param {string} data.correo - Email
-   * @param {string} data.correo_del_contacto - Email del contacto
    * @param {string} data.sitio_web - Sitio web
    * @param {boolean} [data.activo=true] - Estado activo
    */
@@ -46,7 +45,6 @@ class Suppliers {
     direccion,
     telefono,
     correo,
-    correo_del_contacto,
     sitio_web,
     activo = true,
   }) {
@@ -57,7 +55,6 @@ class Suppliers {
     this.direccion = direccion;
     this.telefono = telefono;
     this.correo = correo;
-    this.correo_del_contacto = correo_del_contacto;
     this.sitio_web = sitio_web;
     this.activo = activo;
   }
@@ -75,7 +72,6 @@ class Suppliers {
       direccion: this.direccion,
       telefono: this.telefono,
       correo: this.correo,
-      correo_del_contacto: this.correo_del_contacto,
       sitio_web: this.sitio_web,
       activo: this.activo,
     };

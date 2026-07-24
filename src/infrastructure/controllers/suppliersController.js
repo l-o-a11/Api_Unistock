@@ -29,23 +29,6 @@ const createSupplier = async (req, res) => {
       ? String(req.body.nit).trim()
       : req.body.nit;
 
-    // Validación NIT: permitir '-' pero validar por dígitos (6 a 12)
-    const cleaned = String(nitOriginal ?? '').replace(/\s+/g, '');
-    const digitsOnly = cleaned.replace(/\D/g, '');
-
-    // Reglas:
-    // - Si NO trae '-', solo debe tener 6 a 12 dígitos.
-    // - Si trae '-', debe ser formato <digits>-<digits> y el total de dígitos debe ser 6 a 12.
-    if (digitsOnly.length < 5 || digitsOnly.length > 12) {
-      return badRequest(res, 'NIT debe tener entre 6 y 12 dígitos');
-    }
-
-    if (cleaned.includes('-') && !/^\d+-\d+$/.test(cleaned)) {
-      return badRequest(res, 'NIT inválido. Ejemplo permitido: 900123456-7');
-    }
-
-
-
     const backendData = {
       nit:                 nitOriginal,
       nombre_de_empresa:   req.body.nombreEmpresa,
@@ -53,7 +36,6 @@ const createSupplier = async (req, res) => {
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa,
-      correo_del_contacto: req.body.correoContacto || req.body.correo_del_contacto || null,
       sitio_web:           req.body.sitioWeb,
     };
     const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo } = backendData;
@@ -101,7 +83,6 @@ const updateSupplier = async (req, res) => {
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa    ?? req.body.correo,
-      correo_del_contacto:   req.body.correoContacto   ?? req.body.correo_del_contacto,
       sitio_web:           req.body.sitioWeb         ?? req.body.sitio_web,
     };
     Object.keys(changes).forEach(k => changes[k] === undefined && delete changes[k]);
