@@ -21,7 +21,6 @@ class UpdateSupplier {
       telefono,
       correo,
       sitio_web,
-      correoContacto,
       activo,
     }
 

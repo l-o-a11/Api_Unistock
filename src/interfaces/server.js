@@ -18,53 +18,13 @@ const moduleRoutes = require("../infrastructure/routes/moduleRoutes");
 const privilegeRoutes = require("../infrastructure/routes/privilegeRoutes");
 const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
 const productRoutes = require("../infrastructure/routes/productRoutes");
+const clientRoutes = require("../infrastructure/routes/clientRoutes");
 const { specs, swaggerUi } = require("../swagger/swagger");
 
 const app = express();
 
-// CORS Configuration
-// IMPORTANTE: debe ir ANTES de cualquier otro middleware (incluido el check de MongoDB),
-// para que los preflights OPTIONS reciban los headers correctos sin ser bloqueados.
-//
-// Se aceptan: el frontend web (5173), Flutter Web fijo en 5000, el emulador
-// Android (10.0.2.2) y cualquier origen extra definido en MOBILE_ORIGINS del .env.
-//
-// NOTA Flutter Web: flutter run -d chrome SIN --web-port asigna un puerto
-// ALEATORIO cada vez, lo que rompe esta lista. Siempre lanzar con:
-//   flutter run -d chrome --web-port=5000
-const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
-  "http://localhost:5000",
-  // Emulador Android redirige 10.0.2.2 → host de la PC
-  "http://10.0.2.2:3000",
-  // Dispositivos físicos en red local (define MOBILE_ORIGINS=ip1,ip2 en .env)
-  ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Sin origin → Postman, curl, apps móviles nativas: permitir
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS bloqueado para origen: ${origin}`));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-// Aplicar CORS a todas las rutas
-app.use(cors(corsOptions));
-// Responder preflights OPTIONS directamente, antes de que lleguen a requireAuth
-app.options("/{*path}", cors(corsOptions));
-
-// Body parsers
-app.use(express.json({ limit: "25mb" }));
-app.use(express.urlencoded({ extended: true, limit: "25mb" }));
-
 // Middleware: fail-fast si MongoDB no está conectado.
 // Evita que Mongoose entre en modo "buffering" y luego haga timeout.
-// Va DESPUÉS del CORS para que el 503 también lleve los headers de CORS.
 const { isDbConnected } = require("../Config/database");
 app.use((req, res, next) => {
   if (!isDbConnected()) {
@@ -74,6 +34,40 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// CORS Configuration
+// Se aceptan: el frontend web, el emulador Android (10.0.2.2) y cualquier
+// dispositivo físico en red local.  En producción ajusta FRONTEND_URL y
+// MOBILE_URL en el .env en lugar de usar allowAll.
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  // Emulador Android redirige 10.0.2.2 → host de la PC
+  "http://10.0.2.2:3000",
+  // Dispositivos físicos en red local (ajusta la IP de tu PC si es fija)
+  ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
+];
+
+const corsOptions = {
+
+  // FIX: antes solo permitía un origin (5173, el de React). Flutter Web
+  // corre en otro puerto, así que se agregó como segundo origin permitido.
+  //
+  // IMPORTANTE: flutter run -d chrome SIN --web-port asigna un puerto
+  // ALEATORIO cada vez (ej: 62919), lo que rompe esta lista en cada corrida.
+  // Por eso hay que fijar el puerto siempre igual al levantar Flutter Web:
+  //
+  //   flutter run -d chrome --web-port=5000
+  //
+  // Así el origin siempre es http://localhost:5000 y coincide con esta lista.
+  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:5000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Rutas
 app.use("/api/auth", authRoutes);
@@ -94,6 +88,7 @@ app.use('/api/privileges', privilegeRoutes);
 app.use("/api/product-categories", productCategoryRoutes);
 app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/clients", clientRoutes);
 
 // Swagger Documentation (después de rutas de API pero antes de 404)
 app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, {
