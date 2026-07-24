@@ -182,7 +182,9 @@ const updateThirdParty = async (req, res) => {
       }
     }
 
-    if (data.nit) updateData.nit = data.nit;
+    if (data.nit !== undefined && data.nit !== null) {
+      updateData.nit = data.nit === '' ? '' : data.nit;
+    }
     if (nextNombreEmpresa)
       updateData.nombre_empresa = nextNombreEmpresa;
     if (data.contacto || data.nombre_contacto)

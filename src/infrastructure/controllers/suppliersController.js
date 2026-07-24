@@ -49,14 +49,17 @@ const createSupplier = async (req, res) => {
     const backendData = {
       nit:                 nitOriginal,
       nombre_de_empresa:   req.body.nombreEmpresa,
-      nombre_del_contacto: req.body.nombreContacto || "",
+      nombre_del_contacto: req.body.nombreContacto || req.body.nombre_del_contacto || "",
+      tipo_documento:      req.body.tipoDocumento,
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa,
       correo_del_contacto: req.body.correoContacto || req.body.correo_del_contacto || null,
+      telefono_contacto:   req.body.telefonoContacto || req.body.telefono_contacto || null,
+      tipo_documento_contacto: req.body.tipoDocumentoContacto || req.body.tipo_documento_contacto || null,
       sitio_web:           req.body.sitioWeb,
     };
-    const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo } = backendData;
+    const { nit, nombre_de_empresa, nombre_del_contacto, tipo_documento, direccion, telefono, correo } = backendData;
     if (!nit || !nombre_de_empresa || !nombre_del_contacto || !direccion || !telefono || !correo)
       return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
 
@@ -98,10 +101,13 @@ const updateSupplier = async (req, res) => {
       nit:                 req.body.nit,
       nombre_de_empresa:   req.body.nombreEmpresa   ?? req.body.nombre_de_empresa,
       nombre_del_contacto: req.body.nombreContacto  ?? req.body.nombre_del_contacto,
+      tipo_documento:      req.body.tipoDocumento   ?? req.body.tipo_documento,
       direccion:           req.body.direccion,
       telefono:            req.body.telefono,
       correo:              req.body.correoEmpresa    ?? req.body.correo,
       correo_del_contacto:   req.body.correoContacto   ?? req.body.correo_del_contacto,
+      telefono_contacto:   req.body.telefonoContacto ?? req.body.telefono_contacto,
+      tipo_documento_contacto: req.body.tipoDocumentoContacto ?? req.body.tipo_documento_contacto,
       sitio_web:           req.body.sitioWeb         ?? req.body.sitio_web,
     };
     Object.keys(changes).forEach(k => changes[k] === undefined && delete changes[k]);
