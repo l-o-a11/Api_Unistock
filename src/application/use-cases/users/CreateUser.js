@@ -12,7 +12,7 @@ class CreateUser {
   async execute(data, createdBy) {
     const {
       tipoDocumento, numeroDocumento, nombreCompleto,
-      correo, rolId, sedeId,
+      correo, rolId, sedeId, cargo,
     } = data;
 
     if (createdBy.rolNombre?.toLowerCase() !== "gerente" &&
@@ -59,6 +59,7 @@ class CreateUser {
       password: hashedPassword,
       rolId,
       sedeId,
+      cargo: cargo || null,
       estado: true,
     });
 

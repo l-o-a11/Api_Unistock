@@ -64,7 +64,10 @@ class CambiarEstadoProduction {
     const solicitante = options.solicitante || null;
     if (production.empleadoAsignadoId && solicitante) {
       const rolSolicitante = (solicitante.rolNombre || "").trim().toLowerCase();
-      const esPrivilegiado = rolSolicitante === "gerente" || rolSolicitante === "administrador";
+      // Solo Gerente tiene bypass total ("se encarga de todo en producción").
+      // Administrador pasó a ser 100% observador — ya no puede avanzar
+      // etapas, solo el empleado asignado (vía su botón "Confirmar").
+      const esPrivilegiado = rolSolicitante === "gerente";
       const esElAsignado = String(production.empleadoAsignadoId) === String(solicitante.id);
       if (!esPrivilegiado && !esElAsignado) {
         const err = new Error(

@@ -3,12 +3,10 @@ const { sendProductionAssignedEmail } = require("../../../shared/utils/emailServ
 
 /**
  * Asigna un empleado a la ETAPA ACTUAL de una orden de producción.
- * Valida que el rol del empleado coincida exactamente (sin distinguir
- * mayúsculas) con el nombre de la etapa — ej. para asignar en la etapa
- * "Ficha Técnica" el empleado debe tener un rol literalmente llamado
- * "Ficha Técnica". Esto requiere que los roles del sistema se llamen
- * igual que las etapas del flujo (Diseño, Ficha Técnica, Corte, Compras,
- * Producción, Recepción) para que el selector tenga candidatos.
+ * Solo pueden asignarse usuarios con rol "Empleado", y su CARGO (Diseño,
+ * Ficha Técnica, Corte, Compras, Producción, Recepción — un campo aparte
+ * del rol de acceso) debe coincidir exactamente (sin distinguir mayúsculas
+ * ni tildes) con el nombre de la etapa actual de la orden.
  */
 class AsignarEmpleadoProduccion {
     constructor(productionRepository, userRepository) {
@@ -41,14 +39,20 @@ class AsignarEmpleadoProduccion {
             throw err;
         }
 
-        // Se ignoran tildes/acentos además de mayúsculas — "Ficha Tecnica" y
-        // "Ficha Técnica" deben tratarse como el mismo nombre de etapa/rol.
+        // Se ignoran tildes/acentos además de mayúsculas.
         const normalizar = (s) => (s || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const rolEmpleado = normalizar(empleado.rolNombre);
+
+        if (normalizar(empleado.rolNombre) !== "empleado") {
+            const err = new Error("Solo se pueden asignar usuarios con rol \"Empleado\"");
+            err.statusCode = 422;
+            throw err;
+        }
+
+        const cargoEmpleado = normalizar(empleado.cargo);
         const etapaActual = normalizar(orden.estado);
-        if (rolEmpleado !== etapaActual) {
+        if (cargoEmpleado !== etapaActual) {
             const err = new Error(
-                `El empleado debe tener el rol "${orden.estado}" para asignarlo a esta etapa`,
+                `El empleado debe tener el cargo "${orden.estado}" para asignarlo a esta etapa`,
             );
             err.statusCode = 422;
             throw err;

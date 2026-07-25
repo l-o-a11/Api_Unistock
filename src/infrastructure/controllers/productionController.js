@@ -126,6 +126,11 @@ const getOrderById = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
+    // Solo Gerente crea órdenes de producción — "se encarga de todo,
+    // él crea las órdenes de cada sede".
+    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
+    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede crear órdenes de producción");
+
     // Compatibilidad con payloads del frontend (sin tocar frontend)
     const fecha_entrega =
       req.body.fecha_entrega ?? req.body.deliveryDate ?? req.body.fechaSolicitud;
@@ -534,6 +539,10 @@ const cambiarEstado = async (req, res) => {
 
 const asignarEmpleado = async (req, res) => {
   try {
+    // Solo Gerente asigna empleados — "se encarga de todo en producción".
+    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
+    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede asignar empleados a una etapa");
+
     const { empleadoId } = req.body;
     if (!empleadoId) return badRequest(res, "empleadoId es requerido");
 

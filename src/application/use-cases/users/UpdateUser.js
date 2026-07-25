@@ -27,7 +27,7 @@ class UpdateUser {
       throw error;
     }
 
-    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId } = data;
+    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId, cargo } = data;
 
     // Detectar si el correo va a cambiar (para enviar notificación después)
     const emailChanged = correo && correo !== existing.correo;
@@ -87,6 +87,10 @@ class UpdateUser {
       }
       changes.sedeId = sedeId;
     }
+
+    // cargo puede limpiarse explícitamente a null (ej. si el rol deja de ser
+    // "Empleado"), por eso se compara con undefined en vez de solo truthy.
+    if (cargo !== undefined) changes.cargo = cargo || null;
 
     // Si no hay nada que cambiar, devolver el usuario actual sin tocar BD
     if (Object.keys(changes).length === 0) {
