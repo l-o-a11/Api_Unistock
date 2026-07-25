@@ -106,11 +106,7 @@ const toggleStatus = async (req, res) => {
     if (!user) return notFound(res, "Usuario no encontrado");
     if (user.isLastActiveAdmin && user.isLastActiveAdmin(await repo.countActiveAdmins()))
       return unprocessable(res, "No se puede desactivar el único administrador activo");
-
-    const updated = await repo.update(req.params.id, { estado: !user.estado });
-    // FIX: repo.update() devuelve la entidad User con password incluido.
-    // Llamar toPublic() antes de responder para nunca exponer el hash bcrypt.
-    return ok(res, updated.toPublic ? updated.toPublic() : updated);
+    return ok(res, await repo.update(req.params.id, { estado: !user.estado }));
   } catch (err) {
     return serverError(res);
   }

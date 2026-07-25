@@ -1,5 +1,5 @@
 // application/use-cases/suppliers/CreateSupplier.js
-class CreateSupplier {
+class Create {
   constructor(supplierRepository) {
     this.supplierRepository = supplierRepository;
   }
@@ -13,13 +13,13 @@ class CreateSupplier {
       throw error;
     }
 
-    if (await this.supplierRepository.findByNit(nit)) {
+    if (this.supplierRepository.findByNit(nit)) {
       const error = new Error("Ya existe un proveedor con ese NIT");
       error.statusCode = 409;
       throw error;
     }
 
-    if (await this.supplierRepository.findByEmail(correo)) {
+    if (this.supplierRepository.findByEmail(correo)) {
       const error = new Error("Ya existe un proveedor con ese correo");
       error.statusCode = 409;
       throw error;

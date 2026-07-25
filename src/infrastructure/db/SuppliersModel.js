@@ -8,7 +8,7 @@ const suppliersSchema = new mongoose.Schema(
     nombre_del_contacto: { type: String, required: true },
     tipo_documento: { type: String },
     direccion: { type: String, required: true },
-    telefono: { type: String, required: true },
+    telefono: { type: Number, required: true },
     correo: { type: String, required: true, lowercase: true },
     correo_del_contacto: { type: String },
     telefono_contacto: { type: String },

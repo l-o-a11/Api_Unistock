@@ -189,8 +189,11 @@ const updateThirdPartySchema = baseThirdParty
     const nombreFinal = data.nombre ?? data.nombre_empresa;
     const contactoFinal = data.contacto ?? data.nombre_contacto;
 
-    const hasNombreRelated = data.nombre !== undefined || data.nombre_empresa !== undefined;
-    const hasContactoRelated = data.contacto !== undefined || data.nombre_contacto !== undefined;
+    // Si viene alguno de los campos relacionados, exige que exista el par correspondiente.
+    const hasNombreRelated =
+      data.nombre !== undefined || data.nombre_empresa !== undefined;
+    const hasContactoRelated =
+      data.contacto !== undefined || data.nombre_contacto !== undefined;
 
     if (hasNombreRelated && !nombreFinal) {
       ctx.addIssue({
