@@ -9,6 +9,8 @@ const MaterialTechnicalSpecificationsRepo = require("../repositories/MaterialTec
 const AnularProduction = require("../../application/use-cases/production/AnularProduction");
 const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
 const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
+const GetEmployeeWorkload = require("../../application/use-cases/production/GetEmployeeWorkload");
 const UserRepository = require("../repositories/UserRepository");
 const Production = require("../../domain/entities/Production");
 const { ok, created, badRequest, notFound, serverError, forbidden } = require("../../shared/utils/response");
@@ -557,6 +559,39 @@ const asignarEmpleado = async (req, res) => {
   }
 };
 
+// ── Confirmar etapa (empleado marca "listo") ──────────────────────────────────
+
+const confirmarEtapa = async (req, res) => {
+  try {
+    const solicitante = req.user ? { id: req.user.id, rolNombre: req.user.rolNombre } : null;
+    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
+    const result = await useCase.execute(req.params.id, solicitante);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 400 || err.statusCode === 422)
+      return badRequest(res, err.message);
+    return serverError(res);
+  }
+};
+
+// ── Carga de trabajo por empleado (para el selector de asignación) ───────────
+
+const getEmployeeWorkload = async (req, res) => {
+  try {
+    // Solo Gerente asigna, así que solo Gerente necesita ver este listado.
+    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
+    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede consultar la carga de empleados");
+
+    const useCase = new GetEmployeeWorkload(userRepo, prodRepo);
+    const result = await useCase.execute(req.query.cargo);
+    return ok(res, result);
+  } catch (err) {
+    return serverError(res);
+  }
+};
+
 // ── Obtener estados válidos ───────────────────────────────────────────────────
 
 const getEstados = (_req, res) => {
@@ -738,6 +773,8 @@ module.exports = {
   anularOrder,
   cambiarEstado,
   asignarEmpleado,
+  confirmarEtapa,
+  getEmployeeWorkload,
   getEstados,
   getOrderDetails,
   createOrderDetail,
