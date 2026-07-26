@@ -96,6 +96,9 @@ const updateUser = async (req, res) => {
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 422 || err.name === "ValidationError" || err.name === "CastError") {
+      return badRequest(res, err.message);
+    }
     return serverError(res);
   }
 };
@@ -131,6 +134,8 @@ const forgotPassword = async (req, res) => {
     return ok(res, result);
   } catch (err) {
     console.error('ERROR FORGOT PASSWORD:', err);
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res, err.message);
   }
 };
