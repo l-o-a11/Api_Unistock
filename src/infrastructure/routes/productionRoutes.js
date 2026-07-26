@@ -315,6 +315,7 @@ const router = Router();
 
 // Órdenes
 router.get("/ordenes/estados", ctrl.getEstados);        // Debe ir antes de /:id
+router.get("/empleados/carga", ctrl.getEmployeeWorkload);
 router.get("/ordenes", ctrl.getOrders);
 router.get("/ordenes/:id", ctrl.getOrderById);
 router.post("/ordenes", requireAuth, validateSchema(createOrderSchema), ctrl.createOrder);

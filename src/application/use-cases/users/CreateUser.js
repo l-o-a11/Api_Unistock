@@ -2,6 +2,12 @@ const { hash } = require("../../../infrastructure/security/password_encrypter");
 const { sendWelcomeEmail } = require("../../../shared/utils/emailService");
 const { generatePassword } = require("../../../shared/utils/generatePassword");
 
+const normalizeCargos = (cargo) => [...new Set(
+  (Array.isArray(cargo) ? cargo : (cargo ? [cargo] : []))
+    .map((item) => String(item).trim())
+    .filter(Boolean),
+)];
+
 class CreateUser {
   constructor(userRepository, roleRepository, siteRepository) {
     this.userRepository = userRepository;
@@ -12,7 +18,7 @@ class CreateUser {
   async execute(data, createdBy) {
     const {
       tipoDocumento, numeroDocumento, nombreCompleto,
-      correo, rolId, sedeId, cargo,
+      correo, rolId, sedeId, cargo, cargos,
     } = data;
 
     if (createdBy.rolNombre?.toLowerCase() !== "gerente" &&
@@ -59,7 +65,9 @@ class CreateUser {
       password: hashedPassword,
       rolId,
       sedeId,
-      cargo: cargo || null,
+      // Aceptar `cargos` de clientes anteriores y guardar siempre en el
+      // campo canónico `cargo`.
+      cargo: normalizeCargos(cargo ?? cargos),
       estado: true,
     });
 

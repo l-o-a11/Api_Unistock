@@ -62,7 +62,7 @@ router.use(requireAuth);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [nit, nombre, contacto, direccion, telefono]
+ *             required: [nombre, contacto, direccion, telefono]
  *             properties:
  *               nit:
  *                 type: string

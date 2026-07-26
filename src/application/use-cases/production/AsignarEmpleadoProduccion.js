@@ -48,9 +48,11 @@ class AsignarEmpleadoProduccion {
             throw err;
         }
 
-        const cargoEmpleado = normalizar(empleado.cargo);
+        const cargosEmpleado = (Array.isArray(empleado.cargo) ? empleado.cargo : [empleado.cargo])
+            .map(normalizar)
+            .filter(Boolean);
         const etapaActual = normalizar(orden.estado);
-        if (cargoEmpleado !== etapaActual) {
+        if (!cargosEmpleado.includes(etapaActual)) {
             const err = new Error(
                 `El empleado debe tener el cargo "${orden.estado}" para asignarlo a esta etapa`,
             );

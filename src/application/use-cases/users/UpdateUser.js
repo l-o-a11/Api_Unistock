@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
-const { sendEmailChangedEmail } = require('../../../shared/utils/emailService');
+// application/use-cases/users/UpdateUser.js
 
-// Valida que un string sea un ObjectId válido de MongoDB.
-// Evita que Mongoose lance un CastError no controlado cuando llega
-// un string basura como rolId o sedeId.
-const isValidId = (id) => id && mongoose.Types.ObjectId.isValid(id);
+const normalizeCargos = (cargo) => [...new Set(
+  (Array.isArray(cargo) ? cargo : (cargo ? [cargo] : []))
+    .map((item) => String(item).trim())
+    .filter(Boolean),
+)];
 
 class UpdateUser {
   constructor(userRepository, roleRepository, siteRepository) {
@@ -14,12 +14,6 @@ class UpdateUser {
   }
 
   async execute(id, data) {
-    if (!isValidId(id)) {
-      const error = new Error("ID de usuario inválido");
-      error.statusCode = 400;
-      throw error;
-    }
-
     const existing = await this.userRepository.findById(id);
     if (!existing) {
       const error = new Error("Usuario no encontrado");
@@ -27,13 +21,10 @@ class UpdateUser {
       throw error;
     }
 
-    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId, cargo } = data;
-
-    // Detectar si el correo va a cambiar (para enviar notificación después)
-    const emailChanged = correo && correo !== existing.correo;
+    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId, cargo, cargos } = data;
 
     // Unicidad de correo (excluye el usuario actual)
-    if (emailChanged) {
+    if (correo && correo !== existing.correo) {
       const byEmail = await this.userRepository.findByEmail(correo);
       if (byEmail && byEmail.id.toString() !== id.toString()) {
         const error = new Error("Ya existe otro usuario con ese correo electrónico");
@@ -53,17 +44,12 @@ class UpdateUser {
     }
 
     const changes = {};
-    if (tipoDocumento) changes.tipoDocumento = tipoDocumento;
-    if (numeroDocumento) changes.numeroDocumento = numeroDocumento;
-    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
-    if (correo) changes.correo = correo;
+    if (tipoDocumento)   changes.tipoDocumento   = tipoDocumento;
+    if (numeroDocumento) changes.numeroDocumento  = numeroDocumento;
+    if (nombreCompleto)  changes.nombreCompleto   = nombreCompleto.trim();
+    if (correo)          changes.correo           = correo;
 
     if (rolId) {
-      if (!isValidId(rolId)) {
-        const error = new Error("ID de rol inválido");
-        error.statusCode = 422;
-        throw error;
-      }
       const role = await this.roleRepository.findById(rolId);
       if (!role || !role.estado) {
         const error = new Error("Rol inválido o inactivo");
@@ -74,11 +60,6 @@ class UpdateUser {
     }
 
     if (sedeId) {
-      if (!isValidId(sedeId)) {
-        const error = new Error("ID de sede inválido");
-        error.statusCode = 422;
-        throw error;
-      }
       const site = await this.siteRepository.findById(sedeId);
       if (!site || !site.estado) {
         const error = new Error("Sede inválida o inactiva");
@@ -88,9 +69,19 @@ class UpdateUser {
       changes.sedeId = sedeId;
     }
 
-    // cargo puede limpiarse explícitamente a null (ej. si el rol deja de ser
-    // "Empleado"), por eso se compara con undefined en vez de solo truthy.
-    if (cargo !== undefined) changes.cargo = cargo || null;
+    // `cargo` solo se actualiza si el payload lo incluye explícitamente
+    // con valores no vacíos. Si el frontend envía `cargos: []` (para roles
+    // que no son "Empleado"), no tocamos el campo en BD para evitar
+    // pisar datos existentes. Quien quiera limpiar los cargos debe enviar
+    // explícitamente `cargo: []` (no `cargos`).
+    const hasCargo = cargo !== undefined;
+    const hasCargos = cargos !== undefined;
+    if (hasCargo || hasCargos) {
+      const normalized = normalizeCargos(cargo ?? cargos);
+      // Solo persistir si se proporcionó un valor concreto (array vacío
+      // incluso, pero no cuando ni cargo ni cargos vienen en el payload).
+      changes.cargo = normalized;
+    }
 
     // Si no hay nada que cambiar, devolver el usuario actual sin tocar BD
     if (Object.keys(changes).length === 0) {
@@ -98,20 +89,12 @@ class UpdateUser {
     }
 
     const updated = await this.userRepository.update(id, changes);
-    // toPublic() garantiza que nunca se filtre el hash de contraseña
-    const userPublic = updated.toPublic
-      ? updated.toPublic()
-      : (() => { const { password, ...rest } = updated.toObject ? updated.toObject() : updated; return rest; })();
-
-    // Notificar al NUEVO correo si cambió.
-    // No lanzamos si el email falla — el update ya fue exitoso.
-    if (emailChanged) {
-      sendEmailChangedEmail({
-        nombreCompleto: userPublic.nombreCompleto ?? existing.nombreCompleto,
-        correoNuevo: correo,
-        correoAnterior: existing.correo,
-      }).catch((err) => console.error('Error enviando correo de cambio de email:', err));
+    if (!updated) {
+      const error = new Error("Usuario no encontrado");
+      error.statusCode = 404;
+      throw error;
     }
+    const { password, ...userPublic } = updated.toObject ? updated.toObject() : updated;
     return userPublic;
   }
 }

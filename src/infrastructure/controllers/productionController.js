@@ -12,6 +12,8 @@ const AsignarEmpleadoProduccion = require("../../application/use-cases/productio
 const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const GetEmployeeWorkload = require("../../application/use-cases/production/GetEmployeeWorkload");
 const UserRepository = require("../repositories/UserRepository");
+const UserModel = require("../db/UserModel");
+const ProductionOrderModel = require("../db/ProductionOrderModel");
 const Production = require("../../domain/entities/Production");
 const { ok, created, badRequest, notFound, serverError, forbidden } = require("../../shared/utils/response");
 
@@ -23,18 +25,50 @@ const techSpecRepo = new TechnicalSpecificationsRepo();
 const materialTechSpecRepo = new MaterialTechnicalSpecificationsRepo();
 const userRepo = new UserRepository();
 
-const summarizeOrderDetails = (details = []) => {
-  const totalQty = details.reduce((sum, det) => sum + (Number(det.cantidad) || 0), 0);
-  const colors = [...new Set(
-    (details || []).map((det) => String(det.color || '').trim()).filter(Boolean)
-  )];
-  const firstRef = details?.[0]?.id_producto || '';
-  return {
-    cantidad: totalQty,
-    color: colors[0] || '',
-    referencia: firstRef,
-    producto: firstRef || null,
-  };
+// ── Carga laboral de empleados por cargo ─────────────────────────────────────
+
+const getEmployeeWorkload = async (req, res) => {
+  try {
+    const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
+    const filter = { estado: true };
+
+    // `cargo` es un arreglo: la expresión regular también coincide con los
+    // elementos del arreglo, por lo que un empleado puede figurar en varias
+    // etapas sin aparecer en las que no le corresponden.
+    if (cargo) {
+      const escapedCargo = cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.cargo = { $regex: `^${escapedCargo}$`, $options: "i" };
+    }
+
+    const [employees, activeOrders] = await Promise.all([
+      UserModel.find(filter)
+        .select("_id nombreCompleto correo cargo")
+        .sort({ nombreCompleto: 1 })
+        .lean(),
+      ProductionOrderModel.find(
+        { estado: { $nin: ["Enviado", "Anulada"] } },
+        { empleadoAsignadoId: 1 },
+      ).lean(),
+    ]);
+
+    const workload = new Map();
+    activeOrders.forEach((order) => {
+      if (!order.empleadoAsignadoId) return;
+      const id = String(order.empleadoAsignadoId);
+      workload.set(id, (workload.get(id) || 0) + 1);
+    });
+
+    return ok(res, employees.map((employee) => ({
+      id: String(employee._id),
+      nombre: employee.nombreCompleto,
+      correo: employee.correo,
+      cargo: employee.cargo || [],
+      produccionesAsignadas: workload.get(String(employee._id)) || 0,
+    })));
+  } catch (err) {
+    console.error("Error en getEmployeeWorkload:", err);
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+  }
 };
 
 // ── Órdenes ───────────────────────────────────────────────────────────────────
@@ -42,40 +76,10 @@ const summarizeOrderDetails = (details = []) => {
 const getOrders = async (req, res) => {
   try {
     const orders = await prodRepo.findAll(req.query);
-
-    const ordersWithDetails = await Promise.all(
-      orders.map(async (order) => {
-        const orderJson = order.toJSON ? order.toJSON() : order;
-        const orderId = orderJson._id || orderJson.id;
-        if (!orderId) return orderJson;
-
-        const details = await detailRepo.findAll({ id_orden: orderId });
-        const detalles = details.map((d) => (d.toJSON ? d.toJSON() : d));
-        const resumen = summarizeOrderDetails(detalles);
-
-        return {
-          ...orderJson,
-          detalles,
-          ...resumen,
-        };
-      })
-    );
-
-    return ok(res, ordersWithDetails);
+    return ok(res, orders.map((o) => o.toJSON()));
   } catch (err) {
     console.error("Error en getOrders:", err);
-
-    // Mitigación: si Mongo está caído o no se puede conectar (timeout/whitelist/URI),
-    // responder 503 en vez de 500 genérico.
-    const msg = String(err?.message || err || "");
-    const looksLikeMongoTimeout =
-      /timeout|timed out|ECONN|ECONNREFUSED|ECONNRESET|serverSelection|ETIMEDOUT/i.test(msg);
-
-    if (looksLikeMongoTimeout) {
-      return res.status(503).json({ success: false, message: "Base de datos no disponible. Intenta en unos segundos." });
-    }
-
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : msg);
+    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
   }
 };
 
@@ -196,16 +200,8 @@ const createOrder = async (req, res) => {
         const activeSpec = specs && specs.length ? specs[0] : null;
         if (activeSpec) {
           const materiales = await materialTechSpecRepo.findAll({ id_producto: product.id, id_ficha_tecnica: activeSpec.id });
-          const activeSpecJson = activeSpec.toJSON ? activeSpec.toJSON() : activeSpec;
-          const makeLocalDate = (val) => {
-            if (!val) return null;
-            const d = new Date(val);
-            if (Number.isNaN(d.getTime())) return null;
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          };
           techSpecification = {
-            ...activeSpecJson,
-            date: activeSpecJson.fecha_inicio || makeLocalDate(activeSpecJson.createdAt) || makeLocalDate(new Date()),
+            ...(activeSpec.toJSON ? activeSpec.toJSON() : activeSpec),
             materiales: materiales.map((m) => (m.toJSON ? m.toJSON() : m)),
           };
           console.log(`[ProductionController] Tech sheet encontrada para producto`);
@@ -366,8 +362,8 @@ const updateOrderDetail = async (req, res) => {
     const id_orden = detailJson.id_orden;
     const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
     if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
-      const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
       const cambiosTexto = Object.entries(changes).map(([k, v]) => `${k}: ${v}`).join(", ");
       await prodRepo.agregarHistorial(
         id_orden,
@@ -385,51 +381,33 @@ const updateOrderDetail = async (req, res) => {
 };
 
 const deleteOrderDetail = async (req, res) => {
-  // Capturar el detalle antes de eliminarlo para poder describirlo en el historial.
-  const detail = await detailRepo.findById(req.params.id).catch((err) => {
-    console.error("deleteOrderDetail/findById:", err);
-    return null;
-  });
-  if (!detail) return notFound(res, "Detalle de orden no encontrado");
+  try {
+    // ✅ Fix: capturar el detalle ANTES de eliminarlo para poder describirlo en el historial
+    const detail = await detailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, "Detalle de orden no encontrado");
+    const detailJson = detail.toJSON ? detail.toJSON() : detail;
 
-  const detailJson = detail.toJSON ? detail.toJSON() : detail;
-  const id_orden = detailJson.id_orden;
-  const order = id_orden ? await prodRepo.findById(id_orden).catch((err) => {
-    console.warn("deleteOrderDetail/findOrder:", err?.message || err);
-    return null;
-  }) : null;
+    const deleted = await detailRepo.delete(req.params.id);
+    if (!deleted) return notFound(res, "Detalle de orden no encontrado");
 
-  const deleted = await detailRepo.delete(req.params.id).catch((err) => {
-    console.error("deleteOrderDetail/delete:", err);
-    return false;
-  });
-  if (!deleted) return notFound(res, "Detalle de orden no encontrado");
-
-  let historialRegistrado = false;
-  if (order && id_orden) {
-    const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
-    const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
-    const estadoRegistro = Production.ESTADOS_VALIDOS.includes(order.estado) ? order.estado : "Diseño";
-
-    try {
-      const updatedOrder = await prodRepo.agregarHistorial(
+    const id_orden = detailJson.id_orden;
+    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
+    if (order) {
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
+      await prodRepo.agregarHistorial(
         id_orden,
         `Se eliminó el artículo "${detailJson.id_producto}" (cantidad: ${detailJson.cantidad}${detailJson.color ? `, color: ${detailJson.color}` : ""})`,
         id_usuario,
         user,
-        estadoRegistro,
-      );
-      historialRegistrado = !!updatedOrder;
-    } catch (err) {
-      console.warn("No se pudo registrar historial de deleteOrderDetail:", err?.message || err);
+        order.estado,
+      ).catch((e) => console.warn("No se pudo registrar historial de deleteOrderDetail:", e?.message));
     }
-  }
 
-  return ok(res, {
-    id: req.params.id,
-    deleted: true,
-    historialRegistrado,
-  });
+    return ok(res, { id: req.params.id, deleted: true });
+  } catch (err) {
+    return serverError(res);
+  }
 };
 
 // ── Anular orden (reemplaza deleteOrder) ─────────────────────────────────────
@@ -492,40 +470,33 @@ const cambiarEstado = async (req, res) => {
       }
     }
 
-    // ✅ Inventario: solo incrementar stock cuando la orden llega a "Enviado".
-    // 1) No sobrescribe el stock actual: usa $inc.
-    // 2) Evita duplicar incrementos si el usuario retrocede: el backend no
-    //    ejecuta esto para estados anteriores.
-    if (estado === "Enviado") {
+    if (estado === "Producción") {
       const details = await detailRepo.findAll({ id_orden: req.params.id });
       const stockByProductId = new Map();
 
-      await Promise.all(
-        details.map(async (detail) => {
-          const data = detail.toJSON ? detail.toJSON() : detail;
-          const product =
-            (await productRepo.findById(data.id_producto).catch(() => null)) ||
-            (await productRepo.findByReference(data.id_producto).catch(() => null));
+      await Promise.all(details.map(async (detail) => {
+        const data = detail.toJSON ? detail.toJSON() : detail;
+        const product =
+          await productRepo.findById(data.id_producto).catch(() => null) ||
+          await productRepo.findByReference(data.id_producto).catch(() => null);
 
-          if (!product) return;
+        if (!product) return;
 
-          const productId = product.id || (product._id ? String(product._id) : null);
-          if (!productId) return;
+        const productId = product.id || (product._id ? String(product._id) : null);
+        if (!productId) return;
 
-          stockByProductId.set(
-            productId,
-            (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
-          );
-        }),
-      );
+        stockByProductId.set(
+          productId,
+          (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
+        );
+      }));
 
       await Promise.all(
-        [...stockByProductId.entries()].map(([productId, qty]) =>
-          productRepo.incrementStock(productId, qty),
+        [...stockByProductId.entries()].map(([productId, stock]) =>
+          productRepo.update(productId, { stock }),
         ),
       );
     }
-
 
     return ok(res, result);
   } catch (err) {
@@ -620,8 +591,8 @@ const createOrderDetail = async (req, res) => {
     // antes esta acción no dejaba ningún rastro visible para el usuario.
     const order = await prodRepo.findById(id_orden).catch(() => null);
     if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || "Sistema";
-      const user = req.body.user || req.user?.nombre || req.user?.username || "Sistema";
+      const id_usuario = req.body.id_usuario || req.user?.id || null;
+      const user = req.body.user || req.user?.nombre || req.user?.username || null;
       await prodRepo.agregarHistorial(
         id_orden,
         `Se agregó el artículo "${id_producto}" (cantidad: ${cantidad}${color ? `, color: ${color}` : ""})`,
@@ -629,22 +600,9 @@ const createOrderDetail = async (req, res) => {
         user,
         order.estado,
       ).catch((e) => console.warn("No se pudo registrar historial de createOrderDetail:", e?.message));
-
-      // ✅ Fix: si la orden ya está en etapa Corte, asignar refCorte automáticamente
-      // al nuevo detalle (mismo mecanismo que se usa al avanzar el estado a Corte).
-      if (order.estado === "Corte" && !newDetail.refCorte) {
-        try {
-          const siguiente = (await detailRepo.countRefCorteByProducto(id_producto)) + 1;
-          await detailRepo.update(newDetail.id || newDetail._id, { refCorte: `${id_producto}-${siguiente}` });
-          const updated = await detailRepo.findById(newDetail.id || newDetail._id);
-          return created(res, updated ? updated.toJSON() : newDetail.toJSON());
-        } catch (e) {
-          console.warn("No se pudo asignar refCorte automáticamente:", e?.message);
-        }
-      }
     }
 
-    return created(res, newDetail.toJSON ? newDetail.toJSON() : newDetail);
+    return created(res, newDetail);
   } catch (err) {
     return serverError(res);
   }
@@ -764,6 +722,7 @@ const getCalendario = async (req, res) => {
 };
 
 module.exports = {
+  getEmployeeWorkload,
   getOrders,
   getOrderById,
   createOrder,

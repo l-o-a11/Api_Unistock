@@ -6,9 +6,13 @@ const z = require('zod');
 
 const baseThirdParty = z.object({
   nit: z
-    .union([z.string(), z.number()])
+    .union([z.string(), z.number(), z.null(), z.undefined()])
     .transform((v) => (v === null || v === undefined ? '' : String(v)))
+    .optional()
     .superRefine((s, ctx) => {
+      // Si no se envió NIT, es opcional — no validar
+      if (!s || !s.trim()) return;
+
       const cleaned = s.replace(/\s+/g, '');
       const digitsOnly = cleaned.replace(/\D/g, '');
 
@@ -58,12 +62,40 @@ const baseThirdParty = z.object({
     .max(100, 'Contacto no puede exceder 100 caracteres')
     .optional(),
 
+  tipo_documento: z
+    .union([z.string(), z.null()])
+    .transform((v) => (v === null || v === undefined ? '' : v))
+    .optional(),
+
+  telefono_contacto: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => {
+      if (v === null || v === undefined) return '';
+      return String(v);
+    })
+    .transform((s) => s.replace(/\s+/g, ''))
+    .superRefine((s, ctx) => {
+      if (!s || !s.trim()) return;
+      const digits = s.replace(/\D/g, '');
+      if (digits.length < 7 || digits.length > 15) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['telefono_contacto'],
+          message: 'Teléfono inválido (debe tener entre 7 y 15 dígitos)',
+        });
+      }
+    }),
+
+  tipo_documento_contacto: z
+    .union([z.string(), z.null()])
+    .transform((v) => (v === null || v === undefined ? '' : v))
+    .optional(),
+
   // Tolerar null/undefined del frontend
   direccion: z
     .union([z.string(), z.null()])
     .transform((v) => (v === null || v === undefined ? '' : v))
     .superRefine((s, ctx) => {
-      // Si el frontend manda vacío, dejamos pasar (evita 400 por formatos del form)
       if (!s || !s.trim()) return;
       if (s.trim().length < 5) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direccion'], message: 'Dirección debe tener al menos 5 caracteres' });
@@ -157,8 +189,11 @@ const updateThirdPartySchema = baseThirdParty
     const nombreFinal = data.nombre ?? data.nombre_empresa;
     const contactoFinal = data.contacto ?? data.nombre_contacto;
 
-    const hasNombreRelated = data.nombre !== undefined || data.nombre_empresa !== undefined;
-    const hasContactoRelated = data.contacto !== undefined || data.nombre_contacto !== undefined;
+    // Si viene alguno de los campos relacionados, exige que exista el par correspondiente.
+    const hasNombreRelated =
+      data.nombre !== undefined || data.nombre_empresa !== undefined;
+    const hasContactoRelated =
+      data.contacto !== undefined || data.nombre_contacto !== undefined;
 
     if (hasNombreRelated && !nombreFinal) {
       ctx.addIssue({

@@ -47,19 +47,6 @@ class ProductRepository {
     return this._toEntity(doc);
   }
 
-  /**
-   * Incrementa (o decrementa, si cantidad es negativa) el stock de un producto.
-   * Usa $inc para que sea atómico y no sobrescriba el stock actual.
-   */
-  async incrementStock(id, cantidad) {
-    const doc = await ProductModel.findByIdAndUpdate(
-      id,
-      { $inc: { stock: cantidad } },
-      { new: true }
-    ).catch(() => null);
-    return this._toEntity(doc);
-  }
-
   async delete(id) {
     const result = await ProductModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
