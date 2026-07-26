@@ -77,6 +77,8 @@ class Production {
     terceroAsignaciones = [],
     // ✅ Empleado asignado a la etapa actual del flujo
     empleadoAsignadoId = null,
+    // ✅ Indica si el empleado asignado confirmó que terminó su trabajo
+    etapaConfirmada = false,
     // ✅ Sede dueña de la producción desde su creación (no confundir con
     // sedeAsignaciones, que es el reparto del producto terminado)
     sedeId = null,
@@ -103,6 +105,7 @@ class Production {
     this.sedeAsignaciones = sedeAsignaciones;
     this.terceroAsignaciones = terceroAsignaciones;
     this.empleadoAsignadoId = empleadoAsignadoId;
+    this.etapaConfirmada = etapaConfirmada;
     this.sedeId = sedeId;
   }
 
@@ -139,6 +142,7 @@ class Production {
       sedeAsignaciones: this.sedeAsignaciones,
       terceroAsignaciones: this.terceroAsignaciones,
       empleadoAsignadoId: this.empleadoAsignadoId,
+      etapaConfirmada: this.etapaConfirmada,
       sedeId: this.sedeId,
     };
   }

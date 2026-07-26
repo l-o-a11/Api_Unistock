@@ -9,6 +9,7 @@ const MaterialTechnicalSpecificationsRepo = require("../repositories/MaterialTec
 const AnularProduction = require("../../application/use-cases/production/AnularProduction");
 const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
 const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository = require("../repositories/UserRepository");
 const UserModel = require("../db/UserModel");
 const ProductionOrderModel = require("../db/ProductionOrderModel");
@@ -528,6 +529,26 @@ const asignarEmpleado = async (req, res) => {
   }
 };
 
+// ── Confirmar etapa por el empleado asignado ──────────────────────────────────
+
+const confirmarEtapa = async (req, res) => {
+  try {
+    // Solo el empleado asignado puede confirmar (validado en el use case)
+    const empleadoId = req.user?.id;
+    if (!empleadoId) return forbidden(res, "Debes iniciar sesión para confirmar una etapa");
+
+    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
+    const result = await useCase.execute(req.params.id, empleadoId);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 400 || err.statusCode === 422)
+      return badRequest(res, err.message);
+    return serverError(res);
+  }
+};
+
 // ── Obtener estados válidos ───────────────────────────────────────────────────
 
 const getEstados = (_req, res) => {
@@ -697,6 +718,7 @@ module.exports = {
   anularOrder,
   cambiarEstado,
   asignarEmpleado,
+  confirmarEtapa,
   getEstados,
   getOrderDetails,
   createOrderDetail,

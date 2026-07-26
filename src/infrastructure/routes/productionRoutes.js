@@ -322,6 +322,7 @@ router.post("/ordenes", requireAuth, validateSchema(createOrderSchema), ctrl.cre
 router.put("/ordenes/:id", validateSchema(updateOrderSchema), ctrl.updateOrder);
 router.patch("/ordenes/:id/estado", requireAuth, validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
 router.patch("/ordenes/:id/asignar-empleado", requireAuth, ctrl.asignarEmpleado);
+router.patch("/ordenes/:id/confirmar-etapa", requireAuth, ctrl.confirmarEtapa);
 router.patch("/ordenes/:id/anular", validateSchema(anularOrderSchema), ctrl.anularOrder);
 
 // Detalles
