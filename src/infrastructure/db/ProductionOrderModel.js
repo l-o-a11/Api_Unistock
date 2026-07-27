@@ -54,6 +54,10 @@ const productionOrderSchema = new mongoose.Schema(
     // ✅ Antes estas asignaciones solo vivían en localStorage del navegador,
     // por lo que el dashboard (y cualquier otra vista) nunca podía leerlas
     // realmente desde el backend. Ahora se persisten en la orden.
+    // ✅ Confirmación del empleado asignado de que terminó su etapa actual.
+    // Inicia como false y se marca true cuando el empleado hace clic en
+    // "Confirmar finalización". Se limpia al avanzar a la siguiente etapa.
+    etapaConfirmada: { type: Boolean, default: false },
     // ✅ Empleado responsable de la ETAPA ACTUAL (no historial completo —
     // se reemplaza cada vez que el admin asigna a alguien para la etapa en
     // curso). Se limpia automáticamente al avanzar de etapa, porque la

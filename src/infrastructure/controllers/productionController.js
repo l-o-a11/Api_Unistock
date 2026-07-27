@@ -9,6 +9,7 @@ const MaterialTechnicalSpecificationsRepo = require("../repositories/MaterialTec
 const AnularProduction = require("../../application/use-cases/production/AnularProduction");
 const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
 const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository = require("../repositories/UserRepository");
 const UserModel = require("../db/UserModel");
 const ProductionOrderModel = require("../db/ProductionOrderModel");
@@ -686,6 +687,30 @@ const getCalendario = async (req, res) => {
   }
 };
 
+// ── Confirmar etapa por el empleado asignado ─────────────────────────────────
+
+const confirmarEtapa = async (req, res) => {
+  try {
+    // El ID del usuario viene del body (enviado desde el frontend desde
+    // localStorage/session_user). Si el usuario está autenticado via JWT
+    // (requireAuth), también se toma de req.user?.id como respaldo.
+    const solicitanteId = req.body.id_usuario || req.user?.id || null;
+    if (!solicitanteId) {
+      return badRequest(res, "No se pudo identificar al usuario solicitante");
+    }
+
+    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
+    const result = await useCase.execute(req.params.id, solicitanteId);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 400 || err.statusCode === 422)
+      return badRequest(res, err.message);
+    return serverError(res);
+  }
+};
+
 module.exports = {
   getEmployeeWorkload,
   getOrders,
@@ -706,4 +731,5 @@ module.exports = {
   deleteAssignmentsByOrder,
   getAlertas,
   getCalendario,
+  confirmarEtapa,
 };
