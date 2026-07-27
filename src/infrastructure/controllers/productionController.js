@@ -10,7 +10,6 @@ const AnularProduction = require("../../application/use-cases/production/AnularP
 const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
 const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
-const GetEmployeeWorkload = require("../../application/use-cases/production/GetEmployeeWorkload");
 const UserRepository = require("../repositories/UserRepository");
 const UserModel = require("../db/UserModel");
 const ProductionOrderModel = require("../db/ProductionOrderModel");
@@ -530,39 +529,6 @@ const asignarEmpleado = async (req, res) => {
   }
 };
 
-// ── Confirmar etapa (empleado marca "listo") ──────────────────────────────────
-
-const confirmarEtapa = async (req, res) => {
-  try {
-    const solicitante = req.user ? { id: req.user.id, rolNombre: req.user.rolNombre } : null;
-    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
-    const result = await useCase.execute(req.params.id, solicitante);
-    return ok(res, result);
-  } catch (err) {
-    if (err.statusCode === 404) return notFound(res, err.message);
-    if (err.statusCode === 403) return forbidden(res, err.message);
-    if (err.statusCode === 400 || err.statusCode === 422)
-      return badRequest(res, err.message);
-    return serverError(res);
-  }
-};
-
-// ── Carga de trabajo por empleado (para el selector de asignación) ───────────
-
-const getEmployeeWorkload = async (req, res) => {
-  try {
-    // Solo Gerente asigna, así que solo Gerente necesita ver este listado.
-    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
-    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede consultar la carga de empleados");
-
-    const useCase = new GetEmployeeWorkload(userRepo, prodRepo);
-    const result = await useCase.execute(req.query.cargo);
-    return ok(res, result);
-  } catch (err) {
-    return serverError(res);
-  }
-};
-
 // ── Obtener estados válidos ───────────────────────────────────────────────────
 
 const getEstados = (_req, res) => {
@@ -721,6 +687,30 @@ const getCalendario = async (req, res) => {
   }
 };
 
+// ── Confirmar etapa por el empleado asignado ─────────────────────────────────
+
+const confirmarEtapa = async (req, res) => {
+  try {
+    // El ID del usuario viene del body (enviado desde el frontend desde
+    // localStorage/session_user). Si el usuario está autenticado via JWT
+    // (requireAuth), también se toma de req.user?.id como respaldo.
+    const solicitanteId = req.body.id_usuario || req.user?.id || null;
+    if (!solicitanteId) {
+      return badRequest(res, "No se pudo identificar al usuario solicitante");
+    }
+
+    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
+    const result = await useCase.execute(req.params.id, solicitanteId);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
+    if (err.statusCode === 400 || err.statusCode === 422)
+      return badRequest(res, err.message);
+    return serverError(res);
+  }
+};
+
 module.exports = {
   getEmployeeWorkload,
   getOrders,
@@ -732,8 +722,6 @@ module.exports = {
   anularOrder,
   cambiarEstado,
   asignarEmpleado,
-  confirmarEtapa,
-  getEmployeeWorkload,
   getEstados,
   getOrderDetails,
   createOrderDetail,
@@ -743,4 +731,5 @@ module.exports = {
   deleteAssignmentsByOrder,
   getAlertas,
   getCalendario,
+  confirmarEtapa,
 };
