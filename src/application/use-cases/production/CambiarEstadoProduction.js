@@ -83,14 +83,15 @@ class CambiarEstadoProduction {
     const empleadoQueTermina = production.empleadoAsignadoId;
     const etapaCompletada = production.estado;
 
-    const updated = await this.productionRepository.cambiarEstado(
+const updated = await this.productionRepository.cambiarEstado(
       id,
       nuevoEstado,
       id_usuario,
       user,
-      // 🔁 Se limpia la asignación al avanzar: la nueva etapa necesita que
-      // el admin asigne a alguien de nuevo.
-      { ...(options.extra || {}), empleadoAsignadoId: null },
+      // 🔁 Se limpia la asignación y la confirmación al avanzar:
+      // la nueva etapa necesita que el admin asigne a alguien de nuevo
+      // y el empleado de la nueva etapa debe confirmar desde cero.
+      { ...(options.extra || {}), empleadoAsignadoId: null, etapaConfirmada: false },
     );
 
     // 📧 Avisar al admin de la sede DEL EMPLEADO que acaba de terminar su
