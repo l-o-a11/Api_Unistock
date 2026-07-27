@@ -5,7 +5,7 @@ class Create {
   }
 
   async execute(data) {
-    const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo, sitio_web } = data;
+    const { nit, nombre_de_empresa, nombre_del_contacto, tipo_documento, direccion, telefono, correo, sitio_web, correoContacto, telefonoContacto, tipoDocumentoContacto } = data;
 
     if (!nit || !nombre_de_empresa || !nombre_del_contacto || !direccion || !telefono || !correo) {
       const error = new Error("Faltan campos requeridos");
@@ -29,10 +29,14 @@ class Create {
       nit,
       nombre_de_empresa,
       nombre_del_contacto,
+      tipo_documento,
       direccion,
       telefono,
       correo,
       sitio_web,
+      correoContacto,
+      telefono_contacto: telefonoContacto,
+      tipo_documento_contacto: tipoDocumentoContacto,
       activo: true,
     });
   }

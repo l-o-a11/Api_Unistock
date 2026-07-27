@@ -16,9 +16,13 @@
  * @property {number} nit - NIT del proveedor (único)
  * @property {string} nombre_de_empresa - Nombre de la empresa proveedora
  * @property {string} nombre_del_contacto - Nombre del contacto principal
+ * @property {string} tipo_documento - Tipo de documento del proveedor
  * @property {string} direccion - Dirección física
  * @property {number} telefono - Teléfono de contacto
  * @property {string} correo - Email de contacto (único)
+ * @property {string} correo_del_contacto - Email del contacto
+ * @property {string} telefono_contacto - Teléfono del contacto
+ * @property {string} tipo_documento_contacto - Tipo de documento del contacto
  * @property {string} sitio_web - Sitio web del proveedor
  * @property {boolean} activo - Estado del proveedor (activo/inactivo)
  */
@@ -31,9 +35,13 @@ class Suppliers {
    * @param {number} data.nit - NIT
    * @param {string} data.nombre_de_empresa - Nombre empresa
    * @param {string} data.nombre_del_contacto - Contacto
+   * @param {string} data.tipo_documento - Tipo documento proveedor
    * @param {string} data.direccion - Dirección
    * @param {number} data.telefono - Teléfono
    * @param {string} data.correo - Email
+   * @param {string} data.correo_del_contacto - Email del contacto
+   * @param {string} data.telefono_contacto - Teléfono del contacto
+   * @param {string} data.tipo_documento_contacto - Tipo documento contacto
    * @param {string} data.sitio_web - Sitio web
    * @param {boolean} [data.activo=true] - Estado activo
    */
@@ -42,9 +50,13 @@ class Suppliers {
     nit,
     nombre_de_empresa,
     nombre_del_contacto,
+    tipo_documento,
     direccion,
     telefono,
     correo,
+    correo_del_contacto,
+    telefono_contacto,
+    tipo_documento_contacto,
     sitio_web,
     activo = true,
   }) {
@@ -52,9 +64,13 @@ class Suppliers {
     this.nit = nit;
     this.nombre_de_empresa = nombre_de_empresa;
     this.nombre_del_contacto = nombre_del_contacto;
+    this.tipo_documento = tipo_documento;
     this.direccion = direccion;
     this.telefono = telefono;
     this.correo = correo;
+    this.correo_del_contacto = correo_del_contacto;
+    this.telefono_contacto = telefono_contacto;
+    this.tipo_documento_contacto = tipo_documento_contacto;
     this.sitio_web = sitio_web;
     this.activo = activo;
   }
@@ -69,12 +85,20 @@ class Suppliers {
       nit: this.nit,
       nombre_de_empresa: this.nombre_de_empresa,
       nombre_del_contacto: this.nombre_del_contacto,
+      tipo_documento: this.tipo_documento,
       direccion: this.direccion,
       telefono: this.telefono,
       correo: this.correo,
+      correo_del_contacto: this.correo_del_contacto,
+      telefono_contacto: this.telefono_contacto,
+      tipo_documento_contacto: this.tipo_documento_contacto,
       sitio_web: this.sitio_web,
       activo: this.activo,
     };
+  }
+
+  toPublic() {
+    return this.toJSON();
   }
 }
 

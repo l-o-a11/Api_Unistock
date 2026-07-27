@@ -14,13 +14,17 @@ class UpdateSupplier {
     }
 
     const {
-     nit,
+      nit,
       nombre_de_empresa,
       nombre_del_contacto,
+      tipo_documento,
       direccion,
       telefono,
       correo,
       sitio_web,
+      correoContacto,
+      telefonoContacto,
+      tipoDocumentoContacto,
       activo,
     }
 
@@ -36,37 +40,10 @@ class UpdateSupplier {
       }
     }
 
-    // Unicidad de documento (excluye el proveedor actual)
-    if (numeroDocumento && numeroDocumento !== existing.numeroDocumento) {
-      const byDoc = this.supplierRepository.findByDocument(numeroDocumento);
-      if (byDoc && byDoc.id !== parseInt(id)) {
-        const error = new Error(
-          "Ya existe otro proveedor con ese número de documento",
-        );
-        error.statusCode = 409;
-        throw error;
-      }
-    }
-
-    if (rolId && !this.Repository.findRoleById(rolId)) {
-      const error = new Error("El rol seleccionado no existe");
-      error.statusCode = 422;
-      throw error;
-    }
-
-    if (sedeId && !this.supplierRepository.findSedeById(sedeId)) {
-      const error = new Error("La sede seleccionada no existe");
-      error.statusCode = 422;
-      throw error;
-    }
-
     const changes = {};
-    if (tipoDocumento) changes.tipoDocumento = tipoDocumento;
-    if (numeroDocumento) changes.numeroDocumento = numeroDocumento;
-    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
-    if (correo) changes.correo = correo;
-    if (rolId) changes.rolId = parseInt(rolId);
-    if (sedeId) changes.sedeId = parseInt(sedeId);
+    if (tipo_documento !== undefined) changes.tipo_documento = tipo_documento;
+    if (tipoDocumentoContacto !== undefined) changes.tipo_documento_contacto = tipoDocumentoContacto;
+    if (telefonoContacto !== undefined) changes.telefono_contacto = telefonoContacto;
 
     const updated = this.supplierRepository.update(id, changes);
     return updated.toPublic();

@@ -8,11 +8,19 @@ class ForgotPassword {
     }
 
     async execute({ correo }) {
-        // Siempre responde igual — evita enumeración de usuarios
-        const respuesta = { message: 'Si el correo existe, recibirás un código en los próximos minutos' };
-
         const user = await this.userRepository.findByEmail(correo);
-        if (!user || !user.estado) return respuesta;
+
+        if (!user) {
+            const error = new Error('No existe un usuario registrado con ese correo');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        if (!user.estado) {
+            const error = new Error('El usuario no está activo');
+            error.statusCode = 403;
+            throw error;
+        }
 
         // Invalidar códigos anteriores del mismo correo
         await PasswordResetModel.deleteMany({ correo });
@@ -33,7 +41,7 @@ class ForgotPassword {
         // Enviar alerta de seguridad al mismo correo
         await sendAlertEmail({ nombreCompleto: user.nombreCompleto, correo });
 
-        return respuesta;
+        return { message: 'Se ha enviado un código de recuperación a tu correo' };
     }
 }
 

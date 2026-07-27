@@ -1,5 +1,11 @@
 // application/use-cases/users/UpdateUser.js
 
+const normalizeCargos = (cargo) => [...new Set(
+  (Array.isArray(cargo) ? cargo : (cargo ? [cargo] : []))
+    .map((item) => String(item).trim())
+    .filter(Boolean),
+)];
+
 class UpdateUser {
   constructor(userRepository, roleRepository, siteRepository) {
     this.userRepository = userRepository;
@@ -15,7 +21,7 @@ class UpdateUser {
       throw error;
     }
 
-    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId } = data;
+    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId, cargo, cargos } = data;
 
     // Unicidad de correo (excluye el usuario actual)
     if (correo && correo !== existing.correo) {
@@ -63,7 +69,31 @@ class UpdateUser {
       changes.sedeId = sedeId;
     }
 
+    // `cargo` solo se actualiza si el payload lo incluye explícitamente
+    // con valores no vacíos. Si el frontend envía `cargos: []` (para roles
+    // que no son "Empleado"), no tocamos el campo en BD para evitar
+    // pisar datos existentes. Quien quiera limpiar los cargos debe enviar
+    // explícitamente `cargo: []` (no `cargos`).
+    const hasCargo = cargo !== undefined;
+    const hasCargos = cargos !== undefined;
+    if (hasCargo || hasCargos) {
+      const normalized = normalizeCargos(cargo ?? cargos);
+      // Solo persistir si se proporcionó un valor concreto (array vacío
+      // incluso, pero no cuando ni cargo ni cargos vienen en el payload).
+      changes.cargo = normalized;
+    }
+
+    // Si no hay nada que cambiar, devolver el usuario actual sin tocar BD
+    if (Object.keys(changes).length === 0) {
+      return existing.toPublic ? existing.toPublic() : existing;
+    }
+
     const updated = await this.userRepository.update(id, changes);
+    if (!updated) {
+      const error = new Error("Usuario no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
     const { password, ...userPublic } = updated.toObject ? updated.toObject() : updated;
     return userPublic;
   }

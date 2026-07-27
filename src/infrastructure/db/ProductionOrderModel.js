@@ -54,7 +54,17 @@ const productionOrderSchema = new mongoose.Schema(
     // ✅ Antes estas asignaciones solo vivían en localStorage del navegador,
     // por lo que el dashboard (y cualquier otra vista) nunca podía leerlas
     // realmente desde el backend. Ahora se persisten en la orden.
-    sedeAsignaciones:   { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // ✅ Empleado responsable de la ETAPA ACTUAL (no historial completo —
+    // se reemplaza cada vez que el admin asigna a alguien para la etapa en
+    // curso). Se limpia automáticamente al avanzar de etapa, porque la
+    // siguiente etapa necesita su propia asignación.
+    empleadoAsignadoId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    // ✅ Sede a la que pertenece la producción desde su creación (no confundir
+    // con sedeAsignaciones, que es el reparto del producto TERMINADO entre
+    // sedes). Esta es la sede cuyos empleados trabajan la orden en cada
+    // etapa, y la que usa el admin de sede para ver sus propias órdenes.
+    sedeId: { type: mongoose.Schema.Types.ObjectId, ref: "Sede", default: null },
+    sedeAsignaciones: { type: [mongoose.Schema.Types.Mixed], default: [] },
     terceroAsignaciones: { type: [mongoose.Schema.Types.Mixed], default: [] },
     historial: { type: [historialEntrySchema], default: [] },
   },
