@@ -82,7 +82,7 @@ class ConfirmarEtapaProduccion {
       throw error;
     }
 
-// 8. Marcar etapaConfirmada = true y agregar entrada al historial
+    // 8. Marcar etapaConfirmada = true y agregar entrada al historial
     const historialEntry = {
       estado: production.estado,
       fecha: new Date(),
@@ -184,4 +184,3 @@ class ConfirmarEtapaProduccion {
 }
 
 module.exports = ConfirmarEtapaProduccion;
-
