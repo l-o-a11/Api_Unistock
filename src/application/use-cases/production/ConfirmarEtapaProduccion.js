@@ -16,7 +16,7 @@
 const Production = require("../../../domain/entities/Production");
 const { sendProductionStageCompletedEmail } = require("../../../shared/utils/emailService");
 
-const ETAPAS_ASIGNABLES = ["Corte", "Compras", "Recepción", "Producción"];
+const ETAPAS_ASIGNABLES = ["Ficha Técnica", "Corte", "Compras", "Recepción", "Producción"];
 
 class ConfirmarEtapaProduccion {
   constructor(productionRepository, userRepository) {
