@@ -35,6 +35,7 @@ class Products {
   constructor({
     id,
     id_categorias,
+    sedeId = null,
     imagenes_Url,
     referencia,
     nombre,
@@ -44,6 +45,7 @@ class Products {
   }) {
     this.id = id;
     this.id_categorias = id_categorias;
+    this.sedeId = sedeId;
     this.imagenes_Url = imagenes_Url;
     this.referencia = referencia;
     this.nombre = nombre;
@@ -60,6 +62,7 @@ class Products {
     return {
       id: this.id,
       id_categorias: this.id_categorias,
+      sedeId: this.sedeId,
       imagenes_Url: this.imagenes_Url,
       referencia: this.referencia,
       nombre: this.nombre,
