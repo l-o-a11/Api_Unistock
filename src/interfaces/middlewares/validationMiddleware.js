@@ -31,6 +31,14 @@ const rules = {
     body("sedeId")
       .notEmpty().withMessage("Sede requerida")
       .isMongoId().withMessage("sedeId inválido"),
+    body("cargo")
+      .optional()
+      .isArray({ max: 5 }).withMessage("cargo debe ser una lista de máximo 5 cargos"),
+    body("cargo.*")
+      .optional()
+      .isString().withMessage("Cada cargo debe ser texto")
+      .trim()
+      .isLength({ min: 2, max: 50 }).withMessage("Cada cargo debe tener entre 2 y 50 caracteres"),
     body("password")
       .optional()
       .isLength({ min: 6 }).withMessage("Mínimo 6 caracteres"),
@@ -49,6 +57,14 @@ const rules = {
     body("correo").optional().isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body("rolId").optional().isMongoId().withMessage("rolId inválido"),
     body("sedeId").optional().isMongoId().withMessage("sedeId inválido"),
+    body("cargo")
+      .optional()
+      .isArray({ max: 5 }).withMessage("cargo debe ser una lista de máximo 5 cargos"),
+    body("cargo.*")
+      .optional()
+      .isString().withMessage("Cada cargo debe ser texto")
+      .trim()
+      .isLength({ min: 2, max: 50 }).withMessage("Cada cargo debe tener entre 2 y 50 caracteres"),
   ],
 
   idParam: [

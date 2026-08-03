@@ -71,6 +71,7 @@ const createProduct = async (req, res) => {
 
     const backendData = {
       id_categorias: req.body.idCategoria || req.body.id_categorias,
+      sedeId: req.body.sedeId || req.body.id_sede || null,
       imagenes_Url: req.body.imagenesUrl || req.body.imagenes_Url || [],
       referencia: req.body.referencia,
       nombre: req.body.nombre,

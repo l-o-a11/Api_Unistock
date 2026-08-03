@@ -33,9 +33,17 @@ class ThirdPartyAssignmentRepository {
     return this._toEntity(doc);
   }
 
-  async delete(id) {
+async delete(id) {
     const result = await ThirdPartyAssignmentModel.findByIdAndDelete(id).catch(() => null);
     return !!result;
+  }
+
+  /**
+   * Elimina todas las asignaciones de terceros para una orden.
+   */
+  async deleteByOrder(id_orden) {
+    const result = await ThirdPartyAssignmentModel.deleteMany({ id_orden }).catch(() => null);
+    return result?.deletedCount ?? 0;
   }
 }
 

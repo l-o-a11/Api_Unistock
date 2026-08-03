@@ -16,6 +16,9 @@ class User {
     rolId,
     rolNombre = null,   // poblado por el repositorio vía populate
     sedeId,
+    // ✅ Función específica del empleado dentro de Producción — solo aplica
+    // cuando rolNombre es "Empleado" (null para Administrador/Gerente).
+    cargo = null,
     estado = true,
   }) {
     this.id = id;
@@ -27,6 +30,7 @@ class User {
     this.rolId = rolId;
     this.rolNombre = rolNombre;
     this.sedeId = sedeId;
+    this.cargo = cargo;
     this.estado = estado;
   }
 

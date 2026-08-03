@@ -151,9 +151,31 @@ class UserRepository {
   }
 
   async update(id, changes) {
-    const doc = await UserModel
-      .findByIdAndUpdate(id, changes, { new: true })
-      .catch(() => null);
+    // Capturar errores de validación/casteo de Mongo para que el controlador
+    // pueda responder con un 400 informativo en lugar de un 500 genérico.
+    let doc;
+    try {
+      doc = await UserModel.findByIdAndUpdate(
+        id,
+        changes,
+        { new: true, runValidators: true },
+      );
+    } catch (err) {
+      // Relanzar con un mensaje descriptivo según el tipo de error
+      if (err.name === "ValidationError") {
+        const validationErr = new Error(err.message);
+        validationErr.name = "ValidationError";
+        validationErr.statusCode = 422;
+        throw validationErr;
+      }
+      if (err.name === "CastError") {
+        const castErr = new Error("ID de usuario inválido");
+        castErr.name = "CastError";
+        castErr.statusCode = 400;
+        throw castErr;
+      }
+      throw err;
+    }
     return this._toEntity(doc);
   }
 

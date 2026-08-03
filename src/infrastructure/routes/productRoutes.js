@@ -11,7 +11,6 @@
  * - DELETE /productos/:id      - Eliminar producto
  * - PATCH  /productos/:id/status - Cambiar estado del producto
  * 
-<<<<<<< HEAD
  * Endpoints Ficha Técnica:
  * - GET    /productos/:id/fichas-tecnicas          - Listar fichas técnicas de un producto
  * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha técnica

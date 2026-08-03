@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const thirdPartiesSchema = new mongoose.Schema({
   // Campos obligatorios
-  nit: { type: String, required: true },
+  nit: { type: String },
   nombre_empresa: { type: String, required: true },
   nombre_contacto: { type: String, required: true },
   

@@ -18,6 +18,12 @@ class ProductRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
+    // ✅ Filtro opcional por sede — si no se pasa, se devuelven todos los
+    // productos (el filtrado por rol/sede se aplica igual que en el resto
+    // del sistema: en el frontend, vía useSedeScope/isVisibleBySede).
+    if (filters.sedeId) {
+      query.sedeId = filters.sedeId;
+    }
     const docs = await ProductModel.find(query);
     return docs.map((d) => this._toEntity(d));
   }
@@ -44,19 +50,6 @@ class ProductRepository {
 
   async update(id, changes) {
     const doc = await ProductModel.findByIdAndUpdate(id, changes, { returnDocument: 'after' }).catch(() => null);
-    return this._toEntity(doc);
-  }
-
-  /**
-   * Incrementa (o decrementa, si cantidad es negativa) el stock de un producto.
-   * Usa $inc para que sea atómico y no sobrescriba el stock actual.
-   */
-  async incrementStock(id, cantidad) {
-    const doc = await ProductModel.findByIdAndUpdate(
-      id,
-      { $inc: { stock: cantidad } },
-      { new: true }
-    ).catch(() => null);
     return this._toEntity(doc);
   }
 

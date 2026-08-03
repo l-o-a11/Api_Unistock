@@ -1,11 +1,11 @@
 // application/use-cases/suppliers/CreateSupplier.js
-class CreateSupplier {
+class Create {
   constructor(supplierRepository) {
     this.supplierRepository = supplierRepository;
   }
 
   async execute(data) {
-    const { nit, nombre_de_empresa, nombre_del_contacto, direccion, telefono, correo, sitio_web, correoContacto } = data;
+    const { nit, nombre_de_empresa, nombre_del_contacto, tipo_documento, direccion, telefono, correo, sitio_web, correoContacto, telefonoContacto, tipoDocumentoContacto } = data;
 
     if (!nit || !nombre_de_empresa || !nombre_del_contacto || !direccion || !telefono || !correo) {
       const error = new Error("Faltan campos requeridos");
@@ -13,13 +13,13 @@ class CreateSupplier {
       throw error;
     }
 
-    if (await this.supplierRepository.findByNit(nit)) {
+    if (this.supplierRepository.findByNit(nit)) {
       const error = new Error("Ya existe un proveedor con ese NIT");
       error.statusCode = 409;
       throw error;
     }
 
-    if (await this.supplierRepository.findByEmail(correo)) {
+    if (this.supplierRepository.findByEmail(correo)) {
       const error = new Error("Ya existe un proveedor con ese correo");
       error.statusCode = 409;
       throw error;
@@ -29,11 +29,14 @@ class CreateSupplier {
       nit,
       nombre_de_empresa,
       nombre_del_contacto,
+      tipo_documento,
       direccion,
       telefono,
       correo,
       sitio_web,
       correoContacto,
+      telefono_contacto: telefonoContacto,
+      tipo_documento_contacto: tipoDocumentoContacto,
       activo: true,
     });
   }
