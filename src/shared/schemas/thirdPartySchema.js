@@ -69,6 +69,7 @@ const baseThirdParty = z.object({
 
   telefono_contacto: z
     .union([z.string(), z.number(), z.null()])
+    .optional() // ← FIX: el frontend NO envía este campo; sin .optional() Zod v4 falla con invalid_union cuando el campo está ausente
     .transform((v) => {
       if (v === null || v === undefined) return '';
       return String(v);
@@ -91,9 +92,10 @@ const baseThirdParty = z.object({
     .transform((v) => (v === null || v === undefined ? '' : v))
     .optional(),
 
-  // Tolerar null/undefined del frontend
+// Tolerar null/undefined del frontend
   direccion: z
     .union([z.string(), z.null()])
+    .optional() // FIX: permitir campo ausente (Zod v4 union no acepta undefined)
     .transform((v) => (v === null || v === undefined ? '' : v))
     .superRefine((s, ctx) => {
       if (!s || !s.trim()) return;
@@ -108,6 +110,7 @@ const baseThirdParty = z.object({
   // Aceptar telefono como string o number y normalizar a string
   telefono: z
     .union([z.string(), z.number(), z.null()])
+    .optional() // FIX: permitir campo ausente (Zod v4 union no acepta undefined)
     .transform((v) => {
       if (v === null || v === undefined) return '';
       return String(v);
