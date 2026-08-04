@@ -16,14 +16,14 @@ const baseThirdParty = z.object({
       const cleaned = s.replace(/\s+/g, '');
       const digitsOnly = cleaned.replace(/\D/g, '');
 
-      // Mínimo y máximo por dígitos (permite que venga con '-')
+// Mínimo y máximo por dígitos (permite que venga con '-')
       if (digitsOnly.length < 6) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 10 dígitos' });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 20 dígitos' });
         return;
       }
 
-      if (digitsOnly.length > 10) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 10 dígitos' });
+      if (digitsOnly.length > 20) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 20 dígitos' });
         return;
       }
 
