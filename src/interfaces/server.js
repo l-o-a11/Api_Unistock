@@ -19,6 +19,7 @@ const privilegeRoutes = require("../infrastructure/routes/privilegeRoutes");
 const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
 const productRoutes = require("../infrastructure/routes/productRoutes");
 const clientRoutes = require("../infrastructure/routes/clientRoutes");
+const uploadRoutes = require("../infrastructure/routes/uploadRoutes");
 const { specs, swaggerUi } = require("../swagger/swagger");
 
 const app = express();
@@ -89,6 +90,9 @@ app.use("/api/product-categories", productCategoryRoutes);
 app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/clients", clientRoutes);
+
+// Upload de imágenes a Cloudinary
+app.use("/api/upload", uploadRoutes);
 
 // Swagger Documentation (después de rutas de API pero antes de 404)
 app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, {
