@@ -19,6 +19,7 @@ app.use("/api/sites",               require("./infrastructure/routes/siteRoutes"
 app.use("/api/roles",               require("./infrastructure/routes/roleRoutes"));
 app.use("/api/products",            require("./infrastructure/routes/productRoutes"));
 
+
 // FIX 2: rutas con los nombres que usa el frontend
 app.use("/api/insumos",             require("./infrastructure/routes/supplyRoutes"));
 app.use("/api/categorias-insumos",  require("./infrastructure/routes/supplyCategoryRoutes"));
