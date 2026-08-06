@@ -1,7 +1,7 @@
 node_modules/
 .env
-package-lock.json
 .qodo/
+.tests/
 
 # Playwright
 /test-results/
