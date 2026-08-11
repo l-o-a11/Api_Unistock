@@ -2,3 +2,7 @@
 MongoDB conectado → Unistock
 [seed] Módulos y privilegios verificados ✓
 Unistock API  →  http://localhost:3000
+[ProductionController] cambiarEstado called id=6a6f55e82ace879e0c3ab2c9 estado=Corte id_usuario=Laura ospina force=false
+[ProductionController] payload extra: {}
+[ProductionController] Retrocediendo al estado "Corte". Eliminando asignaciones para orden 6a6f55e82ace879e0c3ab2c9
+[ProductionController] cambiarEstado result: 6a6f55e82ace879e0c3ab2c9

@@ -43,7 +43,7 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
   // Emulador Android redirige 10.0.2.2 → host de la PC
-  "http://36.1:5554",
+  "http://36.1:5554", "http://10.0.2.2:3000",
   // Dispositivos físicos en red local (ajusta la IP de tu PC si es fija)
   ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
 ];
