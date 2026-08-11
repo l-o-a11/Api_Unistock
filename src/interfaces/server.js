@@ -42,24 +42,31 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
   // Emulador Android redirige 10.0.2.2 → host de la PC
-  "http://36.1:5554",
+  "http://10.0.2.2:3000",
   // Dispositivos físicos en red local (ajusta la IP de tu PC si es fija)
   ...(process.env.MOBILE_ORIGINS ? process.env.MOBILE_ORIGINS.split(",") : []),
 ];
 
 const corsOptions = {
+  // FIX: antes la lista de origins permitidos estaba fija (5173, 5000), lo
+  // que rompía CORS cada vez que Flutter Web asignaba un puerto aleatorio
+  // (flutter run -d chrome sin --web-port). Ahora, en desarrollo, se acepta
+  // cualquier http://localhost:<puerto>. En producción (NODE_ENV=production)
+  // se sigue exigiendo que el origin esté en allowedOrigins/FRONTEND_URL.
+  origin: (origin, callback) => {
+    // Sin header Origin: apps nativas (Flutter mobile), Postman, curl, etc.
+    if (!origin) return callback(null, true);
 
-  // FIX: antes solo permitía un origin (5173, el de React). Flutter Web
-  // corre en otro puerto, así que se agregó como segundo origin permitido.
-  //
-  // IMPORTANTE: flutter run -d chrome SIN --web-port asigna un puerto
-  // ALEATORIO cada vez (ej: 62919), lo que rompe esta lista en cada corrida.
-  // Por eso hay que fijar el puerto siempre igual al levantar Flutter Web:
-  //
-  //   flutter run -d chrome --web-port=5000
-  //
-  // Así el origin siempre es http://localhost:5000 y coincide con esta lista.
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:5000"],
+    if (process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`Origin no permitido por CORS: ${origin}`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
