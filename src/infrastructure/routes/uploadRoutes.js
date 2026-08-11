@@ -45,7 +45,9 @@ const upload = multer({
 router.post("/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: "No se subió ningún archivo" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No se subió ningún archivo" });
     }
 
     const src = req.file.secure_url || req.file.path;
@@ -68,7 +70,9 @@ router.post("/upload", upload.single("file"), (req, res) => {
 router.post("/upload-multiple", upload.array("files", 10), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, error: "No se subieron archivos" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No se subieron archivos" });
     }
 
     const images = req.files.map((file) => {
@@ -100,7 +104,9 @@ router.delete("/upload/:publicId", async (req, res) => {
     if (result.result === "ok") {
       res.json({ success: true, message: "Imagen eliminada correctamente" });
     } else {
-      res.status(404).json({ success: false, error: "No se pudo eliminar la imagen" });
+      res
+        .status(404)
+        .json({ success: false, error: "No se pudo eliminar la imagen" });
     }
   } catch (error) {
     console.error("❌ Error eliminando:", error);

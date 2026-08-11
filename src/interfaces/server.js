@@ -49,7 +49,6 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-
   // FIX: antes solo permitía un origin (5173, el de React). Flutter Web
   // corre en otro puerto, así que se agregó como segundo origin permitido.
   //
@@ -60,7 +59,10 @@ const corsOptions = {
   //   flutter run -d chrome --web-port=5000
   //
   // Así el origin siempre es http://localhost:5000 y coincide con esta lista.
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:5000"],
+  origin: [
+    process.env.FRONTEND_URL || "http://localhost:5173",
+    "http://localhost:5000",
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -78,13 +80,13 @@ app.use("/api/suppliers", suppliersRoutes);
 app.use("/api/proveedores", suppliersRoutes);
 app.use("/api/terceros", thirdPartiesRoutes);
 app.use("/api/produccion", productionRoutes);
-app.use('/api/compras', purchaseRoutes);
-app.use('/api/insumos', supplyRoutes);
-app.use('/api/roles', roleRoutes);
-app.use('/api/sites', siteRoutes);
-app.use('/api/categorias-insumos', supplyCategoryRoutes);
-app.use('/api/modules', moduleRoutes);
-app.use('/api/privileges', privilegeRoutes);
+app.use("/api/compras", purchaseRoutes);
+app.use("/api/insumos", supplyRoutes);
+app.use("/api/roles", roleRoutes);
+app.use("/api/sites", siteRoutes);
+app.use("/api/categorias-insumos", supplyCategoryRoutes);
+app.use("/api/modules", moduleRoutes);
+app.use("/api/privileges", privilegeRoutes);
 
 app.use("/api/product-categories", productCategoryRoutes);
 app.use("/api/products-categories", productCategoryRoutes);
@@ -95,12 +97,16 @@ app.use("/api/clients", clientRoutes);
 app.use("/api/upload", uploadRoutes);
 
 // Swagger Documentation (después de rutas de API pero antes de 404)
-app.get("/api/docs", swaggerUi.serve, swaggerUi.setup(specs, {
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayOperationId: true
-  }
-}));
+app.get(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayOperationId: true,
+    },
+  }),
+);
 app.use("/api/docs", swaggerUi.serve);
 app.get("/api/docs", swaggerUi.setup(specs));
 
@@ -121,7 +127,10 @@ app.use((err, req, res, next) => {
   if (err?.type === "entity.too.large") {
     return res
       .status(413)
-      .json({ success: false, message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB." });
+      .json({
+        success: false,
+        message: "El archivo es demasiado grande. Usa imágenes de máximo 5MB.",
+      });
   }
 
   console.error(err.stack);
