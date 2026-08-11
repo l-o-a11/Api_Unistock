@@ -27,7 +27,7 @@ router.use(requireAuth);
 // Rutas de catálogos (deben ir ANTES de /:id para evitar conflictos de ruta)
 router.get("/catalogos/medidas",     ctrl.getMedidas);
 router.get("/catalogos/propiedades", ctrl.getPropiedades);
-router.get("/catalogos/categorias",  ctrl.getCategorias);
+// Las categorías se sirven en /api/categorias-insumos (supplyCategoryRoutes.js)
 
 // Rutas CRUD
 router.get("/", ctrl.getSupplies);

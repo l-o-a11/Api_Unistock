@@ -15,15 +15,25 @@ class SupplyRepository {
     return this._toEntity(doc);
   }
 
+  /**
+   * Campos por los que se puede ordenar. Whitelist para evitar que un
+   * `sortBy` arbitrario en la query rompa la consulta o exponga campos
+   * internos.
+   */
+  static SORTABLE_FIELDS = ["nombre", "stock", "valor_medida", "createdAt", "updatedAt"];
+
   async findAll(filters = {}) {
     const query = {};
 
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
-      query.$or = [
-        { nombre: re },
-        { categoria: re }
-      ];
+      // Escapamos caracteres especiales de regex para que un término como
+      // "m2 (10%)" no rompa la búsqueda ni lance una excepción.
+      const escaped = String(filters.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(escaped, "i");
+      // NOTA: "categoria" es un ObjectId en el schema, así que buscar por
+      // texto ahí nunca matchea nada — se deja fuera del $or. Si se quiere
+      // buscar por nombre de categoría, hay que resolver el id primero.
+      query.nombre = re;
     }
 
     if (filters.categoria !== undefined) {
@@ -34,8 +44,33 @@ class SupplyRepository {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
 
-    const docs = await SupplyModel.find(query);
-    return docs.map((d) => this._toEntity(d));
+    const total = await SupplyModel.countDocuments(query);
+
+    const page = Math.max(1, parseInt(filters.page, 10) || 1);
+    // limit=0 o "all" permite pedir explícitamente el listado completo
+    // (por ejemplo para exportar a Excel/PDF).
+    const rawLimit = filters.limit;
+    const noLimit = rawLimit === "all" || rawLimit === 0 || rawLimit === "0";
+    const limit = noLimit ? total || 1 : Math.min(200, Math.max(1, parseInt(rawLimit, 10) || 10));
+
+    const sortField = SupplyRepository.SORTABLE_FIELDS.includes(filters.sortBy)
+      ? filters.sortBy
+      : "createdAt";
+    const sortOrder = filters.order === "asc" ? 1 : -1;
+
+    let cursor = SupplyModel.find(query).sort({ [sortField]: sortOrder });
+    if (!noLimit) {
+      cursor = cursor.skip((page - 1) * limit).limit(limit);
+    }
+
+    const docs = await cursor;
+    return {
+      data: docs.map((d) => this._toEntity(d)),
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   async findById(id) {

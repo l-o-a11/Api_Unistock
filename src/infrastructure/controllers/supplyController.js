@@ -15,7 +15,6 @@ const bcrypt = require("bcryptjs");
 const { uploadImage, deleteImage } = require("../cloudinary/cloudinary.service");
 
 const SupplyRepository = require("../repositories/SupplyRepository");
-const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
 const MaterialTechnicalSpecificationsRepository = require("../repositories/MaterialTechnicalSpecificationsRepository");
 const UserRepository = require("../repositories/UserRepository");
 
@@ -30,7 +29,6 @@ const {
 } = require("../../shared/utils/response");
 
 const repo = new SupplyRepository();
-const categoryRepo = new SupplyCategoryRepository();
 const materialRepo = new MaterialTechnicalSpecificationsRepository();
 const userRepo = new UserRepository();
 
@@ -103,20 +101,16 @@ const isManagerOrAdmin = (rolNombre) => {
   return role === "gerente" || role === "administrador";
 };
 
+// SOLO se lee del body: query string y headers quedan registrados en logs
+// de servidores/proxies/CDN, así que no son un lugar seguro para enviar
+// contraseñas aunque el viaje sea por HTTPS.
 const extractManagerPassword = (req) =>
   req.body?.password ||
   req.body?.managerPassword ||
   req.body?.adminPassword ||
   req.body?.data?.password ||
   req.body?.data?.managerPassword ||
-  req.body?.data?.adminPassword ||
-  req.query?.password ||
-  req.query?.managerPassword ||
-  req.query?.adminPassword ||
-  req.headers["x-manager-password"] ||
-  req.headers["x-admin-password"] ||
-  req.headers["x-password"] ||
-  req.headers.password;
+  req.body?.data?.adminPassword;
 
 /**
  * Verifica la contraseña del gerente.
@@ -135,9 +129,15 @@ const verifyManagerPassword = async (userId, plainPassword) => {
   }
 
   // En desarrollo el usuario puede ser un mock y no existir en la DB.
-  if (process.env.NODE_ENV !== "production") {
-    const fallbackPassword = process.env.DEV_ADMIN_PASSWORD || "admin123";
-    return candidate === fallbackPassword;
+  // IMPORTANTE: ya no hay un valor por defecto ("admin123") — si
+  // DEV_ADMIN_PASSWORD no está seteada explícitamente, este atajo queda
+  // desactivado incluso fuera de producción, para no dejar una contraseña
+  // adivinable activa por accidente en un entorno de staging mal configurado.
+  if (process.env.NODE_ENV !== "production" && process.env.DEV_ADMIN_PASSWORD) {
+    console.warn(
+      "[DEV] Verificando contraseña de gerente contra DEV_ADMIN_PASSWORD (solo debe ocurrir en desarrollo local).",
+    );
+    return candidate === process.env.DEV_ADMIN_PASSWORD;
   }
 
   return false;
@@ -149,23 +149,26 @@ const getMedidas = (_req, res) => ok(res, MEDIDAS_PREDETERMINADAS);
 
 const getPropiedades = (_req, res) => ok(res, PROPIEDADES_PREDETERMINADAS);
 
-const getCategorias = async (_req, res) => {
-  try {
-    const categorias = await categoryRepo.findAll({ estado: true });
-    return ok(res, categorias);
-  } catch {
-    return serverError(res);
-  }
-};
+// NOTA: la lista de categorías se sirve desde /api/categorias-insumos
+// (supplyCategoryController.js), que es lo que usa el frontend hoy.
+// Antes existía un getCategorias duplicado aquí mismo (montado en
+// /api/insumos/catalogos/categorias) que nadie llamaba — se retiró para
+// no mantener dos fuentes de verdad para lo mismo.
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
 const getSupplies = async (req, res) => {
   try {
-    const supplies = await repo.findAll(req.query);
-    return ok(res, supplies.map((s) => s.toPublic()));
-  } catch {
-    return serverError(res);
+    const { data, total, page, limit, totalPages } = await repo.findAll(req.query);
+    return ok(res, {
+      data: data.map((s) => s.toPublic()),
+      total,
+      page,
+      limit,
+      totalPages,
+    });
+  } catch (err) {
+    return serverError(res, err.message);
   }
 };
 
@@ -302,6 +305,24 @@ const updateSupply = async (req, res) => {
     // Campo heredado de un patrón distinto (productos/ImgBB) que no existe
     // en el esquema de Supply; si llega del frontend, se descarta.
     delete updates.imagenes_Url;
+
+    // ── Regla: no se puede disminuir el stock desde la edición manual ────────
+    // (el frontend ya la valida, pero se replica aquí porque la API puede
+    // llamarse directamente sin pasar por el formulario). El stock solo debe
+    // bajar por consumo real (ej: producción, compras anuladas), vía
+    // repo.incrementStock() con cantidad negativa — no por este endpoint.
+    if (updates.stock !== undefined && updates.stock !== null) {
+      const nuevoStock = Number(updates.stock);
+      if (Number.isNaN(nuevoStock)) {
+        return badRequest(res, "El stock debe ser un número válido.");
+      }
+      if (nuevoStock < supply.stock) {
+        return badRequest(
+          res,
+          "No puedes disminuir el stock al editar el insumo. Los descuentos de stock deben originarse en consumo/producción, no en la edición manual.",
+        );
+      }
+    }
 
     // ── Manejo de imagen en Cloudinary ────────────────────────────────────────
     if (req.file) {
@@ -469,7 +490,6 @@ const toggleSupply = async (req, res) => {
 module.exports = {
   getMedidas,
   getPropiedades,
-  getCategorias,
   getSupplies,
   getSupplyById,
   createSupply,
