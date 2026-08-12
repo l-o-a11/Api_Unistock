@@ -11,16 +11,13 @@ class GetProductions {
    */
 async execute(filters = {}) {
     const result = await this.productionRepository.findAll(filters);
-    // 🐛 FIX: ProductionRepository.findAll() devuelve un ARRAY plano,
-    // no un objeto { data, total, ... }. Por eso result.data era
-    // undefined y causaba TypeError al llamar .map().
-    const orders = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : []);
+    const orders = Array.isArray(result?.data) ? result.data : [];
     return {
       data: orders.map((p) => p.toJSON()),
-      total: orders.length,
-      page: 1,
-      limit: orders.length || 10,
-      totalPages: 1,
+      total: result.total || 0,
+      page: result.page || 1,
+      limit: result.limit || orders.length,
+      totalPages: result.totalPages || 0,
     };
   }
 }
