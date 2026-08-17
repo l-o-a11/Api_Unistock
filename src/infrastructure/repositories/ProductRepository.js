@@ -24,7 +24,8 @@ class ProductRepository {
     if (filters.sedeId) {
       query.sedeId = filters.sedeId;
     }
-    const docs = await ProductModel.find(query);
+    // lean evita hidratar documentos Mongoose para una respuesta de solo lectura.
+    const docs = await ProductModel.find(query).lean();
     return docs.map((d) => this._toEntity(d));
   }
 

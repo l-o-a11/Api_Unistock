@@ -34,7 +34,8 @@ class SupplyRepository {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
 
-    const docs = await SupplyModel.find(query);
+    // lean reduce CPU y memoria en los catálogos que solo se van a serializar.
+    const docs = await SupplyModel.find(query).lean();
     return docs.map((d) => this._toEntity(d));
   }
 
