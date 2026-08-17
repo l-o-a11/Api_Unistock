@@ -65,6 +65,8 @@ function saveToken(token) {
 function getSmtpTransporter() {
   return nodemailer.createTransport({
     service: "gmail",
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
     auth: {
       user: process.env.EMAIL_USER?.trim(),
       pass: process.env.EMAIL_PASS?.trim(),
@@ -139,7 +141,7 @@ async function sendEmail({ to, subject, html, from }) {
   if (hasGoogleCredentials()) {
     try {
       const gmailClient = await getGmail();
-      const sender = from || process.env.EMAIL_USER || "me";
+      const sender = from || (process.env.EMAIL_USER?.trim()) || "me";
 
       const message = [
         `From: ${sender}`,
@@ -171,7 +173,7 @@ async function sendEmail({ to, subject, html, from }) {
   }
 
   const transporter = getSmtpTransporter();
-  const sender = from || process.env.EMAIL_USER;
+  const sender = from || (process.env.EMAIL_USER?.trim());
   const res = await transporter.sendMail({
     from: `"Equipo Unistock" <${sender}>`,
     to,
