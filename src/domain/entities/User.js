@@ -20,6 +20,7 @@ class User {
     // cuando rolNombre es "Empleado" (null para Administrador/Gerente).
     cargo = null,
     estado = true,
+    intentosFallidos = 0,
   }) {
     this.id = id;
     this.tipoDocumento = tipoDocumento;
@@ -32,6 +33,7 @@ class User {
     this.sedeId = sedeId;
     this.cargo = cargo;
     this.estado = estado;
+    this.intentosFallidos = intentosFallidos;
   }
 
   // Devuelve el objeto sin el password — para respuestas al cliente
