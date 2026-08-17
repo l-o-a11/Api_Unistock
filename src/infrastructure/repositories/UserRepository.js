@@ -195,6 +195,30 @@ class UserRepository {
     return UserModel.countDocuments({ estado: true, rolId: rol._id });
   }
 
+  // ── Intentos fallidos de login ──────────────────────────────────────────
+  // Incrementa el contador y devuelve el valor YA actualizado (atómico via
+  // $inc + findOneAndUpdate, evita condiciones de carrera si llegaran dos
+  // intentos fallidos casi simultáneos).
+  async incrementFailedAttempts(id) {
+    const doc = await UserModel.findByIdAndUpdate(
+      id,
+      { $inc: { intentosFallidos: 1 } },
+      { new: true },
+    ).catch(() => null);
+    return doc?.intentosFallidos ?? 0;
+  }
+
+  async resetFailedAttempts(id) {
+    await UserModel.findByIdAndUpdate(id, { intentosFallidos: 0 }).catch(() => null);
+  }
+
+  // ── Usuarios activos con un rol puntual — usado para notificar a Gerentes
+  // cuando se bloquea una cuenta por intentos fallidos ─────────────────────
+  async findActiveByRoleId(rolId) {
+    const docs = await UserModel.find({ rolId, estado: true }).catch(() => []);
+    return docs.map((d) => this._toEntity(d));
+  }
+
   // ── Stubs heredados — se mantienen por compatibilidad con CreateUser/UpdateUser
   findAllRoles() { return []; }
   findRoleById(id) { return id ? { id } : null; }
