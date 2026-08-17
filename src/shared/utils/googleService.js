@@ -65,11 +65,9 @@ function saveToken(token) {
 function getSmtpTransporter() {
   return nodemailer.createTransport({
     service: "gmail",
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
     auth: {
-      user: process.env.EMAIL_USER?.trim(),
-      pass: process.env.EMAIL_PASS?.trim(),
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 }
@@ -139,53 +137,44 @@ async function getCalendar() {
 
 async function sendEmail({ to, subject, html, from }) {
   if (hasGoogleCredentials()) {
-    try {
-      const gmailClient = await getGmail();
-      const sender = from || (process.env.EMAIL_USER?.trim()) || "me";
+    const gmailClient = await getGmail();
+    const sender = from || process.env.EMAIL_USER || "me";
 
-      const message = [
-        `From: ${sender}`,
-        `To: ${to}`,
-        `Subject: ${subject}`,
-        "MIME-Version: 1.0",
-        "Content-Type: text/html; charset=UTF-8",
-        "",
-        html,
-      ].join("\n");
-
-      const encodedMessage = Buffer.from(message)
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-      const res = await gmailClient.users.messages.send({
-        userId: "me",
-        requestBody: {
-          raw: encodedMessage,
-        },
-      });
-
-      return res.data;
-    } catch (error) {
-      console.error("Error enviando correo con Gmail API, usando SMTP como respaldo:", error.message);
-    }
-  }
-
-  try {
-    const transporter = getSmtpTransporter();
-    const sender = from || (process.env.EMAIL_USER?.trim());
-    const res = await transporter.sendMail({
-      from: `"Equipo Unistock" <${sender}>`,
-      to,
-      subject,
+    const message = [
+      `From: ${sender}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      "MIME-Version: 1.0",
+      "Content-Type: text/html; charset=UTF-8",
+      "",
       html,
+    ].join("\n");
+
+    const encodedMessage = Buffer.from(message)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const res = await gmailClient.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage,
+      },
     });
-    return res;
-  } catch (error) {
-    console.error("Error enviando correo con SMTP:", error.message);
-    throw new Error(`No se pudo enviar el correo: ${error.message}`);
+
+    return res.data;
   }
+
+  const transporter = getSmtpTransporter();
+  const sender = from || process.env.EMAIL_USER;
+  const res = await transporter.sendMail({
+    from: `"Equipo Unistock" <${sender}>`,
+    to,
+    subject,
+    html,
+  });
+  return res;
 }
 
 async function listCalendars() {

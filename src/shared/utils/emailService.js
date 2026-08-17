@@ -131,8 +131,8 @@ const sendProductionStageCompletedEmail = async ({ nombreCompleto, correo, numer
 };
 
 const sendAccountLockedEmail = async ({ gerenteNombre, gerenteCorreo, usuarioBloqueado }) => {
-  await sendEmail({
-    from: `"Equipo Unistock" <${process.env.EMAIL_USER?.trim()}>`,
+  await transporter.sendMail({
+    from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
     to: gerenteCorreo,
     subject: `🔒 Cuenta bloqueada por intentos fallidos — ${usuarioBloqueado.nombreCompleto}`,
     html: `
