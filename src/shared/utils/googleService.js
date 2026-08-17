@@ -172,15 +172,20 @@ async function sendEmail({ to, subject, html, from }) {
     }
   }
 
-  const transporter = getSmtpTransporter();
-  const sender = from || (process.env.EMAIL_USER?.trim());
-  const res = await transporter.sendMail({
-    from: `"Equipo Unistock" <${sender}>`,
-    to,
-    subject,
-    html,
-  });
-  return res;
+  try {
+    const transporter = getSmtpTransporter();
+    const sender = from || (process.env.EMAIL_USER?.trim());
+    const res = await transporter.sendMail({
+      from: `"Equipo Unistock" <${sender}>`,
+      to,
+      subject,
+      html,
+    });
+    return res;
+  } catch (error) {
+    console.error("Error enviando correo con SMTP:", error.message);
+    throw new Error(`No se pudo enviar el correo: ${error.message}`);
+  }
 }
 
 async function listCalendars() {
