@@ -20,6 +20,7 @@ const privilegeRoutes = require("../infrastructure/routes/privilegeRoutes");
 const productCategoryRoutes = require("../infrastructure/routes/productCategoryRoutes");
 const productRoutes = require("../infrastructure/routes/productRoutes");
 const clientRoutes = require("../infrastructure/routes/clientRoutes");
+const calendarRoutes = require("../infrastructure/routes/calendarRoutes");
 const uploadRoutes = require("../infrastructure/routes/uploadRoutes");
 
 const { specs, swaggerUi } = require("../swagger/swagger");
@@ -206,6 +207,7 @@ app.use("/api/products-categories", productCategoryRoutes);
 app.use("/api/products", productRoutes);
 
 app.use("/api/clients", clientRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 
 // ==========================================================
