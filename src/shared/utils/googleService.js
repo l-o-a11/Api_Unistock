@@ -137,33 +137,37 @@ async function getCalendar() {
 
 async function sendEmail({ to, subject, html, from }) {
   if (hasGoogleCredentials()) {
-    const gmailClient = await getGmail();
-    const sender = from || process.env.EMAIL_USER || "me";
+    try {
+      const gmailClient = await getGmail();
+      const sender = from || process.env.EMAIL_USER || "me";
 
-    const message = [
-      `From: ${sender}`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/html; charset=UTF-8",
-      "",
-      html,
-    ].join("\n");
+      const message = [
+        `From: ${sender}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        "MIME-Version: 1.0",
+        "Content-Type: text/html; charset=UTF-8",
+        "",
+        html,
+      ].join("\n");
 
-    const encodedMessage = Buffer.from(message)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+      const encodedMessage = Buffer.from(message)
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
 
-    const res = await gmailClient.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw: encodedMessage,
-      },
-    });
+      const res = await gmailClient.users.messages.send({
+        userId: "me",
+        requestBody: {
+          raw: encodedMessage,
+        },
+      });
 
-    return res.data;
+      return res.data;
+    } catch (error) {
+      console.error("Error enviando correo con Gmail API, usando SMTP como respaldo:", error.message);
+    }
   }
 
   const transporter = getSmtpTransporter();
