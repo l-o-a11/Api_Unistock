@@ -99,6 +99,22 @@ const updateOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
       if (raw === undefined || raw === null || raw === '') return raw;
       return normalizeDateValue(raw);
     }),
+  designImages: z.array(z.any()).optional(),
+  finishedImages: z.array(z.any()).optional(),
+  finishedImageUrl: z.any().optional(),
+  techSpecification: z.any().optional(),
+  tipo: z.string().optional(),
+  referencia: z.string().optional(),
+  producto: z.string().optional(),
+  id_usuario: z.string().optional(),
+  asignaciones: z.array(z.any()).optional(),
+  empleadoAsignaciones: z.any().optional(),
+  sedeAsignaciones: z.array(z.any()).optional(),
+  terceroAsignaciones: z.array(z.any()).optional(),
+  sedeId: z.string().optional(),
+  fromDamaged: z.boolean().optional(),
+  originalOrderNumber: z.string().optional(),
+  originalOrderStatus: z.string().optional(),
 }));
 
 const cambiarEstadoSchema = z.object({
