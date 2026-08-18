@@ -215,7 +215,7 @@ app.use("/api/calendar", calendarRoutes);
 // UPLOAD
 // ==========================================================
 
-app.use("/api/upload", uploadRoutes);
+app.use("/api", uploadRoutes);
 
 
 // ==========================================================
