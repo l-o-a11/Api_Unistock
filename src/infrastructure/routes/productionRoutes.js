@@ -30,7 +30,7 @@ const validateSchema = require("../middlewares/validateSchema");
 const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema } = require("../../shared/schemas/productionSchema");
 
 const router = Router();
-// router.use(requireAuth);  // REMOVIDO para desarrollo público
+router.use(requireAuth);
 
 /**
  * @swagger

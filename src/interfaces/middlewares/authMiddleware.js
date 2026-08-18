@@ -1,6 +1,7 @@
 const { verify } = require("../../infrastructure/security/token_generator");
 const { unauthorized, forbidden, serverError } = require("../../shared/utils/response");
 const UserRepository = require("../../infrastructure/repositories/UserRepository");
+const RoleModel = require("../../infrastructure/db/RoleModel");
 
 const userRepo = new UserRepository();
 
@@ -79,4 +80,40 @@ const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { requireAuth, requireRole };
+// requirePermission: valida que el ROL del usuario tenga, en la BD (no en el
+// token), el módulo solicitado con el privilegio requerido. Es el faltante
+// que hacía que cualquier usuario autenticado —sin importar su rol— pudiera
+// operar módulos que no le fueron asignados (terceros, insumos, compras,
+// sedes, etc.), porque requireAuth solo valida "está logueado", no "puede
+// usar ESTE módulo".
+//
+// Uso: router.get("/", requirePermission("compras", "leer"), ctrl.listar);
+const requirePermission = (modulo, privilegio) => async (req, res, next) => {
+  if (!req.user) {
+    return unauthorized(res);
+  }
+
+  try {
+    const role = await RoleModel.findById(req.user.rolId).lean();
+
+    if (!role || !role.estado) {
+      return forbidden(res, "Tu rol ya no es válido o está inactivo");
+    }
+
+    const permisoModulo = role.permisos.find((p) => p.modulo === modulo);
+
+    if (!permisoModulo || !permisoModulo.privilegios.includes(privilegio)) {
+      return forbidden(
+        res,
+        `Tu rol no tiene permiso de '${privilegio}' en el módulo '${modulo}'`
+      );
+    }
+
+    next();
+  } catch (err) {
+    console.error("ERROR requirePermission:", err);
+    return serverError(res, "No se pudo validar tus permisos");
+  }
+};
+
+module.exports = { requireAuth, requireRole, requirePermission };
