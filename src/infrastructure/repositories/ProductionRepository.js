@@ -21,10 +21,6 @@ class ProductionRepository {
       if (filters.fecha_hasta) query.fecha_entrega.$lte = new Date(filters.fecha_hasta);
     }
 
-    // Un listado solo necesita los datos de la tabla. Historial, imágenes y
-    // ficha técnica se solicitan mediante GET /ordenes/:id cuando se abre una
-    // orden; así no se retransmiten en cada recarga de la tabla.
-    const listProjection = "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones createdAt updatedAt";
     const requestedLimit = Number.parseInt(filters.limit, 10);
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 100)
@@ -33,13 +29,62 @@ class ProductionRepository {
     const page = Number.isFinite(requestedPage) ? Math.max(requestedPage, 1) : 1;
     const skip = (page - 1) * limit;
 
+    const pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'productionorderdetails',
+          let: { orderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$id_orden', '$$orderId'] },
+                    { $eq: [{ $toString: '$id_orden' }, { $toString: '$$orderId' }] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'details',
+        },
+      },
+      {
+        $addFields: {
+          detailsCount: { $size: '$details' },
+          totalQty: { $ifNull: [{ $sum: '$details.cantidad' }, 0] },
+          firstColor: {
+            $ifNull: [
+              {
+                $arrayElemAt: [
+                  {
+                    $filter: {
+                      input: '$details.color',
+                      cond: { $ne: ['$$this', ''] },
+                    },
+                  },
+                  0,
+                ],
+              },
+              '',
+            ],
+          },
+          firstRef: { $ifNull: [{ $arrayElemAt: ['$details.id_producto', 0] }, ''] },
+        },
+      },
+      {
+        $project: {
+          details: 0,
+        },
+      },
+      { $sort: { createdAt: 1, _id: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
     const [docs, total] = await Promise.all([
-      ProductionOrderModel.find(query)
-        .select(listProjection)
-        .sort({ createdAt: 1, _id: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      ProductionOrderModel.aggregate(pipeline),
       ProductionOrderModel.countDocuments(query),
     ]);
 
@@ -201,6 +246,11 @@ class ProductionRepository {
   /**
    * findParaCalendario — Devuelve órdenes activas para el calendario.
    */
+  async find(query = {}, projection = null) {
+    const docs = await ProductionOrderModel.find(query).select(projection).lean();
+    return docs.map((d) => this._toEntity(d));
+  }
+
   async findParaCalendario(desde, hasta) {
     const query = {
       estado: { $nin: ["Anulada"] },

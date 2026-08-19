@@ -27,7 +27,7 @@ const { Router } = require("express");
 const ctrl = require("../controllers/productionController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 const validateSchema = require("../middlewares/validateSchema");
-const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema } = require("../../shared/schemas/productionSchema");
+const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema, reasignarEmpleadoSchema } = require("../../shared/schemas/productionSchema");
 
 const router = Router();
 // router.use(requireAuth);  // REMOVIDO para desarrollo público
@@ -326,6 +326,7 @@ router.post("/ordenes", requireAuth, validateSchema(createOrderSchema), ctrl.cre
 router.put("/ordenes/:id", validateSchema(updateOrderSchema), ctrl.updateOrder);
 router.patch("/ordenes/:id/estado", requireAuth, validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
 router.patch("/ordenes/:id/asignar-empleado", requireAuth, ctrl.asignarEmpleado);
+router.patch("/ordenes/:id/reasignar-empleado", requireAuth, validateSchema(reasignarEmpleadoSchema), ctrl.reasignarEmpleado);
 router.patch("/ordenes/:id/confirmar-etapa", requireAuth, ctrl.confirmarEtapa);
 router.patch("/ordenes/:id/anular", validateSchema(anularOrderSchema), ctrl.anularOrder);
 router.post("/ordenes/:id/historial", ctrl.agregarHistorial);
