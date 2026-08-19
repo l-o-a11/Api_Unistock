@@ -23,20 +23,26 @@ const entityToJSON = (entity) => (entity?.toJSON ? entity.toJSON() : entity);
 
 const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
   const allowedIds = new Set(thirdPartyIds.map(idToString).filter(Boolean));
-  const allAssignments = await assignmentRepo.findAll();
-  const assignments = allAssignments.filter((assignment) => {
+  if (!allowedIds.size) return new Map();
+
+  const assignments = await assignmentRepo.findAll();
+  const filtered = assignments.filter((assignment) => {
     const terceroId = idToString(assignment.id_tercero);
-    return !allowedIds.size || allowedIds.has(terceroId);
+    return allowedIds.has(terceroId);
   });
 
-  const orderIds = [...new Set(assignments.map((assignment) => idToString(assignment.id_orden)).filter(Boolean))];
-  const orders = await Promise.all(
-    orderIds.map(async (orderId) => [orderId, entityToJSON(await productionRepo.findById(orderId).catch(() => null))]),
-  );
-  const orderById = new Map(orders);
+  const orderIds = [...new Set(filtered.map((assignment) => idToString(assignment.id_orden)).filter(Boolean))];
+  const validOrderIds = orderIds.filter((id) => {
+    try { new mongoose.Types.ObjectId(id); return true; }
+    catch { return false; }
+  });
+  const orders = validOrderIds.length > 0
+    ? await productionRepo.find({ _id: { $in: validOrderIds.map((id) => new mongoose.Types.ObjectId(id)) } })
+    : [];
+  const orderById = new Map(orders.map((o) => [o.id, o]));
 
   const grouped = new Map();
-  for (const assignment of assignments) {
+  for (const assignment of filtered) {
     const terceroId = idToString(assignment.id_tercero);
     const orderId = idToString(assignment.id_orden);
     const order = orderById.get(orderId);
@@ -54,8 +60,6 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
       fecha: order?.fecha_entrega || assignment.fecha || "",
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
-      // ✅ Incluir estado de la orden para que el frontend pueda filtrar
-      // las que ya pasaron de "Producción" a "Recepción" o posteriores
       estado: order?.estado || null,
     });
     grouped.set(terceroId, producciones);
@@ -80,6 +84,12 @@ const attachProducciones = async (thirdParties) => {
 const getThirdParties = async (req, res) => {
   try {
     const terceros = await repo.findAll(req.query);
+    const idsValue = req.query.ids;
+    const hasIdsFilter = idsValue && (
+      (Array.isArray(idsValue) && idsValue.length > 0) ||
+      (typeof idsValue === 'string' && idsValue.trim().length > 0)
+    );
+    if (hasIdsFilter) return ok(res, terceros);
     return ok(res, await attachProducciones(terceros));
   } catch (err) {
     console.error("[thirdPartiesController] Error getting terceros:", err);

@@ -136,11 +136,20 @@ const anularOrderSchema = z.object({
     .max(200, 'Motivo no puede exceder 200 caracteres'),
 });
 
+const reasignarEmpleadoSchema = z.object({
+  id_empleado: z.string()
+    .min(1, 'id_empleado es requerido'),
+  motivo: z.string()
+    .min(5, 'Justificación debe tener al menos 5 caracteres')
+    .max(300, 'Justificación no puede exceder 300 caracteres'),
+});
+
 module.exports = {
   createOrderSchema,
   updateOrderSchema,
   cambiarEstadoSchema,
   createOrderDetailSchema,
   anularOrderSchema,
+  reasignarEmpleadoSchema,
   VALID_ESTADOS,
 };
