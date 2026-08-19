@@ -195,6 +195,15 @@ class UserRepository {
     return UserModel.countDocuments({ estado: true, rolId: rol._id });
   }
 
+  async hasActiveProductions(userId) {
+    const ProductionOrderModel = require("../db/ProductionOrderModel");
+    const count = await ProductionOrderModel.countDocuments({
+      empleadoAsignadoId: userId,
+      estado: { $nin: ["Anulada", "Enviado"] },
+    });
+    return count > 0;
+  }
+
   // ── Intentos fallidos de login ──────────────────────────────────────────
   // Incrementa el contador y devuelve el valor YA actualizado (atómico via
   // $inc + findOneAndUpdate, evita condiciones de carrera si llegaran dos
