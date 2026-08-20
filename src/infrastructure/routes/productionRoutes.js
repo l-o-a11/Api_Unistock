@@ -30,7 +30,7 @@ const validateSchema = require("../middlewares/validateSchema");
 const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema } = require("../../shared/schemas/productionSchema");
 
 const router = Router();
-// router.use(requireAuth);  // REMOVIDO para desarrollo público
+router.use(requireAuth);
 
 /**
  * @swagger
@@ -316,6 +316,10 @@ const router = Router();
 // Órdenes
 router.get("/ordenes/estados", ctrl.getEstados);        // Debe ir antes de /:id
 router.get("/empleados/carga", ctrl.getEmployeeWorkload);
+// Portado desde back/: el controller ya soportaba getCalendario/getAlertas,
+// pero las rutas no estaban conectadas en Api.
+router.get("/calendario", ctrl.getCalendario);
+router.get("/alertas", ctrl.getAlertas);
 router.get("/ordenes", ctrl.getOrders);
 router.get("/ordenes/:id", ctrl.getOrderById);
 router.post("/ordenes", requireAuth, validateSchema(createOrderSchema), ctrl.createOrder);
@@ -324,6 +328,7 @@ router.patch("/ordenes/:id/estado", requireAuth, validateSchema(cambiarEstadoSch
 router.patch("/ordenes/:id/asignar-empleado", requireAuth, ctrl.asignarEmpleado);
 router.patch("/ordenes/:id/confirmar-etapa", requireAuth, ctrl.confirmarEtapa);
 router.patch("/ordenes/:id/anular", validateSchema(anularOrderSchema), ctrl.anularOrder);
+router.post("/ordenes/:id/historial", ctrl.agregarHistorial);
 
 // Detalles
 router.get("/detalle-orden", ctrl.getOrderDetails);

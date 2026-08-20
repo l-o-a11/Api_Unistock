@@ -1,10 +1,10 @@
 // infrastructures/controllers/thirdPartyController.js
 
-const ThirdPartyRepository = require('../repositorie/ThirdPartyRepository');
+const ThirdPartyRepository = require('../repositories/ThirdPartyRepository');
 const GetThirdParties      = require('../../application/use-cases/thirdParties/GetThirdParties');
 const GetThirdPartyById    = require('../../application/use-cases/thirdParties/GetThirdPartyById');
 const CreateThirdParty     = require('../../application/use-cases/thirdParties/CreateThirdParty');
-const UpdateThirdParty     = require('../../application/use-cases/thirdParties/UpdateThirdParty');
+const UpdateThirdParties = require('../../application/use-cases/thirdParties/UpdateThirdParties');
 const DeleteThirdParty     = require('../../application/use-cases/thirdParties/DeleteThirdParty');
 const ToggleThirdParty     = require('../../application/use-cases/thirdParties/ToggleThirdParty');
 const LinkProduccion       = require('../../application/use-cases/thirdParties/LinkProduccion');
@@ -64,7 +64,7 @@ const createThirdParty = async (req, res) => {
 const updateThirdParty = async (req, res) => {
   try {
     const normalized = normalizeBody(req.body);
-    const data = await new UpdateThirdParty(repo).execute(req.params.id, normalized);
+    const data = await new UpdateThirdParties(repo).execute(req.params.id, normalized);
     return ok(res, data);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);

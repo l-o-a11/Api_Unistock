@@ -1,72 +1,83 @@
-// infrastructure/controllers/productionController.js
+// ─────────────────────────────────────────────────────────────────────────────
+// src/infrastructure/controllers/productionController.js
+// ─────────────────────────────────────────────────────────────────────────────
+
 const mongoose = require("mongoose");
-const ProductionRepository = require("../repositories/ProductionRepository");
+
+const ProductionRepository            = require("../repositories/ProductionRepository");
 const ProductionOrderDetailRepository = require("../repositories/ProductionOrderDetailRepository");
-const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
-const ProductRepository = require("../repositories/ProductRepository");
-const TechnicalSpecificationsRepo = require("../repositories/TechnicalSpecificationsRepository");
-const MaterialTechnicalSpecificationsRepo = require("../repositories/MaterialTechnicalSpecificationsRepository");
-const AnularProduction = require("../../application/use-cases/production/AnularProduction");
-const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
-const AsignarEmpleadoProduccion = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
-const ConfirmarEtapaProduccion = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
-const UserRepository = require("../repositories/UserRepository");
-const UserModel = require("../db/UserModel");
+const ThirdPartyAssignmentRepository  = require("../repositories/ThirdPartyAssignmentRepository");
+const ProductRepository               = require("../repositories/ProductRepository");
+const TechnicalSheetRepository        = require("../repositories/TechnicalSpecificationsRepository");
+// ✅ Carga laboral de empleados (asignación de responsable en Corte/Compras/Recepción).
+// UserModel aquí es el modelo "mínimo" de solo lectura — el CRUD real vive en Api_Unistock,
+// pero ambos backends apuntan a la misma base de datos "unistock".
+const UserModel          = require("../db/UserModel");
 const ProductionOrderModel = require("../db/ProductionOrderModel");
+
+const AnularProduction       = require("../../application/use-cases/production/AnularProduction");
+const CambiarEstadoProduction = require("../../application/use-cases/production/CambiarEstadoProduction");
+const CreateOrderDetail      = require("../../application/use-cases/production/CreateOrderDetail");
+const GetOrderDetails        = require("../../application/use-cases/production/GetOrderDetails");
+
 const Production = require("../../domain/entities/Production");
-const { ok, created, badRequest, notFound, serverError, forbidden } = require("../../shared/utils/response");
+const GetCalendarioProduction = require("../../application/use-cases/production/GetCalendarioProduction");
+const GetAlertasProduction    = require("../../application/use-cases/production/GetAlertasProduction");
+const GetProductions          = require("../../application/use-cases/production/GetProductions");
+const AsignarEmpleadoProduccion  = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
+const UserRepository             = require("../repositories/UserRepository");
 
-const prodRepo = new ProductionRepository();
-const detailRepo = new ProductionOrderDetailRepository();
+const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+
+const prodRepo       = new ProductionRepository();
+const detailRepo     = new ProductionOrderDetailRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
-const productRepo = new ProductRepository();
-const techSpecRepo = new TechnicalSpecificationsRepo();
-const materialTechSpecRepo = new MaterialTechnicalSpecificationsRepo();
-const userRepo = new UserRepository();
+const productRepo    = new ProductRepository();
+const techSheetRepo  = new TechnicalSheetRepository();
 
-// ── Carga laboral de empleados por cargo ─────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const getEmployeeWorkload = async (req, res) => {
+/**
+ * Devuelve serverError con el mensaje real en desarrollo,
+ * y genérico en producción.
+ */
+const handleError = (res, err) => {
+  console.error("[ProductionController]", err);
+  const msg = process.env.NODE_ENV !== "production" ? err.message : undefined;
+  return serverError(res, msg);
+};
+
+/**
+ * Al pasar una orden a "Enviado", se suman las cantidades de cada detalle
+ * (agrupadas por id_producto) al stock del producto correspondiente
+ * (los detalles guardan id_producto = referencia del producto, no el _id).
+ */
+const aplicarIngresoStockPorEnvio = async (idOrden) => {
   try {
-    const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
-    const filter = { estado: true };
+    const detalles = await detailRepo.findAll({ id_orden: idOrden });
+    if (!detalles?.length) return;
 
-    // `cargo` es un arreglo: la expresión regular también coincide con los
-    // elementos del arreglo, por lo que un empleado puede figurar en varias
-    // etapas sin aparecer en las que no le corresponden.
-    if (cargo) {
-      const escapedCargo = cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.cargo = { $regex: `^${escapedCargo}$`, $options: "i" };
+    // Agrupar cantidades por referencia de producto (puede haber varios colores)
+    const cantidadPorReferencia = new Map();
+    for (const d of detalles) {
+      const ref = d.id_producto;
+      if (!ref) continue;
+      cantidadPorReferencia.set(ref, (cantidadPorReferencia.get(ref) || 0) + Number(d.cantidad || 0));
     }
 
-    const [employees, activeOrders] = await Promise.all([
-      UserModel.find(filter)
-        .select("_id nombreCompleto correo cargo")
-        .sort({ nombreCompleto: 1 })
-        .lean(),
-      ProductionOrderModel.find(
-        { estado: { $nin: ["Enviado", "Anulada"] } },
-        { empleadoAsignadoId: 1 },
-      ).lean(),
-    ]);
-
-    const workload = new Map();
-    activeOrders.forEach((order) => {
-      if (!order.empleadoAsignadoId) return;
-      const id = String(order.empleadoAsignadoId);
-      workload.set(id, (workload.get(id) || 0) + 1);
-    });
-
-    return ok(res, employees.map((employee) => ({
-      id: String(employee._id),
-      nombre: employee.nombreCompleto,
-      correo: employee.correo,
-      cargo: employee.cargo || [],
-      produccionesAsignadas: workload.get(String(employee._id)) || 0,
-    })));
+    for (const [referencia, cantidad] of cantidadPorReferencia.entries()) {
+      if (!cantidad) continue;
+      const product = await productRepo.findByReference(referencia).catch(() => null);
+      if (!product) {
+        console.warn(`[ProductionController] No se encontró producto con referencia "${referencia}" para sumar stock`);
+        continue;
+      }
+      // Suma atómica: toma el stock que el producto tenga en ese momento y le agrega la cantidad enviada
+      await productRepo.incrementStock(product.id, cantidad);
+    }
   } catch (err) {
-    console.error("Error en getEmployeeWorkload:", err);
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+    console.error("[ProductionController] Error al actualizar stock por envío:", err);
   }
 };
 
@@ -74,11 +85,18 @@ const getEmployeeWorkload = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    const orders = await prodRepo.findAll(req.query);
-    return ok(res, orders.map((o) => o.toJSON()));
+    const result = await prodRepo.findAll(req.query);
+    const orders = Array.isArray(result?.data) ? result.data : [];
+    const mappedOrders = orders.map((o) => o.toJSON?.() || o);
+    return ok(res, {
+      data: mappedOrders,
+      total: result.total || 0,
+      page: result.page || 1,
+      limit: result.limit || mappedOrders.length,
+      totalPages: result.totalPages || 0,
+    });
   } catch (err) {
-    console.error("Error en getOrders:", err);
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+    return handleError(res, err);
   }
 };
 
@@ -87,106 +105,45 @@ const getOrderById = async (req, res) => {
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const details = await detailRepo.findAll({ id_orden: req.params.id });
-    const assignments = await assignmentRepo.findAll({ id_orden: req.params.id });
-    // Enriquecer detalles con producto y ficha técnica activa (si existe)
-    const detallesEnriquecidos = await Promise.all(
-      details.map(async (d) => {
-        const det = d.toJSON ? d.toJSON() : d;
-        let producto = null;
-        // Intentar buscar por ObjectId
-        producto = await productRepo.findById(det.id_producto).catch(() => null);
-        // Si no existe, intentar buscar por referencia/código
-        if (!producto) producto = await productRepo.findByReference(det.id_producto).catch(() => null);
-
-        let ficha_tecnica = null;
-        if (producto) {
-          const specs = await techSpecRepo.findAll({ id_producto: producto.id });
-          const activeSpec = specs && specs.length ? specs[0] : null;
-          if (activeSpec) {
-            const materiales = await materialTechSpecRepo.findAll({ id_producto: producto.id, id_ficha_tecnica: activeSpec.id });
-            ficha_tecnica = {
-              ...(activeSpec.toJSON ? activeSpec.toJSON() : activeSpec),
-              materiales: materiales.map((m) => m.toJSON ? m.toJSON() : m),
-            };
-          }
-        }
-
-        return {
-          ...det,
-          producto: producto ? (producto.toJSON ? producto.toJSON() : producto) : null,
-          ficha_tecnica,
-        };
-      })
-    );
-
-    return ok(res, {
-      ...order.toJSON(),
-      detalles: detallesEnriquecidos,
-      asignaciones: assignments.map((a) => (a.toJSON ? a.toJSON() : a)),
-    });
+    return ok(res, { ...order.toJSON(), detalles: details.map((d) => d.toJSON()) });
   } catch (err) {
-    return serverError(res);
+    return handleError(res, err);
   }
 };
 
 const createOrder = async (req, res) => {
   try {
-    // Solo Gerente crea órdenes de producción — "se encarga de todo,
-    // él crea las órdenes de cada sede".
-    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
-    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede crear órdenes de producción");
+    const { fecha_entrega, cliente, id_usuario } = req.body;
+    const userId = id_usuario || req.user?.id || "anonymous";
 
-    // Compatibilidad con payloads del frontend (sin tocar frontend)
-    const fecha_entrega =
-      req.body.fecha_entrega ?? req.body.deliveryDate ?? req.body.fechaSolicitud;
-    const cliente = req.body.cliente ?? req.body.client;
-    const id_usuario = req.body.id_usuario ?? req.body.userId;
-    const asignaciones = req.body.asignaciones ?? [];
-    const tipo = req.body.tipo || req.body.type || 'produccion';
+    if (!fecha_entrega || !cliente)
+      return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
+
+    // 🐛 FIX: este createOrder ignoraba por completo el campo "tipo" que
+    // manda el frontend y SIEMPRE creaba la orden en estado "Diseño" —
+    // incluso las de tipo "produccion" (artículo con ficha técnica YA
+    // EXISTENTE, elegido de un producto del catálogo), que deben arrancar
+    // directamente en "Ficha Técnica" (el "Diseño" se da por completado
+    // automáticamente porque ya existe) para que el flujo respete el orden
+    // real de las etapas: Diseño → Ficha Técnica → Corte → ... En Api/src
+    // (puerto 3000) esta lógica ya existía correctamente; aquí faltaba.
+    const tipo = req.body.tipo || req.body.type || "produccion";
     const referencia = req.body.referencia || req.body.reference || null;
     const producto = req.body.producto || req.body.product || null;
     const designImages = Array.isArray(req.body.designImages) ? req.body.designImages : [];
-    const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === 'true';
+    const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === "true";
     const originalOrderNumber = req.body.originalOrderNumber || req.body.original_order_number || null;
     const originalOrderStatus = req.body.originalOrderStatus || req.body.original_order_status || null;
-    // ✅ Sede dueña de la producción — de dónde son los empleados que la
-    // trabajarán en cada etapa. La exige el frontend (Gerente elige,
-    // Administrador la trae precargada con la suya).
-    const sedeId = req.body.sedeId || null;
-
-    console.log(`[ProductionController] Creando orden tipo="${tipo}", cliente="${cliente}", ref="${referencia}"`);
-
-    // Usar id_usuario del body, o del middleware si está disponible, o "anonymous" si nada está disponible
-    const userId = id_usuario || req.user?.id || "anonymous";
-
-    if (!fecha_entrega || !cliente) {
-      console.warn(`[ProductionController] Validación fallida: fecha_entrega="${fecha_entrega}", cliente="${cliente}"`);
-      return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
-    }
-
-    // ✅ Fix: la fecha de entrega debe tener al menos 1 mes de diferencia
-    // respecto a hoy. Antes solo se validaba en el frontend, lo cual podía
-    // evadirse manipulando la petición directamente.
-    {
-      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-      const minFecha = new Date(hoy); minFecha.setMonth(minFecha.getMonth() + 1);
-      const fechaElegida = new Date(fecha_entrega);
-      if (isNaN(fechaElegida.getTime()) || fechaElegida < minFecha) {
-        return badRequest(res, "La fecha de entrega debe tener al menos 1 mes de diferencia respecto a hoy");
-      }
-    }
 
     let techSpecification = req.body.techSpecification || req.body.techSheet || null;
-    const isProduccion = tipo === 'produccion';
+    const isProduccion = tipo === "produccion";
 
-    console.log(`[ProductionController] techSpecification inicialmente: ${techSpecification ? 'presente' : 'null'}, isProduccion=${isProduccion}`);
-
+    // Las órdenes tipo "produccion" referencian un producto que YA tiene
+    // ficha técnica registrada — se busca y se copia dentro de la orden
+    // para que quede disponible de inmediato en la etapa "Ficha Técnica".
     if (isProduccion && !techSpecification && referencia) {
-      console.log(`[ProductionController] Buscando tech sheet para referencia="${referencia}"`);
       let product = null;
       const refTrimmed = String(referencia).trim();
-      // ✅ Fix: validar ObjectId explícitamente en vez de confiar solo en el catch,
-      // y probar también la referencia sin espacios/con mayúsculas distintas
       if (mongoose.isValidObjectId(refTrimmed)) {
         product = await productRepo.findById(refTrimmed).catch(() => null);
       }
@@ -195,38 +152,13 @@ const createOrder = async (req, res) => {
         product = await productRepo.findByReference(referencia).catch(() => null);
       }
       if (product) {
-        const specs = await techSpecRepo.findAll({ id_producto: product.id });
+        const specs = await techSheetRepo.findAll({ id_producto: product.id }).catch(() => []);
         const activeSpec = specs && specs.length ? specs[0] : null;
-        if (activeSpec) {
-          const materiales = await materialTechSpecRepo.findAll({ id_producto: product.id, id_ficha_tecnica: activeSpec.id });
-          techSpecification = {
-            ...(activeSpec.toJSON ? activeSpec.toJSON() : activeSpec),
-            materiales: materiales.map((m) => (m.toJSON ? m.toJSON() : m)),
-          };
-          console.log(`[ProductionController] Tech sheet encontrada para producto`);
-        } else {
-          console.warn(`[ProductionController] Producto encontrado pero SIN ficha técnica registrada (id=${product.id})`);
-        }
-      } else {
-        console.warn(`[ProductionController] No se encontró el producto con referencia="${referencia}"`);
+        if (activeSpec) techSpecification = activeSpec;
       }
     }
 
-    // ✅ Las órdenes tipo "producción" ya traen una ficha técnica EXISTENTE
-    // (referencian un producto que ya la tiene) — no requieren que nadie
-    // "trabaje" esa etapa, así que arrancan directo en "Corte", el primer
-    // paso que sí necesita a alguien asignado. Las de tipo "diseño" sí
-    // arrancan en "Diseño" porque ahí se CREA la ficha técnica.
-    const historial = isProduccion
-      ? [
-        { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
-        { estado: "Ficha Técnica", fecha: new Date(), id_usuario: userId, motivo: null },
-      ]
-      : [
-        { estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null },
-      ];
-
-    console.log(`[ProductionController] Creando documento con historial de ${historial.length} estados`);
+    const estadoInicial = isProduccion ? "Ficha Técnica" : "Diseño";
 
     const order = await prodRepo.create({
       fecha_entrega,
@@ -240,43 +172,16 @@ const createOrder = async (req, res) => {
       fromDamaged,
       originalOrderNumber,
       originalOrderStatus,
-      estado: isProduccion ? "Corte" : "Diseño",
-      historial,
-      sedeId,
+      estado: estadoInicial,
+      // "Diseño" se registra como paso automático completado cuando la
+      // orden arranca directo en "Ficha Técnica" (tipo producción), igual
+      // que hace Api/src, para que el historial/stepper no muestre un
+      // salto de etapa.
+      historial: [{ estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null }],
     });
-
-    console.log(`[ProductionController] Orden creada con ID: ${order.id || order._id}, numero_orden=${order.numero_orden}`);
-
-    // Crear asignaciones si se proporcionan
-    const createdAssignments = [];
-    if (Array.isArray(asignaciones) && asignaciones.length > 0) {
-      for (const asignacion of asignaciones) {
-        try {
-          const assignment = await assignmentRepo.create({
-            id_orden: order.id || order._id,
-            id_tercero: asignacion.id_tercero,
-            cantidad: asignacion.cantidad,
-          });
-          createdAssignments.push(assignment.toJSON ? assignment.toJSON() : assignment);
-        } catch (assignErr) {
-          console.warn("Error creando asignación:", assignErr.message);
-        }
-      }
-    }
-
-    const orderData = order.toJSON();
-    console.log(`[ProductionController] Orden convertida a JSON exitosamente`);
-    return created(res, {
-      ...orderData,
-      asignaciones: createdAssignments
-    });
+    return created(res, order.toJSON());
   } catch (err) {
-    console.error("Error al crear orden:", err);
-    console.error("Stack trace:", err.stack);
-    const msg = process.env.NODE_ENV === "production"
-      ? "Error interno"
-      : err.message;
-    return serverError(res, msg);
+    return handleError(res, err);
   }
 };
 
@@ -289,11 +194,13 @@ const updateOrder = async (req, res) => {
       return badRequest(res, "No se puede editar una orden anulada");
 
     const { estado, historial, motivo_anulacion, ...rest } = req.body;
-    const allowedFields = new Set([
+
+    const ALLOWED_FIELDS = new Set([
       "cliente",
       "fecha_entrega",
       "id_usuario",
       "asignaciones",
+      "empleadoAsignaciones",
       "tipo",
       "referencia",
       "producto",
@@ -304,14 +211,11 @@ const updateOrder = async (req, res) => {
       "fromDamaged",
       "originalOrderNumber",
       "originalOrderStatus",
-      // ✅ Persistir asignaciones de sede/tercero en la BD en vez de solo localStorage
-      "sedeAsignaciones",
-      "terceroAsignaciones",
     ]);
 
     const safeChanges = {};
     for (const [key, value] of Object.entries(rest)) {
-      if (allowedFields.has(key) && value !== undefined) {
+      if (ALLOWED_FIELDS.has(key) && value !== undefined) {
         safeChanges[key] = value;
       }
     }
@@ -334,97 +238,28 @@ const updateOrder = async (req, res) => {
     if (!updated) return serverError(res, "Error al actualizar la orden");
     return ok(res, updated.toJSON());
   } catch (err) {
-    console.error("Error al actualizar orden:", err);
     if (err.name === "ValidationError" || err.name === "CastError") {
       return badRequest(res, err.message);
     }
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+    return handleError(res, err);
   }
 };
 
-const updateOrderDetail = async (req, res) => {
-  try {
-    const detail = await detailRepo.findById(req.params.id);
-    if (!detail) return notFound(res, "Detalle de orden no encontrado");
-
-    const changes = {};
-    if (req.body.cantidad !== undefined) changes.cantidad = Number(req.body.cantidad);
-    if (req.body.color !== undefined) changes.color = String(req.body.color).trim();
-
-    if (Object.keys(changes).length === 0)
-      return badRequest(res, "No se proporcionaron cambios válidos para el detalle");
-
-    const updatedDetail = await detailRepo.update(req.params.id, changes);
-
-    // ✅ Fix: registrar en el historial que se editó un artículo del detalle
-    const detailJson = detail.toJSON ? detail.toJSON() : detail;
-    const id_orden = detailJson.id_orden;
-    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
-    if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
-      const cambiosTexto = Object.entries(changes).map(([k, v]) => `${k}: ${v}`).join(", ");
-      await prodRepo.agregarHistorial(
-        id_orden,
-        `Se editó el artículo "${detailJson.id_producto}" (${cambiosTexto})`,
-        id_usuario,
-        user,
-        order.estado,
-      ).catch((e) => console.warn("No se pudo registrar historial de updateOrderDetail:", e?.message));
-    }
-
-    return ok(res, updatedDetail.toJSON());
-  } catch (err) {
-    return serverError(res);
-  }
-};
-
-const deleteOrderDetail = async (req, res) => {
-  try {
-    // ✅ Fix: capturar el detalle ANTES de eliminarlo para poder describirlo en el historial
-    const detail = await detailRepo.findById(req.params.id);
-    if (!detail) return notFound(res, "Detalle de orden no encontrado");
-    const detailJson = detail.toJSON ? detail.toJSON() : detail;
-
-    const deleted = await detailRepo.delete(req.params.id);
-    if (!deleted) return notFound(res, "Detalle de orden no encontrado");
-
-    const id_orden = detailJson.id_orden;
-    const order = id_orden ? await prodRepo.findById(id_orden).catch(() => null) : null;
-    if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
-      await prodRepo.agregarHistorial(
-        id_orden,
-        `Se eliminó el artículo "${detailJson.id_producto}" (cantidad: ${detailJson.cantidad}${detailJson.color ? `, color: ${detailJson.color}` : ""})`,
-        id_usuario,
-        user,
-        order.estado,
-      ).catch((e) => console.warn("No se pudo registrar historial de deleteOrderDetail:", e?.message));
-    }
-
-    return ok(res, { id: req.params.id, deleted: true });
-  } catch (err) {
-    return serverError(res);
-  }
-};
-
-// ── Anular orden (reemplaza deleteOrder) ─────────────────────────────────────
+// ── Anular orden ──────────────────────────────────────────────────────────────
 
 const anularOrder = async (req, res) => {
   try {
     const { motivo, id_usuario: bodyUser, user: bodyUserName } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
 
     const useCase = new AnularProduction(prodRepo);
-    const result = await useCase.execute(req.params.id, motivo, id_usuario, user);
+    const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
-    if (err.statusCode === 400 || err.statusCode === 422)
-      return badRequest(res, err.message);
-    return serverError(res);
+    if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
+    return handleError(res, err);
   }
 };
 
@@ -434,118 +269,33 @@ const cambiarEstado = async (req, res) => {
   try {
     const { estado, id_usuario: bodyUser, user: bodyUserName, force, ...rest } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.username || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    console.log(`[ProductionController] cambiarEstado called id=${req.params.id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
+    console.log('[ProductionController] payload extra:', rest);
 
-    // ✅ Fix: una vez que la orden llega a Recepción (o el legado "Empaque"),
-    // no se permite retroceder a una etapa anterior, sin excepción — ni
-    // siquiera con force=true, ya que esto debe ser una regla dura.
-    const STEPS_ORDER = ["Diseño", "Ficha Técnica", "Corte", "Compras", "Producción", "Recepción", "Enviado"];
-    const normalizeStep = (s) => (s === "Empaque" ? "Recepción" : s);
-    const orden = await prodRepo.findById(req.params.id);
-    if (orden) {
-      const ordenJson = orden.toJSON ? orden.toJSON() : orden;
-      const fromIdx = STEPS_ORDER.indexOf(normalizeStep(ordenJson.estado));
-      const toIdx = STEPS_ORDER.indexOf(normalizeStep(estado));
-      if (fromIdx >= STEPS_ORDER.indexOf("Recepción") && toIdx !== -1 && toIdx < fromIdx) {
-        return badRequest(res, "No se puede retroceder: la orden ya llegó a la etapa de Recepción.");
-      }
+    // Si retrocedemos a un estado igual o anterior a "Compras", eliminamos las asignaciones de terceros de la orden
+    const Production = require("../../domain/entities/Production");
+    const targetIdx = Production.ESTADOS_VALIDOS.indexOf(estado);
+    const comprasIdx = Production.ESTADOS_VALIDOS.indexOf("Compras");
+    if (targetIdx !== -1 && targetIdx <= comprasIdx) {
+      console.log(`[ProductionController] Retrocediendo al estado "${estado}". Eliminando asignaciones para orden ${req.params.id}`);
+      await assignmentRepo.deleteByOrder(req.params.id);
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo, userRepo);
-    const solicitante = req.user ? { id: req.user.id, rolNombre: req.user.rolNombre } : null;
-    const result = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest, solicitante });
+    const useCase = new CambiarEstadoProduction(prodRepo);
+    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+      console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
-    // ✅ Fix: asignar la referencia de corte con consecutivo (ej. "REF-001-1")
-    // la primera vez que la orden llega a la etapa de Corte. Si el detalle
-    // ya tiene refCorte (orden que retrocedió y volvió a avanzar), no se
-    // reasigna — conserva el número que ya tenía.
-    if (estado === "Corte") {
-      const details = await detailRepo.findAll({ id_orden: req.params.id });
-      for (const detail of details) {
-        const data = detail.toJSON ? detail.toJSON() : detail;
-        if (data.refCorte) continue; // ya tiene consecutivo asignado
-        const siguiente = (await detailRepo.countRefCorteByProducto(data.id_producto)) + 1;
-        await detailRepo.update(data.id, { refCorte: `${data.id_producto}-${siguiente}` });
-      }
-    }
-
-    if (estado === "Producción") {
-      const details = await detailRepo.findAll({ id_orden: req.params.id });
-      const stockByProductId = new Map();
-
-      await Promise.all(details.map(async (detail) => {
-        const data = detail.toJSON ? detail.toJSON() : detail;
-        const product =
-          await productRepo.findById(data.id_producto).catch(() => null) ||
-          await productRepo.findByReference(data.id_producto).catch(() => null);
-
-        if (!product) return;
-
-        const productId = product.id || (product._id ? String(product._id) : null);
-        if (!productId) return;
-
-        stockByProductId.set(
-          productId,
-          (stockByProductId.get(productId) || 0) + (Number(data.cantidad) || 0),
-        );
-      }));
-
-      await Promise.all(
-        [...stockByProductId.entries()].map(([productId, stock]) =>
-          productRepo.update(productId, { stock }),
-        ),
-      );
+    // Al confirmar el envío, los productos fabricados ingresan al stock
+    if (estado === "Enviado") {
+      await aplicarIngresoStockPorEnvio(req.params.id);
     }
 
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
-    if (err.statusCode === 403) return forbidden(res, err.message);
-    if (err.statusCode === 400 || err.statusCode === 422)
-      return badRequest(res, err.message);
-    return serverError(res);
-  }
-};
-
-// ── Asignar empleado a la etapa actual ────────────────────────────────────────
-
-const asignarEmpleado = async (req, res) => {
-  try {
-    // Solo Gerente asigna empleados — "se encarga de todo en producción".
-    const rolNombre = (req.user?.rolNombre || "").trim().toLowerCase();
-    if (rolNombre !== "gerente") return forbidden(res, "Solo Gerente puede asignar empleados a una etapa");
-
-    const { empleadoId } = req.body;
-    if (!empleadoId) return badRequest(res, "empleadoId es requerido");
-
-    const useCase = new AsignarEmpleadoProduccion(prodRepo, userRepo);
-    const result = await useCase.execute(req.params.id, empleadoId);
-    return ok(res, result);
-  } catch (err) {
-    if (err.statusCode === 404) return notFound(res, err.message);
-    if (err.statusCode === 400 || err.statusCode === 422)
-      return badRequest(res, err.message);
-    return serverError(res);
-  }
-};
-
-// ── Confirmar etapa por el empleado asignado ──────────────────────────────────
-
-const confirmarEtapa = async (req, res) => {
-  try {
-    // Solo el empleado asignado puede confirmar (validado en el use case)
-    const empleadoId = req.user?.id;
-    if (!empleadoId) return forbidden(res, "Debes iniciar sesión para confirmar una etapa");
-
-    const useCase = new ConfirmarEtapaProduccion(prodRepo, userRepo);
-    const result = await useCase.execute(req.params.id, empleadoId);
-    return ok(res, result);
-  } catch (err) {
-    if (err.statusCode === 404) return notFound(res, err.message);
-    if (err.statusCode === 403) return forbidden(res, err.message);
-    if (err.statusCode === 400 || err.statusCode === 422)
-      return badRequest(res, err.message);
-    return serverError(res);
+    if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
+    return handleError(res, err);
   }
 };
 
@@ -559,48 +309,82 @@ const getEstados = (_req, res) => {
 
 const getOrderDetails = async (req, res) => {
   try {
-    const details = await detailRepo.findAll(req.query);
-    return ok(res, details.map((d) => d.toJSON()));
+    const useCase = new GetOrderDetails(detailRepo);
+    return ok(res, await useCase.execute(req.query));
   } catch (err) {
-    return serverError(res);
+    return handleError(res, err);
   }
 };
 
 const createOrderDetail = async (req, res) => {
   try {
-    const { id_orden, id_producto, cantidad, color } = req.body;
-    if (!id_orden || !id_producto || !cantidad)
-      return badRequest(res, "Los campos id_orden, id_producto y cantidad son requeridos");
-    const newDetail = await detailRepo.create({ id_orden, id_producto, cantidad, color, estado: true });
+    // Parsear cantidad a número por si llega como string desde el form
+    const payload = {
+      ...req.body,
+      cantidad: req.body.cantidad !== undefined ? Number(req.body.cantidad) : undefined,
+    };
 
-    // ✅ Fix: registrar en el historial de la orden que se agregó un artículo —
-    // antes esta acción no dejaba ningún rastro visible para el usuario.
-    const order = await prodRepo.findById(id_orden).catch(() => null);
-    if (order) {
-      const id_usuario = req.body.id_usuario || req.user?.id || null;
-      const user = req.body.user || req.user?.nombre || req.user?.username || null;
-      await prodRepo.agregarHistorial(
-        id_orden,
-        `Se agregó el artículo "${id_producto}" (cantidad: ${cantidad}${color ? `, color: ${color}` : ""})`,
-        id_usuario,
-        user,
-        order.estado,
-      ).catch((e) => console.warn("No se pudo registrar historial de createOrderDetail:", e?.message));
+    const useCase = new CreateOrderDetail(detailRepo, prodRepo);
+    const detail  = await useCase.execute(payload);
+
+    // ✅ Si la orden ya está en etapa "Corte", asignar refCorte automáticamente
+    // al nuevo detalle — mismo mecanismo que al avanzar el estado a Corte.
+    if (!detail.refCorte) {
+      const order = await prodRepo.findById(payload.id_orden).catch(() => null);
+      if (order && order.estado === 'Corte') {
+        try {
+          const siguiente = (await detailRepo.countRefCorteByProducto(payload.id_producto)) + 1;
+          const refCorte  = `${payload.id_producto}-${siguiente}`;
+          await detailRepo.update(detail.id, { refCorte });
+          const updated = await detailRepo.findById(detail.id);
+          return created(res, updated);
+        } catch (e) {
+          console.warn('No se pudo asignar refCorte automáticamente:', e?.message);
+        }
+      }
     }
 
-    return created(res, newDetail);
+    return created(res, detail);
   } catch (err) {
-    return serverError(res);
+    if (err.statusCode === 400)  return badRequest(res, err.message);
+    if (err.statusCode === 404)  return notFound(res, err.message);
+    if (err.statusCode === 422)  return badRequest(res, err.message);
+    return handleError(res, err);
   }
 };
 
-// ── Asignaciones ──────────────────────────────────────────────────────────────
+// ── DELETE /produccion/detalle-orden/:id ──────────────────────────────────────
+// Elimina un detalle de orden y registra la acción en el historial de la orden.
+const deleteOrderDetail = async (req, res) => {
+  try {
+    const detail = await detailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, 'Detalle no encontrado');
+
+    const deleted = await detailRepo.delete(req.params.id);
+    if (!deleted) return notFound(res, 'No se pudo eliminar el detalle');
+
+// Registrar en el historial de la orden
+    const userId   = req.user?.id || req.user?._id || null;
+    const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || 'Sistema';
+    await prodRepo.agregarHistorial(
+      detail.id_orden,
+      `Artículo ${detail.id_producto} (${detail.color || 'sin color'}, ${detail.cantidad} uds) eliminado`,
+      userId,
+      userName,
+      'Referencia eliminada',
+    ).catch(() => { /* no bloquear si el push falla */ });
+
+    return ok(res, { deleted: true });
+  } catch (err) {
+    return handleError(res, err);
+  }
+};
 
 const getAssignments = async (req, res) => {
   try {
     return ok(res, await assignmentRepo.findAll(req.query));
   } catch (err) {
-    return serverError(res);
+    return handleError(res, err);
   }
 };
 
@@ -611,46 +395,73 @@ const createAssignment = async (req, res) => {
       return badRequest(res, "Los campos id_orden, id_tercero y cantidad son requeridos");
     return created(res, await assignmentRepo.create({ id_orden, id_tercero, cantidad }));
   } catch (err) {
-    return serverError(res);
+    return handleError(res, err);
   }
 };
 
-// ✅ Eliminar una asignación específica por su ID
-const deleteAssignment = async (req, res) => {
-  try {
-    const deleted = await assignmentRepo.delete(req.params.id);
-    if (!deleted) return notFound(res, "Asignación no encontrada");
-    return ok(res, { message: "Asignación eliminada" });
-  } catch (err) {
-    console.error("deleteAssignment error:", err);
-    return serverError(res);
-  }
-};
 
-// ✅ Eliminar TODAS las asignaciones de una orden — usado antes de reasignar
-// para evitar que se acumulen al retroceder y volver a avanzar estado
-const deleteAssignmentsByOrder = async (req, res) => {
-  try {
-    const { id_orden } = req.params;
-    if (!id_orden) return badRequest(res, "id_orden es requerido");
-    const existing = await assignmentRepo.findAll({ id_orden });
-    await Promise.all(existing.map((a) => assignmentRepo.delete(a.id)));
-    return ok(res, { message: `${existing.length} asignaciones eliminadas`, count: existing.length });
-  } catch (err) {
-    console.error("deleteAssignmentsByOrder error:", err);
-    return serverError(res);
-  }
-};
+// ── Carga laboral de empleados (para asignar responsable en Corte/Compras/Recepción) ──
 
-// ── Alertas ───────────────────────────────────────────────────────────────────
+// Estados que ya no cuentan como "carga activa" para un empleado
+const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
 
-const getAlertas = async (req, res) => {
+/**
+ * GET /produccion/empleados/carga
+ * Devuelve los usuarios activos junto con la cantidad de órdenes de producción
+ * activas (no Enviado/Anulada) en las que están asignados como responsables
+ * de la etapa ACTUAL (empleadoAsignadoId), para poder repartir
+ * la carga de trabajo al asignar un nuevo responsable.
+ *
+ * 🐛 FIX: antes contaba desde `empleadoAsignaciones` (objeto que acumula
+ * TODAS las asignaciones históricas del empleado por etapa), lo cual podía
+ * inflar el conteo o mostrar 0 si el empleado solo estaba asignado en la
+ * etapa actual. Ahora cuenta desde `empleadoAsignadoId` (el empleado
+ * responsable de la etapa ACTUAL de la orden), que es el campo que realmente
+ * refleja la carga de trabajo actual del empleado.
+ */
+const getEmployeeWorkload = async (req, res) => {
   try {
-    const alertas = await prodRepo.findAlertas();
-    return ok(res, alertas);
+    const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
+    const employeeFilter = { estado: true };
+
+    // El cargo es el nombre de la etapa (p. ej. Corte o Recepción). Se usa una
+    // expresión regular anclada e insensible a mayúsculas para no mezclar
+    // empleados de otras etapas ni fallar por diferencias de capitalización.
+    if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+
+    const employees = await UserModel.find(employeeFilter)
+      .select("_id nombre nombreCompleto correo cargo")
+      .sort({ nombreCompleto: 1, nombre: 1 })
+      .lean();
+
+    // 🐛 FIX: contar desde `empleadoAsignadoId` (campo plano) en vez de
+    // `empleadoAsignaciones` (objeto con todas las etapas históricas).
+    // Así el conteo refleja la carga REAL del empleado en la etapa actual.
+    const activeOrders = await ProductionOrderModel.find(
+      { estado: { $nin: ESTADOS_FINALIZADOS } },
+      { empleadoAsignadoId: 1 },
+    ).lean();
+
+    const countByEmployeeId = new Map();
+    for (const order of activeOrders) {
+      const idEmpleado = order.empleadoAsignadoId;
+      if (idEmpleado) {
+        const key = String(idEmpleado);
+        countByEmployeeId.set(key, (countByEmployeeId.get(key) || 0) + 1);
+      }
+    }
+
+    const result = employees.map((u) => ({
+      id: String(u._id),
+      nombre: u.nombreCompleto || u.nombre,
+      correo: u.correo,
+      cargo: u.cargo,
+      produccionesAsignadas: countByEmployeeId.get(String(u._id)) || 0,
+    }));
+
+    return ok(res, result);
   } catch (err) {
-    console.error("Error en getAlertas:", err);
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+    return handleError(res, err);
   }
 };
 
@@ -659,62 +470,154 @@ const getAlertas = async (req, res) => {
 const getCalendario = async (req, res) => {
   try {
     const { desde, hasta } = req.query;
-    const ordenes = await prodRepo.findParaCalendario(desde, hasta);
-
-    const COLORES_ESTADO = {
-      'Diseño': { color: '#7c3aed', tipo: 'diseno' },
-      'Ficha Técnica': { color: '#7c3aed', tipo: 'diseno' },
-      'Corte': { color: '#0891b2', tipo: 'corte' },
-      'Compras': { color: '#d97706', tipo: 'calidad' },
-      'Producción': { color: '#ec4899', tipo: 'produccion' },
-    };
-
-    const eventos = [];
-    ordenes.forEach((orden) => {
-      const colorInfo = COLORES_ESTADO[orden.estado] || { color: '#6366f1', tipo: 'creacion' };
-
-      eventos.push({
-        id: `estado-${orden.id}`,
-        title: `#${orden.numero_orden} ${orden.cliente} — ${orden.estado}`,
-        date: orden.ultimo_cambio?.fecha
-          ? new Date(orden.ultimo_cambio.fecha).toISOString().split('T')[0]
-          : new Date(orden.fecha_entrega).toISOString().split('T')[0],
-        tipo: colorInfo.tipo,
-        color: colorInfo.color,
-        orderId: orden.id,
-        numero_orden: orden.numero_orden,
-        estado: orden.estado,
-        cliente: orden.cliente,
-      });
-
-      eventos.push({
-        id: `entrega-${orden.id}`,
-        title: ` Entrega #${orden.numero_orden} — ${orden.cliente}`,
-        date: new Date(orden.fecha_entrega).toISOString().split('T')[0],
-        tipo: 'entrega',
-        color: '#16a34a',
-        orderId: orden.id,
-        numero_orden: orden.numero_orden,
-        estado: orden.estado,
-        cliente: orden.cliente,
-      });
-    });
-
-    return ok(res, eventos);
+    const useCase = new GetCalendarioProduction(prodRepo);
+    const result  = await useCase.execute(desde, hasta);
+    return ok(res, result);
   } catch (err) {
-    console.error("Error en getCalendario:", err);
-    return serverError(res, process.env.NODE_ENV === "production" ? "Error interno" : err.message);
+    return handleError(res, err);
+  }
+};
+
+// ── Alertas ───────────────────────────────────────────────────────────────────
+
+const getAlertas = async (req, res) => {
+  try {
+    const useCase = new GetAlertasProduction(prodRepo);
+    const result  = await useCase.execute();
+    return ok(res, result);
+  } catch (err) {
+    return handleError(res, err);
+  }
+};
+
+// ── Asignar empleado a etapa actual ──────────────────────────────────────────
+
+const asignarEmpleado = async (req, res) => {
+  try {
+    const empleadoId = req.body.id_empleado || req.body.empleadoId;
+    if (!empleadoId) return badRequest(res, "El campo id_empleado es requerido");
+
+    const userRepo = new UserRepository();
+    const useCase  = new AsignarEmpleadoProduccion(prodRepo, userRepo);
+    const result   = await useCase.execute(req.params.id, empleadoId);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422 || err.statusCode === 403 || err.statusCode === 401) return badRequest(res, err.message);
+    return handleError(res, err);
+  }
+};
+
+// ── Confirmar etapa por empleado ─────────────────────────────────────────────
+
+const confirmarEtapa = async (req, res) => {
+  try {
+    const solicitanteId = req.user?.id || req.body.id_usuario;
+    if (!solicitanteId) return badRequest(res, "No se pudo identificar al usuario solicitante");
+
+    const userRepo = new UserRepository();
+    const useCase  = new ConfirmarEtapaProduccion(prodRepo, userRepo);
+    const result   = await useCase.execute(req.params.id, solicitanteId);
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422 || err.statusCode === 403 || err.statusCode === 401) return badRequest(res, err.message);
+    return handleError(res, err);
+  }
+};
+
+// ── PUT /produccion/detalle-orden/:id ────────────────────────────────────────
+// Actualiza un detalle de orden (cantidad, color, etc.)
+const updateOrderDetail = async (req, res) => {
+  try {
+    const detail = await detailRepo.findById(req.params.id);
+    if (!detail) return notFound(res, "Detalle no encontrado");
+
+    const ALLOWED_FIELDS = new Set(["cantidad", "color", "id_producto", "refCorte"]);
+    const changes = {};
+    for (const [key, value] of Object.entries(req.body)) {
+      if (ALLOWED_FIELDS.has(key) && value !== undefined) {
+        changes[key] = key === "cantidad" ? Number(value) : value;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(changes, "cantidad") && (!changes.cantidad || changes.cantidad < 0)) {
+      return badRequest(res, "La cantidad debe ser un número positivo");
+    }
+
+    const updated = await detailRepo.update(req.params.id, changes);
+    if (!updated) return serverError(res, "Error al actualizar el detalle");
+
+    // Registrar en el historial de la orden
+    const userId   = req.user?.id || req.user?._id || null;
+    const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
+    await prodRepo.agregarHistorial(
+      detail.id_orden,
+      `Detalle actualizado: producto ${detail.id_producto} - cambios: ${JSON.stringify(changes)}`,
+      userId,
+      userName,
+      "Actualización",
+    ).catch(() => {});
+
+    return ok(res, updated.toJSON ? updated.toJSON() : updated);
+  } catch (err) {
+    return handleError(res, err);
+  }
+};
+
+// ── DELETE /produccion/asignaciones/:id ──────────────────────────────────────
+// Elimina una asignación de tercero individual
+const deleteAssignment = async (req, res) => {
+  try {
+    const assignment = await assignmentRepo.findById(req.params.id);
+    if (!assignment) return notFound(res, "Asignación no encontrada");
+
+    const deleted = await assignmentRepo.delete(req.params.id);
+    if (!deleted) return serverError(res, "Error al eliminar la asignación");
+
+    return ok(res, { deleted: true });
+  } catch (err) {
+    return handleError(res, err);
+  }
+};
+
+// ── DELETE /produccion/asignaciones/orden/:id_orden ──────────────────────────
+// Elimina todas las asignaciones de terceros para una orden
+const deleteAssignmentsByOrder = async (req, res) => {
+  try {
+    const assignments = await assignmentRepo.findAll({ id_orden: req.params.id_orden });
+    if (!assignments || assignments.length === 0) return ok(res, { deleted: 0 });
+
+    let deletedCount = 0;
+    for (const assignment of assignments) {
+      const removed = await assignmentRepo.delete(assignment.id);
+      if (removed) deletedCount++;
+    }
+  } catch (err) {
+    return handleError(res, err);
+  }
+};
+
+const agregarHistorial = async (req, res) => {
+  try {
+    const { motivo, estado } = req.body;
+    const userId = req.body.id_usuario || req.user?.id || req.user?.nombre || "Sistema";
+    const user = req.body.user || req.user?.nombre || "Sistema";
+    const order = await prodRepo.findById(req.params.id);
+    if (!order) return notFound(res, "Orden no encontrada");
+    const estadoRegistro = estado || order.estado;
+    const updated = await prodRepo.agregarHistorial(req.params.id, motivo, userId, user, estadoRegistro);
+    return ok(res, updated ? updated.toJSON() : order.toJSON());
+  } catch (err) {
+    return handleError(res, err);
   }
 };
 
 module.exports = {
-  getEmployeeWorkload,
   getOrders,
   getOrderById,
   createOrder,
   updateOrder,
-  updateOrderDetail,
-  deleteOrderDetail,
   anularOrder,
   cambiarEstado,
   asignarEmpleado,
@@ -722,10 +625,15 @@ module.exports = {
   getEstados,
   getOrderDetails,
   createOrderDetail,
+  updateOrderDetail,
+  deleteOrderDetail,
   getAssignments,
   createAssignment,
   deleteAssignment,
   deleteAssignmentsByOrder,
-  getAlertas,
+  getEmployeeWorkload,
   getCalendario,
+  getAlertas,
+  agregarHistorial,
 };
+

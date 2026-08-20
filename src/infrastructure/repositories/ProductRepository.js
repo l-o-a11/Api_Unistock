@@ -18,7 +18,14 @@ class ProductRepository {
     if (filters.estado !== undefined) {
       query.estado = filters.estado === "true" || filters.estado === true;
     }
-    const docs = await ProductModel.find(query);
+    // ✅ Filtro opcional por sede — si no se pasa, se devuelven todos los
+    // productos (el filtrado por rol/sede se aplica igual que en el resto
+    // del sistema: en el frontend, vía useSedeScope/isVisibleBySede).
+    if (filters.sedeId) {
+      query.sedeId = filters.sedeId;
+    }
+    // lean evita hidratar documentos Mongoose para una respuesta de solo lectura.
+    const docs = await ProductModel.find(query).lean();
     return docs.map((d) => this._toEntity(d));
   }
 

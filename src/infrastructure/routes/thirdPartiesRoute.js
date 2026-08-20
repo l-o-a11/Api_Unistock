@@ -15,7 +15,7 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/thirdPartiesController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const validateSchema = require("../middlewares/validateSchema");
 const { createThirdPartySchema, updateThirdPartySchema } = require("../../shared/schemas/thirdPartySchema");
 
@@ -23,6 +23,7 @@ const { createThirdPartySchema, updateThirdPartySchema } = require("../../shared
 
 
 const router = Router();
+const MODULO = "terceros";
 
 router.use(requireAuth);
 
@@ -108,19 +109,19 @@ router.use(requireAuth);
  *       401:
  *         description: No autorizado
  */
-router.get("/", ctrl.getThirdParties);
-router.get("/:id", ctrl.getThirdPartyById);
-router.post("/", validateSchema(createThirdPartySchema), ctrl.createThirdParty);
-router.put("/:id", validateSchema(updateThirdPartySchema), ctrl.updateThirdParty);
-router.delete("/:id", ctrl.deleteThirdParty);
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getThirdParties);
+router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getThirdPartyById);
+router.post("/", requirePermission(MODULO, "crear"), validateSchema(createThirdPartySchema), ctrl.createThirdParty);
+router.put("/:id", requirePermission(MODULO, "actualizar"), validateSchema(updateThirdPartySchema), ctrl.updateThirdParty);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteThirdParty);
 
 // Toggle estado (activar/inactivar)
 // El frontend llama PATCH /api/terceros/:id/toggle
-router.patch("/:id/toggle", ctrl.toggleThirdParty);
+router.patch("/:id/toggle", requirePermission(MODULO, "actualizar"), ctrl.toggleThirdParty);
 
 // Vincular producciones a un tercero
 // FRONT: thirdPartyAPI.linkProduccion(id, { orden, fecha, produccionId, cantidad })
-router.post("/:id/producciones", ctrl.linkProduccionToTercero);
+router.post("/:id/producciones", requirePermission(MODULO, "actualizar"), ctrl.linkProduccionToTercero);
 
 
 /**

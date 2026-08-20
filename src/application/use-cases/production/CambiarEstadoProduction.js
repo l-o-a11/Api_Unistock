@@ -83,7 +83,7 @@ class CambiarEstadoProduction {
     const empleadoQueTermina = production.empleadoAsignadoId;
     const etapaCompletada = production.estado;
 
-    const updated = await this.productionRepository.cambiarEstado(
+const updated = await this.productionRepository.cambiarEstado(
       id,
       nuevoEstado,
       id_usuario,

@@ -11,7 +11,6 @@
  * - DELETE /productos/:id      - Eliminar producto
  * - PATCH  /productos/:id/status - Cambiar estado del producto
  * 
-<<<<<<< HEAD
  * Endpoints Ficha Técnica:
  * - GET    /productos/:id/fichas-tecnicas          - Listar fichas técnicas de un producto
  * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha técnica
@@ -33,7 +32,7 @@ const { validate, rules } = require("../../interfaces/middlewares/validationMidd
 const router = Router();
 
 // Middleware: Requerir autenticaciÃ³n en todos los endpoints (REMOVIDO para desarrollo pÃºblico)
-// router.use(requireAuth);
+router.use(requireAuth);
 
 // Rutas producto
 router.get("/", ctrl.getProducts);
