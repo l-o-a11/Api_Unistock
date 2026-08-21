@@ -51,7 +51,7 @@ const productionOrderSchema = new mongoose.Schema(
     originalOrderStatus: { type: String, default: null },
     producto: { type: String, default: null },
     referencia: { type: String, default: null },
-    // ✅ Antes estas asignaciones solo vivían en localStorage del navegador,
+// ✅ Antes estas asignaciones solo vivían en localStorage del navegador,
     // por lo que el dashboard (y cualquier otra vista) nunca podía leerlas
     // realmente desde el backend. Ahora se persisten en la orden.
     // ✅ Confirmación del empleado asignado de que terminó su etapa actual.
@@ -63,6 +63,11 @@ const productionOrderSchema = new mongoose.Schema(
     // curso). Se limpia automáticamente al avanzar de etapa, porque la
     // siguiente etapa necesita su propia asignación.
     empleadoAsignadoId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    // ✅ Indica si el empleado asignado a la etapa actual ha confirmado
+    // que terminó su trabajo. Se limpia automáticamente al avanzar de etapa
+    // junto con empleadoAsignadoId. El Gerente ve esta bandera para saber
+    // que debe asignar a alguien para la siguiente etapa.
+    etapaConfirmada: { type: Boolean, default: false },
     // ✅ Sede a la que pertenece la producción desde su creación (no confundir
     // con sedeAsignaciones, que es el reparto del producto TERMINADO entre
     // sedes). Esta es la sede cuyos empleados trabajan la orden en cada

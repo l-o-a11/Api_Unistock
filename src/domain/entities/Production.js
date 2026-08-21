@@ -77,10 +77,13 @@ class Production {
     empleadoAsignadoId = null,
     etapaConfirmada = false,
     sedeId = null,
-    detailsCount = 0,
+    // ✅ Resumen de detalles agregados desde ProductionOrderDetail
+    // (se calculan en el listado para evitar N+1).
     totalQty = 0,
-    firstColor = '',
-    firstRef = '',
+    firstColor = null,
+    firstRef = null,
+    detailsCount = 0,
+
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -106,10 +109,11 @@ class Production {
     this.empleadoAsignadoId = empleadoAsignadoId;
     this.etapaConfirmada = etapaConfirmada;
     this.sedeId = sedeId;
-    this.detailsCount = detailsCount;
     this.totalQty = totalQty;
     this.firstColor = firstColor;
     this.firstRef = firstRef;
+    this.detailsCount = detailsCount;
+
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -147,10 +151,10 @@ class Production {
       empleadoAsignadoId: this.empleadoAsignadoId,
       etapaConfirmada: this.etapaConfirmada,
       sedeId: this.sedeId,
-      detailsCount: this.detailsCount,
       totalQty: this.totalQty,
       firstColor: this.firstColor,
       firstRef: this.firstRef,
+      detailsCount: this.detailsCount,
     };
   }
 }
