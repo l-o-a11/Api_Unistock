@@ -508,6 +508,39 @@ const asignarEmpleado = async (req, res) => {
   }
 };
 
+// ── Reasignar empleado a etapa actual (reemplazo con justificación) ─────────
+
+const reasignarEmpleado = async (req, res) => {
+  try {
+    const empleadoId = req.body.id_empleado || req.body.empleadoId;
+    const motivo = (req.body.motivo || "").toString().trim();
+    if (!empleadoId) return badRequest(res, "El campo id_empleado es requerido");
+
+    const userRepo = new UserRepository();
+    const useCase  = new AsignarEmpleadoProduccion(prodRepo, userRepo);
+    const result   = await useCase.execute(req.params.id, empleadoId);
+
+    // Registrar la justificación del reemplazo en el historial de la orden.
+    if (motivo) {
+      const userId   = req.user?.id || req.user?._id || null;
+      const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
+      await prodRepo.agregarHistorial(
+        req.params.id,
+        `Reasignación de empleado responsable: ${motivo}`,
+        userId,
+        userName,
+        result.estado || "Reasignación",
+      ).catch(() => {});
+    }
+
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422 || err.statusCode === 403 || err.statusCode === 401) return badRequest(res, err.message);
+    return handleError(res, err);
+  }
+};
+
 // ── Confirmar etapa por empleado ─────────────────────────────────────────────
 
 const confirmarEtapa = async (req, res) => {
@@ -621,6 +654,7 @@ module.exports = {
   anularOrder,
   cambiarEstado,
   asignarEmpleado,
+  reasignarEmpleado,
   confirmarEtapa,
   getEstados,
   getOrderDetails,
