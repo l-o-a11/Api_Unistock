@@ -14,7 +14,6 @@ class DeleteUser {
       throw error;
     }
 
-    // Protección: no eliminar al único administrador activo
     const activeAdmins = await this.userRepository.countActiveAdmins();
     if (user.isLastActiveAdmin(activeAdmins)) {
       const error = new Error(

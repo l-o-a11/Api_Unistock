@@ -43,13 +43,62 @@ class ProductionRepository {
       : 1;
     const skip = (page - 1) * limit;
 
+    const pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'productionorderdetails',
+          let: { orderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$id_orden', '$$orderId'] },
+                    { $eq: [{ $toString: '$id_orden' }, { $toString: '$$orderId' }] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'details',
+        },
+      },
+      {
+        $addFields: {
+          detailsCount: { $size: '$details' },
+          totalQty: { $ifNull: [{ $sum: '$details.cantidad' }, 0] },
+          firstColor: {
+            $ifNull: [
+              {
+                $arrayElemAt: [
+                  {
+                    $filter: {
+                      input: '$details.color',
+                      cond: { $ne: ['$$this', ''] },
+                    },
+                  },
+                  0,
+                ],
+              },
+              '',
+            ],
+          },
+          firstRef: { $ifNull: [{ $arrayElemAt: ['$details.id_producto', 0] }, ''] },
+        },
+      },
+      {
+        $project: {
+          details: 0,
+        },
+      },
+      { $sort: { createdAt: 1, _id: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
     const [docs, total] = await Promise.all([
-      ProductionOrderModel.find(query)
-        .select(listProjection)
-        .sort({ createdAt: 1, _id: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      ProductionOrderModel.aggregate(pipeline),
       ProductionOrderModel.countDocuments(query),
     ]);
 
@@ -255,6 +304,11 @@ class ProductionRepository {
   /**
    * findParaCalendario — Devuelve órdenes activas para el calendario.
    */
+  async find(query = {}, projection = null) {
+    const docs = await ProductionOrderModel.find(query).select(projection).lean();
+    return docs.map((d) => this._toEntity(d));
+  }
+
   async findParaCalendario(desde, hasta) {
     const query = {
       estado: { $nin: ["Anulada"] },

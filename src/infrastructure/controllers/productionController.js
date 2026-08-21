@@ -25,6 +25,7 @@ const GetCalendarioProduction = require("../../application/use-cases/production/
 const GetAlertasProduction    = require("../../application/use-cases/production/GetAlertasProduction");
 const GetProductions          = require("../../application/use-cases/production/GetProductions");
 const AsignarEmpleadoProduccion  = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ReasignarEmpleadoProduccion = require("../../application/use-cases/production/ReasignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository             = require("../repositories/UserRepository");
 
@@ -282,8 +283,13 @@ const cambiarEstado = async (req, res) => {
       await assignmentRepo.deleteByOrder(req.params.id);
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+    const useCase = new CambiarEstadoProduction(prodRepo, new UserRepository());
+    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, {
+      force: !!force, extra: rest,
+      solicitante: req.user
+        ? { id: req.user.id || req.user._id, rolNombre: req.user.rolNombre }
+        : null,
+    });
       console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
     // Al confirmar el envío, los productos fabricados ingresan al stock
@@ -422,15 +428,14 @@ const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
 const getEmployeeWorkload = async (req, res) => {
   try {
     const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
+    const sedeId = typeof req.query.sedeId === "string" ? req.query.sedeId.trim() : "";
     const employeeFilter = { estado: true };
 
-    // El cargo es el nombre de la etapa (p. ej. Corte o Recepción). Se usa una
-    // expresión regular anclada e insensible a mayúsculas para no mezclar
-    // empleados de otras etapas ni fallar por diferencias de capitalización.
     if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+    if (sedeId && mongoose.isValidObjectId(sedeId)) employeeFilter.sedeId = sedeId;
 
     const employees = await UserModel.find(employeeFilter)
-      .select("_id nombre nombreCompleto correo cargo")
+      .select("_id nombre nombreCompleto correo cargo sedeId")
       .sort({ nombreCompleto: 1, nombre: 1 })
       .lean();
 
@@ -456,6 +461,7 @@ const getEmployeeWorkload = async (req, res) => {
       nombre: u.nombreCompleto || u.nombre,
       correo: u.correo,
       cargo: u.cargo,
+      sedeId: u.sedeId ? String(u.sedeId) : null,
       produccionesAsignadas: countByEmployeeId.get(String(u._id)) || 0,
     }));
 
@@ -618,14 +624,8 @@ const deleteAssignment = async (req, res) => {
 // Elimina todas las asignaciones de terceros para una orden
 const deleteAssignmentsByOrder = async (req, res) => {
   try {
-    const assignments = await assignmentRepo.findAll({ id_orden: req.params.id_orden });
-    if (!assignments || assignments.length === 0) return ok(res, { deleted: 0 });
-
-    let deletedCount = 0;
-    for (const assignment of assignments) {
-      const removed = await assignmentRepo.delete(assignment.id);
-      if (removed) deletedCount++;
-    }
+    const deletedCount = await assignmentRepo.deleteByOrder(req.params.id_orden);
+    return ok(res, { deleted: deletedCount });
   } catch (err) {
     return handleError(res, err);
   }

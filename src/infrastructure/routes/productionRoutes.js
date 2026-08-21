@@ -27,7 +27,7 @@ const { Router } = require("express");
 const ctrl = require("../controllers/productionController");
 const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
 const validateSchema = require("../middlewares/validateSchema");
-const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema } = require("../../shared/schemas/productionSchema");
+const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema, reasignarEmpleadoSchema } = require("../../shared/schemas/productionSchema");
 
 const router = Router();
 router.use(requireAuth);
