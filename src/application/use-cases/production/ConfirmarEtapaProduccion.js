@@ -87,16 +87,14 @@ class ConfirmarEtapaProduccion {
       estado: production.estado,
       fecha: new Date(),
       id_usuario: solicitanteId,
-      user: null, // el nombre se puede resolver después si es necesario
+      user: null,
       motivo: "Empleado confirmó finalización de la etapa",
     };
 
-    // Primero actualizar etapaConfirmada
     const updated = await this.productionRepository.update(id, {
       etapaConfirmada: true,
     });
 
-    // Luego agregar entrada al historial (no se puede mezclar $push con update plano)
     if (updated) {
       await this.productionRepository.agregarHistorial(
         id,
@@ -113,9 +111,6 @@ class ConfirmarEtapaProduccion {
       throw error;
     }
 
-    // 📧 Notificar a todos los Gerentes que el empleado completó la etapa,
-    // para que sepan que deben revisar y avanzar la orden. Fire-and-forget:
-    // un fallo de correo no debe bloquear la confirmación.
     this._notificarGerentes(production, solicitanteId).catch((err) => {
       console.error("No se pudo notificar a los gerentes:", err.message);
     });
@@ -123,14 +118,9 @@ class ConfirmarEtapaProduccion {
     return updated.toJSON();
   }
 
-  /**
-   * Notifica a todos los Gerentes del sistema que un empleado completó
-   * su etapa en una orden de producción. Fire-and-forget.
-   */
   async _notificarGerentes(production, empleadoId) {
     if (!this.userRepository) return;
 
-    // Obtener el nombre del empleado que confirmó
     let empleadoNombre = "El empleado";
     try {
       const empleado = await this.userRepository.findById(empleadoId);
@@ -141,7 +131,6 @@ class ConfirmarEtapaProduccion {
       console.warn("[ConfirmarEtapa] No se pudo obtener el nombre del empleado:", err.message);
     }
 
-    // Buscar todos los usuarios con rol Gerente
     const RoleModel = require("../../../infrastructure/db/RoleModel");
     let rolGerente;
     try {
@@ -165,7 +154,6 @@ class ConfirmarEtapaProduccion {
 
     if (!Array.isArray(gerentes) || gerentes.length === 0) return;
 
-    // Enviar correo a cada Gerente que tenga correo válido
     for (const gerente of gerentes) {
       if (!gerente.correo) continue;
       try {

@@ -1,32 +1,46 @@
 // infrastructure/repositories/ProductionRepository.js
 const ProductionOrderModel = require("../db/ProductionOrderModel");
+const ProductionOrderDetailModel = require("../db/ProductionOrderDetailModel");
 const Production = require("../../domain/entities/Production");
 
 class ProductionRepository {
   _toEntity(doc) {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : doc;
-    const id = obj._id ? (obj._id.toString ? obj._id.toString() : String(obj._id)) : obj.id;
+    const id = obj._id
+      ? obj._id.toString
+        ? obj._id.toString()
+        : String(obj._id)
+      : obj.id;
     return new Production({ ...obj, id });
   }
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.cliente)    query.cliente    = new RegExp(filters.cliente, "i");
+    if (filters.cliente) query.cliente = new RegExp(filters.cliente, "i");
     if (filters.id_usuario) query.id_usuario = filters.id_usuario;
-    if (filters.estado)     query.estado     = filters.estado;
+    if (filters.estado) query.estado = filters.estado;
     if (filters.fecha_desde || filters.fecha_hasta) {
       query.fecha_entrega = {};
-      if (filters.fecha_desde) query.fecha_entrega.$gte = new Date(filters.fecha_desde);
-      if (filters.fecha_hasta) query.fecha_entrega.$lte = new Date(filters.fecha_hasta);
+      if (filters.fecha_desde)
+        query.fecha_entrega.$gte = new Date(filters.fecha_desde);
+      if (filters.fecha_hasta)
+        query.fecha_entrega.$lte = new Date(filters.fecha_hasta);
     }
 
+    // Un listado solo necesita los datos de la tabla. Historial, imágenes y
+    // ficha técnica se solicitan mediante GET /ordenes/:id cuando se abre una
+    // orden; así no se retransmiten en cada recarga de la tabla.
+    const listProjection =
+      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones createdAt updatedAt";
     const requestedLimit = Number.parseInt(filters.limit, 10);
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 100)
       : 50;
     const requestedPage = Number.parseInt(filters.page, 10);
-    const page = Number.isFinite(requestedPage) ? Math.max(requestedPage, 1) : 1;
+    const page = Number.isFinite(requestedPage)
+      ? Math.max(requestedPage, 1)
+      : 1;
     const skip = (page - 1) * limit;
 
     const pipeline = [
@@ -88,8 +102,47 @@ class ProductionRepository {
       ProductionOrderModel.countDocuments(query),
     ]);
 
+    const orderIds = docs.map((d) => d._id);
+    const detailSummaries =
+      orderIds.length > 0
+        ? await ProductionOrderDetailModel.aggregate([
+            { $match: { id_orden: { $in: orderIds }, estado: { $ne: false } } },
+            {
+              $group: {
+                _id: "$id_orden",
+                totalQty: { $sum: "$cantidad" },
+                colors: { $push: "$color" },
+                firstRef: { $first: "$id_producto" },
+                detailsCount: { $sum: 1 },
+              },
+            },
+          ])
+        : [];
+
+    const summaryMap = new Map();
+    for (const s of detailSummaries) {
+      const firstColor = (s.colors || []).find((c) => c && String(c).trim() !== '') || null;
+      summaryMap.set(String(s._id), {
+        totalQty: s.totalQty,
+        firstColor,
+        firstRef: s.firstRef,
+        detailsCount: s.detailsCount,
+      });
+    }
+
     return {
-      data: docs.map((d) => this._toEntity(d)),
+      data: docs
+        .map((d) => {
+          const summary = summaryMap.get(String(d._id));
+          if (summary) {
+            d.totalQty = summary.totalQty;
+            d.firstColor = summary.firstColor;
+            d.firstRef = summary.firstRef;
+            d.detailsCount = summary.detailsCount;
+          }
+          return this._toEntity(d);
+        })
+        .filter(Boolean),
       total,
       page,
       limit,
@@ -108,8 +161,10 @@ class ProductionRepository {
   }
 
   async update(id, changes) {
-    const doc = await ProductionOrderModel
-      .findByIdAndUpdate(id, changes, { returnDocument: 'after', runValidators: true });
+    const doc = await ProductionOrderModel.findByIdAndUpdate(id, changes, {
+      returnDocument: "after",
+      runValidators: true,
+    });
     return this._toEntity(doc);
   }
 
@@ -125,17 +180,15 @@ class ProductionRepository {
       user: user || null,
       motivo: motivo || null,
     };
-    const doc = await ProductionOrderModel
-      .findByIdAndUpdate(
-        id,
-        {
-          estado: "Anulada",
-          motivo_anulacion: motivo || null,
-          $push: { historial: historialEntry },
-        },
-        { returnDocument: 'after' },
-      )
-      .catch(() => null);
+    const doc = await ProductionOrderModel.findByIdAndUpdate(
+      id,
+      {
+        estado: "Anulada",
+        motivo_anulacion: motivo || null,
+        $push: { historial: historialEntry },
+      },
+      { returnDocument: "after" },
+    ).catch(() => null);
     return this._toEntity(doc);
   }
 
@@ -147,7 +200,13 @@ class ProductionRepository {
    * Se usa para registrar acciones como agregar/editar/eliminar artículos del
    * detalle — antes estas acciones no dejaban ningún rastro en el historial.
    */
-  async agregarHistorial(id, motivo, id_usuario, user, estadoActualParaRegistro) {
+  async agregarHistorial(
+    id,
+    motivo,
+    id_usuario,
+    user,
+    estadoActualParaRegistro,
+  ) {
     const historialEntry = {
       estado: estadoActualParaRegistro || null,
       fecha: new Date(),
@@ -155,13 +214,11 @@ class ProductionRepository {
       user: user || null,
       motivo: motivo || null,
     };
-    const doc = await ProductionOrderModel
-      .findByIdAndUpdate(
-        id,
-        { $push: { historial: historialEntry } },
-        { returnDocument: 'after' },
-      )
-      .catch(() => null);
+    const doc = await ProductionOrderModel.findByIdAndUpdate(
+      id,
+      { $push: { historial: historialEntry } },
+      { returnDocument: "after" },
+    ).catch(() => null);
     return this._toEntity(doc);
   }
 
@@ -174,15 +231,16 @@ class ProductionRepository {
       motivo: null,
     };
 
-    const updateDoc = { estado: nuevoEstado, ...extra, $push: { historial: historialEntry } };
+    const updateDoc = {
+      estado: nuevoEstado,
+      ...extra,
+      $push: { historial: historialEntry },
+    };
 
-    const doc = await ProductionOrderModel
-      .findByIdAndUpdate(
-        id,
-        updateDoc,
-        { returnDocument: 'after', runValidators: true },
-      )
-      .catch(() => null);
+    const doc = await ProductionOrderModel.findByIdAndUpdate(id, updateDoc, {
+      returnDocument: "after",
+      runValidators: true,
+    }).catch(() => null);
     return this._toEntity(doc);
   }
 
@@ -237,7 +295,7 @@ class ProductionRepository {
     };
 
     return {
-      vencidas:       vencidas.map(toPlain),
+      vencidas: vencidas.map(toPlain),
       proximas_vencer: proximasVencer.map(toPlain),
       en_espera_larga: enEsperaLarga.map(toPlain),
     };
@@ -277,6 +335,18 @@ class ProductionRepository {
         fecha_entrega: doc.fecha_entrega,
         ultimo_cambio: ultimoCambio,
       };
+    });
+  }
+
+  // ── Punto 3: bloquear eliminar/inactivar un empleado con producción activa
+  // asignada ────────────────────────────────────────────────────────────────
+  // "Activa" = cualquier orden asignada a ese empleado cuyo estado no sea
+  // terminal ("Enviado" ya se entregó, "Anulada" ya se canceló — en ambos
+  // casos el empleado ya no tiene trabajo pendiente real sobre esa orden).
+  async countActiveByEmployee(empleadoId) {
+    return ProductionOrderModel.countDocuments({
+      empleadoAsignadoId: empleadoId,
+      estado: { $nin: ["Enviado", "Anulada"] },
     });
   }
 }

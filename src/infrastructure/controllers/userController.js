@@ -2,26 +2,35 @@ const { compare } = require("../../infrastructure/security/password_encrypter");
 const UserRepository = require("../repositories/UserRepository");
 const RoleRepository = require("../repositories/RoleRepository");
 const SiteRepository = require("../repositories/SiteRepository");
+const ProductionRepository = require("../repositories/ProductionRepository");
 const CreateUser = require("../../application/use-cases/users/CreateUser");
 const GetUser = require("../../application/use-cases/users/GetUser");
 const GetUserById = require("../../application/use-cases/users/GetUserById");
 const UpdateUser = require("../../application/use-cases/users/UpdateUser");
 const DeleteUser = require("../../application/use-cases/users/DeleteUser");
-const LoginUser = require('../../application/use-cases/auth/LoginUser');
-const ForgotPassword = require('../../application/use-cases/auth/ForgotPassword');
-const VerifyCode = require('../../application/use-cases/auth/VerifyCode');
-const ResetPassword = require('../../application/use-cases/auth/ResetPassword');
-const ChangePassword = require('../../application/use-cases/auth/ChangePassword');
+const LoginUser = require("../../application/use-cases/auth/LoginUser");
+const ForgotPassword = require("../../application/use-cases/auth/ForgotPassword");
+const VerifyCode = require("../../application/use-cases/auth/VerifyCode");
+const ResetPassword = require("../../application/use-cases/auth/ResetPassword");
+const ChangePassword = require("../../application/use-cases/auth/ChangePassword");
 const { generatePassword } = require("../../shared/utils/generatePassword");
 const {
-  ok, created, noContent, notFound,
-  badRequest, unauthorized, conflict, forbidden,
-  unprocessable, serverError,
-} = require('../../shared/utils/response');
+  ok,
+  created,
+  noContent,
+  notFound,
+  badRequest,
+  unauthorized,
+  conflict,
+  forbidden,
+  unprocessable,
+  serverError,
+} = require("../../shared/utils/response");
 
 const repo = new UserRepository();
 const roleRepo = new RoleRepository();
 const siteRepo = new SiteRepository();
+const productionRepo = new ProductionRepository();
 
 const login = async (req, res) => {
   try {
@@ -79,7 +88,13 @@ const getUserById = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    return created(res, await new CreateUser(repo, roleRepo, siteRepo).execute(req.body, req.user));
+    return created(
+      res,
+      await new CreateUser(repo, roleRepo, siteRepo).execute(
+        req.body,
+        req.user,
+      ),
+    );
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
@@ -90,15 +105,44 @@ const createUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    return ok(res, await new UpdateUser(repo, roleRepo, siteRepo).execute(req.params.id, req.body));
+    return ok(
+      res,
+      await new UpdateUser(repo, roleRepo, siteRepo).execute(
+        req.params.id,
+        req.body,
+      ),
+    );
   } catch (err) {
     console.error("ERROR UPDATE USER:", err); // ← agrega esta línea
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 409) return conflict(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
-    if (err.statusCode === 422 || err.name === "ValidationError" || err.name === "CastError") {
+    if (
+      err.statusCode === 422 ||
+      err.name === "ValidationError" ||
+      err.name === "CastError"
+    ) {
       return badRequest(res, err.message);
     }
+    return serverError(res);
+  }
+};
+
+// GET /users/check-document/:numero — validación en tiempo real (punto 1).
+// El frontend lo llama mientras el usuario escribe (con debounce) para
+// avisar "ya existe" antes de intentar guardar el formulario completo.
+// ?excludeId=<id> se usa en edición, para no marcar como duplicado el
+// propio documento del usuario que se está editando.
+const checkDocument = async (req, res) => {
+  try {
+    const { numero } = req.params;
+    const { excludeId } = req.query;
+    const existing = await repo.findByDocument(numero);
+    const disponible =
+      !existing ||
+      (excludeId && existing.id.toString() === excludeId.toString());
+    return ok(res, { disponible });
+  } catch (err) {
     return serverError(res);
   }
 };
@@ -107,9 +151,48 @@ const toggleStatus = async (req, res) => {
   try {
     const user = await repo.findById(req.params.id);
     if (!user) return notFound(res, "Usuario no encontrado");
-    if (user.isLastActiveAdmin && user.isLastActiveAdmin(await repo.countActiveAdmins()))
-      return unprocessable(res, "No se puede desactivar el único administrador activo");
-    return ok(res, await repo.update(req.params.id, { estado: !user.estado }));
+    if (
+      user.isLastActiveAdmin &&
+      user.isLastActiveAdmin(await repo.countActiveAdmins())
+    )
+      return unprocessable(
+        res,
+        "No se puede desactivar el único administrador activo",
+      );
+
+    const willActivate = !user.estado; // pasa de inactivo → activo
+
+    // FIX: si se está REACTIVANDO a un Gerente y ya hay otro Gerente activo,
+    // bloquear — la regla de "máximo un Gerente" también aplica al toggle,
+    // no solo a creación/edición.
+    if (willActivate && user.rolNombre?.trim().toLowerCase() === "gerente") {
+      const otrosGerentesActivos = await repo.countActiveByRoleName(
+        "Gerente",
+        user.id,
+      );
+      if (otrosGerentesActivos >= 1) {
+        return unprocessable(
+          res,
+          "Ya existe un Gerente activo. Desactívalo primero para poder activar este.",
+        );
+      }
+    }
+
+    // FIX: si se está DESACTIVANDO a un usuario con producción activa
+    // asignada, bloquear — ver punto 3 (empleados con producción en curso).
+    if (!willActivate) {
+      const activeAssignments = await productionRepo.countActiveByEmployee(
+        user.id,
+      );
+      if (activeAssignments > 0) {
+        return unprocessable(
+          res,
+          `No se puede inactivar: tiene ${activeAssignments} orden(es) de producción activa(s) asignada(s).`,
+        );
+      }
+    }
+
+    return ok(res, await repo.update(req.params.id, { estado: willActivate }));
   } catch (err) {
     return serverError(res);
   }
@@ -117,7 +200,7 @@ const toggleStatus = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   try {
-    await new DeleteUser(repo).execute(req.params.id);
+    await new DeleteUser(repo, productionRepo).execute(req.params.id);
     return noContent(res);
   } catch (err) {
     console.error("ERROR DELETE USER:", err); // ← agrega esta línea
@@ -133,7 +216,7 @@ const forgotPassword = async (req, res) => {
     const result = await new ForgotPassword(repo).execute(req.body);
     return ok(res, result);
   } catch (err) {
-    console.error('ERROR FORGOT PASSWORD:', err);
+    console.error("ERROR FORGOT PASSWORD:", err);
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 403) return forbidden(res, err.message);
     return serverError(res, err.message);
@@ -168,7 +251,10 @@ const updateProfile = async (req, res) => {
     const changes = {};
     if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
     if (correo) changes.correo = correo;
-    const updated = await new UpdateUser(repo, roleRepo, siteRepo).execute(userId, changes);
+    const updated = await new UpdateUser(repo, roleRepo, siteRepo).execute(
+      userId,
+      changes,
+    );
     return ok(res, updated);
   } catch (err) {
     if (err.statusCode === 409) return conflict(res, err.message);
@@ -195,9 +281,21 @@ const getRoles = async (req, res) => ok(res, await repo.findAllRoles());
 const getSedes = async (req, res) => ok(res, await repo.findAllSedes());
 
 module.exports = {
-  login, prepareWelcome,
-  getUsers, getUserById, createUser,
-  updateUser, toggleStatus, deleteUser,
-  getRoles, getSedes,
-  forgotPassword, verifyCode, resetPassword, changePassword, verifyPassword, updateProfile,
+  login,
+  prepareWelcome,
+  getUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  toggleStatus,
+  deleteUser,
+  checkDocument,
+  getRoles,
+  getSedes,
+  forgotPassword,
+  verifyCode,
+  resetPassword,
+  changePassword,
+  verifyPassword,
+  updateProfile,
 };

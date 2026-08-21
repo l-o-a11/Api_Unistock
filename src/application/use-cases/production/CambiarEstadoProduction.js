@@ -103,9 +103,10 @@ const updated = await this.productionRepository.cambiarEstado(
       nuevoEstado,
       id_usuario,
       user,
-      // 🔁 Se limpia la asignación y la confirmación al avanzar:
-      // la nueva etapa necesita que el admin asigne a alguien de nuevo
-      // y el empleado de la nueva etapa debe confirmar desde cero.
+      // 🔁 Se limpia la asignación al avanzar: la nueva etapa necesita que
+      // el admin asigne a alguien de nuevo. También se resetea
+      // etapaConfirmada para que el empleado de la nueva etapa pueda
+      // confirmar su trabajo.
       { ...(options.extra || {}), empleadoAsignadoId: null, etapaConfirmada: false },
     );
 
