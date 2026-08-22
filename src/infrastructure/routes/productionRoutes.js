@@ -25,11 +25,13 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/productionController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const validateSchema = require("../middlewares/validateSchema");
 const { createOrderSchema, updateOrderSchema, cambiarEstadoSchema, anularOrderSchema } = require("../../shared/schemas/productionSchema");
 
 const router = Router();
+const MODULO = "produccion";
+
 router.use(requireAuth);
 
 /**
@@ -314,33 +316,31 @@ router.use(requireAuth);
  */
 
 // Órdenes
-router.get("/ordenes/estados", ctrl.getEstados);        // Debe ir antes de /:id
-router.get("/empleados/carga", ctrl.getEmployeeWorkload);
-// Portado desde back/: el controller ya soportaba getCalendario/getAlertas,
-// pero las rutas no estaban conectadas en Api.
-router.get("/calendario", ctrl.getCalendario);
-router.get("/alertas", ctrl.getAlertas);
-router.get("/ordenes", ctrl.getOrders);
-router.get("/ordenes/:id", ctrl.getOrderById);
-router.post("/ordenes", requireAuth, validateSchema(createOrderSchema), ctrl.createOrder);
-router.put("/ordenes/:id", validateSchema(updateOrderSchema), ctrl.updateOrder);
-router.patch("/ordenes/:id/estado", requireAuth, validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
-router.patch("/ordenes/:id/asignar-empleado", requireAuth, ctrl.asignarEmpleado);
-router.patch("/ordenes/:id/confirmar-etapa", requireAuth, ctrl.confirmarEtapa);
-router.patch("/ordenes/:id/anular", validateSchema(anularOrderSchema), ctrl.anularOrder);
-router.post("/ordenes/:id/historial", ctrl.agregarHistorial);
+router.get("/ordenes/estados", requirePermission(MODULO, "leer"), ctrl.getEstados);
+router.get("/empleados/carga", requirePermission(MODULO, "leer"), ctrl.getEmployeeWorkload);
+router.get("/calendario", requirePermission(MODULO, "leer"), ctrl.getCalendario);
+router.get("/alertas", requirePermission(MODULO, "leer"), ctrl.getAlertas);
+router.get("/ordenes", requirePermission(MODULO, "leer"), ctrl.getOrders);
+router.get("/ordenes/:id", requirePermission(MODULO, "leer"), ctrl.getOrderById);
+router.post("/ordenes", requirePermission(MODULO, "crear"), validateSchema(createOrderSchema), ctrl.createOrder);
+router.put("/ordenes/:id", requirePermission(MODULO, "actualizar"), validateSchema(updateOrderSchema), ctrl.updateOrder);
+router.patch("/ordenes/:id/estado", requirePermission(MODULO, "actualizar"), validateSchema(cambiarEstadoSchema), ctrl.cambiarEstado);
+router.patch("/ordenes/:id/asignar-empleado", requirePermission(MODULO, "actualizar"), ctrl.asignarEmpleado);
+router.patch("/ordenes/:id/reasignar-empleado", requirePermission(MODULO, "actualizar"), ctrl.reasignarEmpleado);
+router.patch("/ordenes/:id/confirmar-etapa", requirePermission(MODULO, "actualizar"), ctrl.confirmarEtapa);
+router.patch("/ordenes/:id/anular", requirePermission(MODULO, "actualizar"), validateSchema(anularOrderSchema), ctrl.anularOrder);
+router.post("/ordenes/:id/historial", requirePermission(MODULO, "actualizar"), ctrl.agregarHistorial);
 
 // Detalles
-router.get("/detalle-orden", ctrl.getOrderDetails);
-router.post("/detalle-orden", ctrl.createOrderDetail);
-router.put("/detalle-orden/:id", ctrl.updateOrderDetail);
-router.delete("/detalle-orden/:id", ctrl.deleteOrderDetail);
+router.get("/detalle-orden", requirePermission(MODULO, "leer"), ctrl.getOrderDetails);
+router.post("/detalle-orden", requirePermission(MODULO, "crear"), ctrl.createOrderDetail);
+router.put("/detalle-orden/:id", requirePermission(MODULO, "actualizar"), ctrl.updateOrderDetail);
+router.delete("/detalle-orden/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteOrderDetail);
 
 // Asignaciones
-router.get("/asignaciones", ctrl.getAssignments);
-router.post("/asignaciones", ctrl.createAssignment);
-// ✅ DELETE para limpiar asignaciones antes de reasignar (evita sobre-suma)
-router.delete("/asignaciones/:id", ctrl.deleteAssignment);
-router.delete("/asignaciones/orden/:id_orden", ctrl.deleteAssignmentsByOrder);
+router.get("/asignaciones", requirePermission(MODULO, "leer"), ctrl.getAssignments);
+router.post("/asignaciones", requirePermission(MODULO, "crear"), ctrl.createAssignment);
+router.delete("/asignaciones/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteAssignment);
+router.delete("/asignaciones/orden/:id_orden", requirePermission(MODULO, "eliminar"), ctrl.deleteAssignmentsByOrder);
 
 module.exports = router;

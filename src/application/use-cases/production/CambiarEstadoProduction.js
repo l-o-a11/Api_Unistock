@@ -57,12 +57,17 @@ class CambiarEstadoProduction {
       }
     }
 
-    // 🔒 Solo el empleado asignado a la etapa actual (o Gerente/Administrador)
+    // 🔒 Solo el empleado asignado a la etapa actual (o Gerente)
     // puede avanzarla. Si la orden todavía no tiene empleado asignado (ej.
     // órdenes creadas antes de este cambio, o el admin no lo asignó), no se
     // restringe — así no se rompen flujos existentes.
+    //
+    // ✅ Fix: si la etapa ya fue confirmada por el empleado (etapaConfirmada = true),
+    // la producción ya no está en su cargo — el permiso se relaja porque el
+    // empleado ya completó su trabajo y la orden está lista para ser
+    // avanzada por el gerente (o quien corresponda).
     const solicitante = options.solicitante || null;
-    if (production.empleadoAsignadoId && solicitante) {
+    if (production.empleadoAsignadoId && solicitante && !production.etapaConfirmada) {
       const rolSolicitante = (solicitante.rolNombre || "").trim().toLowerCase();
       // Solo Gerente tiene bypass total ("se encarga de todo en producción").
       // Administrador pasó a ser 100% observador — ya no puede avanzar
@@ -71,7 +76,7 @@ class CambiarEstadoProduction {
       const esElAsignado = String(production.empleadoAsignadoId) === String(solicitante.id);
       if (!esPrivilegiado && !esElAsignado) {
         const err = new Error(
-          "Solo el empleado asignado a esta etapa (o un administrador) puede avanzarla",
+          "Solo el empleado asignado a esta etapa (o un gerente) puede avanzarla",
         );
         err.statusCode = 403;
         throw err;

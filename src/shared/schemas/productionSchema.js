@@ -89,7 +89,7 @@ const createOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
 }));
 
 const updateOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
-  cliente: z.string().min(3).max(100).optional(),
+  cliente: z.string().min(1, "Cliente es requerido").max(100, "Cliente no puede exceder 100 caracteres").nullable().optional(),
   fecha_entrega: z.any()
     .optional()
     .refine((raw) => raw === undefined || raw === null || raw === '' || !isNaN(parseFlexibleDate(raw).getTime()), {
@@ -103,18 +103,29 @@ const updateOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
   finishedImages: z.array(z.any()).optional(),
   finishedImageUrl: z.any().optional(),
   techSpecification: z.any().optional(),
-  tipo: z.string().optional(),
-  referencia: z.string().optional(),
-  producto: z.string().optional(),
-  id_usuario: z.string().optional(),
+  tipo: z.union([z.string(), z.null()]).optional(),
+  referencia: z.union([z.string(), z.null()]).optional(),
+  producto: z.union([z.string(), z.null()]).optional(),
+  categoria: z.union([z.string(), z.null()]).optional(),
+  id_usuario: z.union([z.string(), z.null()]).optional(),
   asignaciones: z.array(z.any()).optional(),
   empleadoAsignaciones: z.any().optional(),
   sedeAsignaciones: z.array(z.any()).optional(),
   terceroAsignaciones: z.array(z.any()).optional(),
-  sedeId: z.string().optional(),
-  fromDamaged: z.boolean().optional(),
-  originalOrderNumber: z.string().optional(),
-  originalOrderStatus: z.string().optional(),
+  sedeId: z.union([z.string(), z.number(), z.null()])
+    .optional()
+    .transform((val) => {
+      if (val === undefined || val === null || val === '') return val;
+      return String(val);
+    }),
+  fromDamaged: z.union([z.boolean(), z.string(), z.null()])
+    .optional()
+    .transform((val) => {
+      if (typeof val === 'string') return val.toLowerCase() === 'true';
+      return val;
+    }),
+  originalOrderNumber: z.union([z.string(), z.null()]).optional(),
+  originalOrderStatus: z.union([z.string(), z.null()]).optional(),
 }));
 
 const cambiarEstadoSchema = z.object({

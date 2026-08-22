@@ -25,10 +25,11 @@ const GetCalendarioProduction = require("../../application/use-cases/production/
 const GetAlertasProduction    = require("../../application/use-cases/production/GetAlertasProduction");
 const GetProductions          = require("../../application/use-cases/production/GetProductions");
 const AsignarEmpleadoProduccion  = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ReasignarEmpleadoProduccion  = require("../../application/use-cases/production/ReasignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository             = require("../repositories/UserRepository");
 
-const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
+const { ok, created, badRequest, notFound, serverError, forbidden } = require("../../shared/utils/response");
 
 const prodRepo       = new ProductionRepository();
 const detailRepo     = new ProductionOrderDetailRepository();
@@ -130,6 +131,7 @@ const createOrder = async (req, res) => {
     const tipo = req.body.tipo || req.body.type || "produccion";
     const referencia = req.body.referencia || req.body.reference || null;
     const producto = req.body.producto || req.body.product || null;
+    const categoria = req.body.categoria || req.body.category || null;
     const designImages = Array.isArray(req.body.designImages) ? req.body.designImages : [];
     const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === "true";
     const originalOrderNumber = req.body.originalOrderNumber || req.body.original_order_number || null;
@@ -167,6 +169,7 @@ const createOrder = async (req, res) => {
       tipo,
       producto,
       referencia,
+      categoria,
       techSpecification,
       designImages,
       fromDamaged,
@@ -187,6 +190,8 @@ const createOrder = async (req, res) => {
 
 const updateOrder = async (req, res) => {
   try {
+    console.log('[updateOrder] req.body:', JSON.stringify(req.body, null, 2));
+    console.log('[updateOrder] req.validatedData:', JSON.stringify(req.validatedData, null, 2));
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
 
@@ -204,6 +209,7 @@ const updateOrder = async (req, res) => {
       "tipo",
       "referencia",
       "producto",
+      "categoria",
       "techSpecification",
       "designImages",
       "finishedImages",
@@ -211,6 +217,8 @@ const updateOrder = async (req, res) => {
       "fromDamaged",
       "originalOrderNumber",
       "originalOrderStatus",
+      "sedeAsignaciones",
+      "terceroAsignaciones",
     ]);
 
     const safeChanges = {};
@@ -222,16 +230,18 @@ const updateOrder = async (req, res) => {
 
     if (Object.prototype.hasOwnProperty.call(safeChanges, "cliente")) {
       const cliente = typeof safeChanges.cliente === "string" ? safeChanges.cliente.trim() : safeChanges.cliente;
-      if (!cliente) return badRequest(res, "El cliente no puede estar vacío");
+      if (typeof cliente === "string" && !cliente) return badRequest(res, "El cliente no puede estar vacío");
       safeChanges.cliente = cliente;
     }
 
     if (Object.prototype.hasOwnProperty.call(safeChanges, "fecha_entrega")) {
-      const fecha = new Date(safeChanges.fecha_entrega);
-      if (!safeChanges.fecha_entrega || Number.isNaN(fecha.getTime())) {
-        return badRequest(res, "La fecha de entrega no es válida");
+      if (safeChanges.fecha_entrega) {
+        const fecha = new Date(safeChanges.fecha_entrega);
+        if (Number.isNaN(fecha.getTime())) {
+          return badRequest(res, "La fecha de entrega no es válida");
+        }
+        safeChanges.fecha_entrega = fecha;
       }
-      safeChanges.fecha_entrega = fecha;
     }
 
     const updated = await prodRepo.update(req.params.id, safeChanges);
@@ -249,9 +259,12 @@ const updateOrder = async (req, res) => {
 
 const anularOrder = async (req, res) => {
   try {
+    console.log('[anularOrder] req.body:', JSON.stringify(req.body, null, 2));
+    console.log('[anularOrder] req.params.id:', req.params.id);
     const { motivo, id_usuario: bodyUser, user: bodyUserName } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = bodyUserName || req.user?.nombreCompleto || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    console.log('[anularOrder] motivo:', motivo, 'id_usuario:', id_usuario, 'user:', user);
 
     const useCase = new AnularProduction(prodRepo);
     const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
@@ -269,7 +282,7 @@ const cambiarEstado = async (req, res) => {
   try {
     const { estado, id_usuario: bodyUser, user: bodyUserName, force, ...rest } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = bodyUserName || req.user?.nombreCompleto || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
     console.log(`[ProductionController] cambiarEstado called id=${req.params.id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
     console.log('[ProductionController] payload extra:', rest);
 
@@ -283,7 +296,14 @@ const cambiarEstado = async (req, res) => {
     }
 
     const useCase = new CambiarEstadoProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+    const result  = await useCase.execute(
+      req.params.id, estado, id_usuario, user,
+      {
+        force: !!force,
+        extra: rest,
+        solicitante: { id: req.user?.id, rolNombre: req.user?.rolNombre },
+      },
+    );
       console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
     // Al confirmar el envío, los productos fabricados ingresan al stock
@@ -294,12 +314,13 @@ const cambiarEstado = async (req, res) => {
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 403) return forbidden(res, err.message);
     if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
     return handleError(res, err);
   }
 };
 
-// ── Estados válidos ───────────────────────────────────────────────────────────
+// ── Estados válidos ────────────────────────────────────────────────────────────
 
 const getEstados = (_req, res) => {
   return ok(res, Production.ESTADOS_VALIDOS);
@@ -499,7 +520,10 @@ const asignarEmpleado = async (req, res) => {
 
     const userRepo = new UserRepository();
     const useCase  = new AsignarEmpleadoProduccion(prodRepo, userRepo);
-    const result   = await useCase.execute(req.params.id, empleadoId);
+    const result   = await useCase.execute(req.params.id, empleadoId, {
+      id: req.user?.id,
+      nombre: req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema",
+    });
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -507,7 +531,29 @@ const asignarEmpleado = async (req, res) => {
     return handleError(res, err);
   }
 };
+// ── Reasignar empleado a etapa actual (reemplazo con justificación) ─────────
 
+const reasignarEmpleado = async (req, res) => {
+  try {
+    const empleadoId = req.body.id_empleado || req.body.empleadoId;
+    const motivo = (req.body.motivo || "").toString().trim();
+    if (!empleadoId) return badRequest(res, "El campo id_empleado es requerido");
+    if (!motivo) return badRequest(res, "El motivo de la reasignación es requerido");
+
+    const userRepo = new UserRepository();
+    const useCase  = new ReasignarEmpleadoProduccion(prodRepo, userRepo);
+    const result   = await useCase.execute(req.params.id, empleadoId, motivo, {
+      id: req.user?.id,
+      nombre: req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema",
+    });
+
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422 || err.statusCode === 403 || err.statusCode === 401) return badRequest(res, err.message);
+    return handleError(res, err);
+  }
+};
 // ── Confirmar etapa por empleado ─────────────────────────────────────────────
 
 const confirmarEtapa = async (req, res) => {
@@ -593,6 +639,8 @@ const deleteAssignmentsByOrder = async (req, res) => {
       const removed = await assignmentRepo.delete(assignment.id);
       if (removed) deletedCount++;
     }
+
+    return ok(res, { deleted: deletedCount });
   } catch (err) {
     return handleError(res, err);
   }
@@ -601,8 +649,8 @@ const deleteAssignmentsByOrder = async (req, res) => {
 const agregarHistorial = async (req, res) => {
   try {
     const { motivo, estado } = req.body;
-    const userId = req.body.id_usuario || req.user?.id || req.user?.nombre || "Sistema";
-    const user = req.body.user || req.user?.nombre || "Sistema";
+    const userId = req.body.id_usuario || req.user?.id || null;
+    const user = req.body.user || req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const estadoRegistro = estado || order.estado;
@@ -626,6 +674,7 @@ module.exports = {
   updateOrderDetail,
   deleteOrderDetail,
   getAssignments,
+  reasignarEmpleado,
   createAssignment,
   deleteAssignment,
   deleteAssignmentsByOrder,

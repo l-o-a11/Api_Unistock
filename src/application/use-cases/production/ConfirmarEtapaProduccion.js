@@ -98,11 +98,24 @@ class ConfirmarEtapaProduccion {
 
     // Luego agregar entrada al historial (no se puede mezclar $push con update plano)
     if (updated) {
+      // ✅ Fix: obtener el nombre del empleado para registrarlo en el historial.
+      // Antes se pasaba null como nombre, por lo que el historial guardaba el
+      // ID del usuario en `id_usuario` pero el campo `user` quedaba null.
+      let empleadoNombre = null;
+      try {
+        const empleado = await this.userRepository.findById(solicitanteId);
+        if (empleado) {
+          empleadoNombre = empleado.nombreCompleto || empleado.nombre || empleado.correo || null;
+        }
+      } catch (err) {
+        console.warn("[ConfirmarEtapa] No se pudo obtener el nombre del empleado:", err.message);
+      }
+
       await this.productionRepository.agregarHistorial(
         id,
         "Empleado confirmó finalización de la etapa",
         solicitanteId,
-        null,
+        empleadoNombre,
         production.estado,
       );
     }

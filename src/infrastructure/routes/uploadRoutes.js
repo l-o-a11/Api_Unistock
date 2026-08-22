@@ -17,8 +17,10 @@ const express = require("express");
 const multer = require("multer");
 const cloudinary = require("../cloudinary/cloudinary.config");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
+const MODULO = "productos";
 
 const storage = new CloudinaryStorage({
   cloudinary,
@@ -42,7 +44,7 @@ const upload = multer({
   },
 });
 
-router.post("/upload", upload.single("file"), (req, res) => {
+router.post("/upload", requireAuth, requirePermission(MODULO, "crear"), upload.single("file"), (req, res) => {
   try {
     if (!req.file) {
       return res
@@ -67,7 +69,7 @@ router.post("/upload", upload.single("file"), (req, res) => {
   }
 });
 
-router.post("/upload-multiple", upload.array("files", 10), (req, res) => {
+router.post("/upload-multiple", requireAuth, requirePermission(MODULO, "crear"), upload.array("files", 10), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res
@@ -94,7 +96,7 @@ router.post("/upload-multiple", upload.array("files", 10), (req, res) => {
   }
 });
 
-router.delete("/upload/:publicId", async (req, res) => {
+router.delete("/upload/:publicId", requireAuth, requirePermission(MODULO, "eliminar"), async (req, res) => {
   try {
     const { publicId } = req.params;
     const decodedPublicId = decodeURIComponent(publicId);

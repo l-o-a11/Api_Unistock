@@ -2,7 +2,7 @@
 const ThirdPartiesRepository = require("../repositories/ThirdPartiesRepository");
 const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
 const ProductionRepository = require("../repositories/ProductionRepository");
-const { ok, created, badRequest, notFound, conflict, serverError } = require("../../shared/utils/response");
+const { ok, created, badRequest, notFound, conflict, unprocessable, serverError } = require("../../shared/utils/response");
 
 const repo = new ThirdPartiesRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
@@ -75,6 +75,18 @@ const attachProducciones = async (thirdParties) => {
   }));
 
   return Array.isArray(thirdParties) ? enriched : enriched[0];
+};
+
+const tieneProduccionEnProduccion = async (terceroId) => {
+  const assignments = await assignmentRepo.findAll({ id_tercero: terceroId });
+  if (!assignments.length) return false;
+
+  const orderIds = assignments.map((a) => idToString(a.id_orden)).filter(Boolean);
+  const orders = await Promise.all(
+    orderIds.map(async (orderId) => entityToJSON(await productionRepo.findById(orderId).catch(() => null)))
+  );
+
+  return orders.some((order) => order && order.estado === "Producción");
 };
 
 const getThirdParties = async (req, res) => {
@@ -217,6 +229,14 @@ const toggleThirdParty = async (req, res) => {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
 
+    const bloqueado = await tieneProduccionEnProduccion(req.params.id);
+    if (bloqueado) {
+      return unprocessable(
+        res,
+        "No se puede cambiar el estado del tercero porque tiene producciones en etapa de producción asignadas"
+      );
+    }
+
     const nextEstado = !(tp.estado === true);
     const updated = await repo.update(req.params.id, { estado: nextEstado });
     return ok(res, updated);
@@ -230,6 +250,15 @@ const deleteThirdParty = async (req, res) => {
   try {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
+
+    const bloqueado = await tieneProduccionEnProduccion(req.params.id);
+    if (bloqueado) {
+      return unprocessable(
+        res,
+        "No se puede eliminar el tercero porque tiene producciones en etapa de producción asignadas"
+      );
+    }
+
     await repo.delete(req.params.id);
     return ok(res, { message: "Tercero eliminado exitosamente" });
   } catch (err) {

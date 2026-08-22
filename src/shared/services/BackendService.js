@@ -108,24 +108,127 @@ const productAPI = {
  * Métodos para Production API del Backend
  */
 const productionAPI = {
+  // ── Órdenes ──────────────────────────────────────────────────────────
+  // Listar órdenes de producción
   getAll: (filters = {}) => {
-    return backendClient.get('/api/produccion', { params: filters });
+    return backendClient.get('/api/produccion/ordenes', { params: filters });
   },
 
+  // Obtener orden por ID (con detalles, asignaciones y historial)
   getById: (id) => {
-    return backendClient.get(`/api/produccion/${id}`);
+    return backendClient.get(`/api/produccion/ordenes/${id}`);
   },
 
+  // Crear nueva orden
   create: (data) => {
-    return backendClient.post('/api/produccion', data);
+    return backendClient.post('/api/produccion/ordenes', data);
   },
 
+  // Actualizar orden (PUT)
   update: (id, data) => {
-    return backendClient.put(`/api/produccion/${id}`, data);
+    return backendClient.put(`/api/produccion/ordenes/${id}`, data);
   },
 
+  // Cambiar estado de la orden (gerente avanza el flujo)
+  cambiarEstado: (id, estado, extra = {}) => {
+    return backendClient.patch(`/api/produccion/ordenes/${id}/estado`, { estado, ...extra });
+  },
+
+  // Anular orden
+  anular: (id, motivo) => {
+    return backendClient.patch(`/api/produccion/ordenes/${id}/anular`, { motivo });
+  },
+
+  // Listar estados válidos
+  getEstados: () => {
+    return backendClient.get('/api/produccion/ordenes/estados');
+  },
+
+  // Agregar entrada al historial
+  agregarHistorial: (id, data) => {
+    return backendClient.post(`/api/produccion/ordenes/${id}/historial`, data);
+  },
+
+  // ── Empleados ────────────────────────────────────────────────────────
+  // Carga laboral de empleados (para asignar responsable en Corte/Compras/Recepción)
+  getEmployeeWorkload: (cargo) => {
+    const params = cargo ? { cargo } : {};
+    return backendClient.get('/api/produccion/empleados/carga', { params });
+  },
+
+  // Asignar empleado a la etapa actual
+  asignarEmpleado: (id, id_empleado) => {
+    return backendClient.patch(`/api/produccion/ordenes/${id}/asignar-empleado`, { id_empleado });
+  },
+
+  // Reasignar empleado (reemplazo con justificación/motivo)
+  reasignarEmpleado: (id, id_empleado, motivo) => {
+    return backendClient.patch(`/api/produccion/ordenes/${id}/reasignar-empleado`, { id_empleado, motivo });
+  },
+
+  // Confirmar etapa por empleado asignado
+  confirmarEtapa: (id) => {
+    return backendClient.patch(`/api/produccion/ordenes/${id}/confirmar-etapa`);
+  },
+
+  // ── Información de producción ────────────────────────────────────────
+  // Calendario de órdenes
+  getCalendario: (desde, hasta) => {
+    const params = {};
+    if (desde) params.desde = desde;
+    if (hasta) params.hasta = hasta;
+    return backendClient.get('/api/produccion/calendario', { params });
+  },
+
+  // Alertas de órdenes
+  getAlertas: () => {
+    return backendClient.get('/api/produccion/alertas');
+  },
+
+  // ── Detalles de orden ────────────────────────────────────────────────
+  getDetalles: (filters = {}) => {
+    return backendClient.get('/api/produccion/detalle-orden', { params: filters });
+  },
+
+  // Crear detalle de orden
+  createDetalle: (data) => {
+    return backendClient.post('/api/produccion/detalle-orden', data);
+  },
+
+  // Actualizar detalle de orden
+  updateDetalle: (id, data) => {
+    return backendClient.put(`/api/produccion/detalle-orden/${id}`, data);
+  },
+
+  // Eliminar detalle de orden
+  deleteDetalle: (id) => {
+    return backendClient.delete(`/api/produccion/detalle-orden/${id}`);
+  },
+
+  // ── Asignaciones de terceros ─────────────────────────────────────────
+  getAsignaciones: (filters = {}) => {
+    return backendClient.get('/api/produccion/asignaciones', { params: filters });
+  },
+
+  // Crear asignación de tercero
+  createAsignacion: (data) => {
+    return backendClient.post('/api/produccion/asignaciones', data);
+  },
+
+  // Eliminar asignación individual
+  deleteAsignacion: (id) => {
+    return backendClient.delete(`/api/produccion/asignaciones/${id}`);
+  },
+
+  // Eliminar todas las asignaciones de una orden
+  deleteAsignacionesByOrder: (id_orden) => {
+    return backendClient.delete(`/api/produccion/asignaciones/orden/${id_orden}`);
+  },
+
+  // ── Compatibilidad ───────────────────────────────────────────────────
+  // DELETE (anula con motivo por defecto — la API no tiene DELETE real para órdenes)
   delete: (id) => {
-    return backendClient.delete(`/api/produccion/${id}`);
+    return backendClient.delete(`/api/produccion/ordenes/${id}`);
   },
 };
 
@@ -199,11 +302,14 @@ const siteAPI = {
 };
 
 
+const ProductionAPIClient = productionAPI;
+
 module.exports = {
   backendClient,
   productCategoryAPI,
   productAPI,
   productionAPI,
+  ProductionAPIClient,
   supplierAPI,
   roleAPI,
   siteAPI,

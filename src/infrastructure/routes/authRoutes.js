@@ -24,4 +24,6 @@ router.put('/profile', requireAuth, ctrl.updateProfile);
 // El frontend la usa para confirmar acciones sensibles (eliminar/toggle sede, etc.)
 router.post('/verify-password', requireAuth, ctrl.verifyPassword);
 
+router.get('/me/permissions', requireAuth, ctrl.getMyPermissions);
+
 module.exports = router;

@@ -7,6 +7,7 @@ const { ZodError } = require('zod');
 
 const validateSchema = (schema) => {
   return async (req, res, next) => {
+    console.log('[validateSchema] incoming', req.method, req.path, 'body keys:', Object.keys(req.body || {}));
     try {
       const validated = await schema.parseAsync(req.body);
       req.validatedData = validated;

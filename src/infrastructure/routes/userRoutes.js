@@ -2,7 +2,7 @@ const { Router } = require("express");
 const ctrl = require("../controllers/userController");
 const {
   requireAuth,
-  requireRole,
+  requirePermission,
 } = require("../../interfaces/middlewares/authMiddleware");
 const {
   validate,
@@ -10,6 +10,7 @@ const {
 } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
+const MODULO = "usuarios";
 
 router.use(requireAuth);
 
@@ -18,7 +19,7 @@ router.get(
   "/",
   rules.listUsers,
   validate,
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "leer"),
   ctrl.getUsers,
 );
 
@@ -27,7 +28,7 @@ router.get(
 // como si fuera el parámetro :id de la ruta de abajo.
 router.get(
   "/check-document/:numero",
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "leer"),
   ctrl.checkDocument,
 );
 
@@ -35,14 +36,14 @@ router.get(
   "/:id",
   rules.idParam,
   validate,
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "leer"),
   ctrl.getUserById,
 );
 
 // Solo Gerente y Admin pueden crear/editar/eliminar
 router.post(
   "/",
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "crear"),
   rules.createUser,
   validate,
   ctrl.createUser,
@@ -50,7 +51,7 @@ router.post(
 
 router.put(
   "/:id",
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "actualizar"),
   rules.updateUser,
   validate,
   ctrl.updateUser,
@@ -58,7 +59,7 @@ router.put(
 
 router.patch(
   "/:id/status",
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "actualizar"),
   rules.idParam,
   validate,
   ctrl.toggleStatus,
@@ -66,7 +67,7 @@ router.patch(
 
 router.delete(
   "/:id",
-  requireRole("Gerente", "Administrador"),
+  requirePermission(MODULO, "eliminar"),
   rules.idParam,
   validate,
   ctrl.deleteUser,

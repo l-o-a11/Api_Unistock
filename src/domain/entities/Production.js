@@ -49,9 +49,10 @@ class Production {
    * @param {boolean} [data.fromDamaged]     - Indica si es reposición de dañados
    * @param {string}  [data.originalOrderNumber] - Número de orden original
    * @param {string}  [data.originalOrderStatus] - Estado original
-   * @param {string}  [data.producto]        - Nombre/código del producto
-   * @param {string}  [data.referencia]      - Referencia del producto
-   */
+    * @param {string}  [data.producto]        - Nombre/código del producto
+    * @param {string}  [data.referencia]      - Referencia del producto
+    * @param {string}  [data.categoria]       - Categoría del producto
+    */
   constructor({
     id,
     numero_orden,
@@ -72,17 +73,14 @@ class Production {
     originalOrderStatus = null,
     producto = null,
     referencia = null,
-    // ✅ Persistidas en BD — antes solo vivían en localStorage del navegador
+    categoria = null,
     sedeAsignaciones = [],
     terceroAsignaciones = [],
-    // ✅ Empleado asignado a la etapa actual del flujo
     empleadoAsignadoId = null,
-    // ✅ Confirmación del empleado asignado de que terminó su etapa actual.
-    // Inicia como false y se marca true cuando el empleado confirma finalización.
     etapaConfirmada = false,
-    // ✅ Sede dueña de la producción desde su creación (no confundir con
-    // sedeAsignaciones, que es el reparto del producto terminado)
     sedeId = null,
+    createdAt = null,
+    updatedAt = null,
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -103,11 +101,14 @@ class Production {
     this.originalOrderStatus = originalOrderStatus;
     this.producto = producto;
     this.referencia = referencia;
+    this.categoria = categoria;
     this.sedeAsignaciones = sedeAsignaciones;
     this.terceroAsignaciones = terceroAsignaciones;
     this.empleadoAsignadoId = empleadoAsignadoId;
     this.etapaConfirmada = etapaConfirmada;
     this.sedeId = sedeId;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -140,11 +141,14 @@ class Production {
       originalOrderStatus: this.originalOrderStatus,
       producto: this.producto,
       referencia: this.referencia,
+      categoria: this.categoria,
       sedeAsignaciones: this.sedeAsignaciones,
       terceroAsignaciones: this.terceroAsignaciones,
       empleadoAsignadoId: this.empleadoAsignadoId,
       etapaConfirmada: this.etapaConfirmada,
       sedeId: this.sedeId,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }

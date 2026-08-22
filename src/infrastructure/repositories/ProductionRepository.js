@@ -31,7 +31,7 @@ class ProductionRepository {
     // ficha técnica se solicitan mediante GET /ordenes/:id cuando se abre una
     // orden; así no se retransmiten en cada recarga de la tabla.
     const listProjection =
-      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones createdAt updatedAt";
+      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia categoria etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones historial createdAt updatedAt";
     const requestedLimit = Number.parseInt(filters.limit, 10);
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 100)
@@ -134,17 +134,23 @@ class ProductionRepository {
   }
 
   async cambiarEstado(id, nuevoEstado, id_usuario, user, extra = {}) {
+    // ✅ Fix: extraer `motivo` de extra para guardarlo en el historial.
+    // Antes se hardcodeaba motivo: null, por lo que el motivo del cambio de
+    // estado no aparecía en el historial. Además, `motivo` no debe quedar
+    // como campo top-level de la orden (no existe en el schema).
+    const { motivo, ...restExtra } = extra;
+
     const historialEntry = {
       estado: nuevoEstado,
       fecha: new Date(),
       id_usuario: id_usuario || null,
       user: user || null,
-      motivo: null,
+      motivo: motivo || null,
     };
 
     const updateDoc = {
       estado: nuevoEstado,
-      ...extra,
+      ...restExtra,
       $push: { historial: historialEntry },
     };
 
@@ -249,10 +255,16 @@ class ProductionRepository {
   // "Activa" = cualquier orden asignada a ese empleado cuyo estado no sea
   // terminal ("Enviado" ya se entregó, "Anulada" ya se canceló — en ambos
   // casos el empleado ya no tiene trabajo pendiente real sobre esa orden).
+  //
+  // ✅ Fix: también excluye órdenes cuya etapa el empleado YA confirmó
+  // (etapaConfirmada = true). Si el empleado confirmó, ya no tiene pendiente
+  // nada sobre esa orden, así que no debe contar como "carga activa" que
+  // bloquee su eliminación o inactivación.
   async countActiveByEmployee(empleadoId) {
     return ProductionOrderModel.countDocuments({
       empleadoAsignadoId: empleadoId,
       estado: { $nin: ["Enviado", "Anulada"] },
+      etapaConfirmada: { $ne: true },
     });
   }
 }

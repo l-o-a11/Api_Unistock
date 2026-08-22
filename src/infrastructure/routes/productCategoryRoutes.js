@@ -19,19 +19,20 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/productCategoriesController");
-const { requireAuth, requireRole } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
+const MODULO = "categorias de productos";
 
-// Middleware: Requerir autenticación en todos los endpoints (REMOVIDO para desarrollo público)
+// Middleware: Requerir autenticación en todos los endpoints
 router.use(requireAuth);
 
 // Rutas CRUD
-router.get("/", ctrl.getProductCategories);
-router.get("/:id", ctrl.getProductCategoryById);
-router.post("/", ctrl.createProductCategory);
-router.put("/:id", ctrl.updateProductCategory);
-router.delete("/:id", ctrl.deleteProductCategory);
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getProductCategories);
+router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getProductCategoryById);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createProductCategory);
+router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.updateProductCategory);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteProductCategory);
 
 module.exports = router;

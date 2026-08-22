@@ -14,7 +14,7 @@ class AsignarEmpleadoProduccion {
         this.userRepository = userRepository;
     }
 
-    async execute(ordenId, empleadoId) {
+    async execute(ordenId, empleadoId, solicitante = {}) {
         const orden = await this.productionRepository.findById(ordenId);
         if (!orden) {
             const err = new Error("Orden de producción no encontrada");
@@ -71,6 +71,18 @@ class AsignarEmpleadoProduccion {
         const actualizado = await this.productionRepository.update(ordenId, {
             empleadoAsignadoId: empleadoId,
         });
+
+        // ✅ Fix: registrar en el historial quién asignó al empleado, con su nombre.
+        // Antes no se guardaba ningún registro de la asignación en el historial.
+        if (solicitante.id || solicitante.nombre) {
+            await this.productionRepository.agregarHistorial(
+                ordenId,
+                `Empleado ${empleado.nombreCompleto || empleado.nombre || empleado.correo || "Sin nombre"} asignado a etapa ${orden.estado}`,
+                solicitante.id || null,
+                solicitante.nombre || null,
+                orden.estado,
+            ).catch(() => { /* no bloquear si el historial falla */ });
+        }
 
         if (empleado.correo) {
             // Fire-and-forget: un fallo de correo no debe bloquear la asignación.
