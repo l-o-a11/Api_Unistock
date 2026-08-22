@@ -17,4 +17,10 @@ const productionOrderDetailSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+productionOrderDetailSchema.pre("save", function () {
+  if (this.id_orden && typeof this.id_orden === "string") {
+    this.id_orden = new mongoose.Types.ObjectId(this.id_orden);
+  }
+});
+
 module.exports = mongoose.model("ProductionOrderDetail", productionOrderDetailSchema);

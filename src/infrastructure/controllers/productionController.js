@@ -443,15 +443,14 @@ const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
 const getEmployeeWorkload = async (req, res) => {
   try {
     const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
+    const sedeId = typeof req.query.sedeId === "string" ? req.query.sedeId.trim() : "";
     const employeeFilter = { estado: true };
 
-    // El cargo es el nombre de la etapa (p. ej. Corte o Recepción). Se usa una
-    // expresión regular anclada e insensible a mayúsculas para no mezclar
-    // empleados de otras etapas ni fallar por diferencias de capitalización.
     if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+    if (sedeId && mongoose.isValidObjectId(sedeId)) employeeFilter.sedeId = sedeId;
 
     const employees = await UserModel.find(employeeFilter)
-      .select("_id nombre nombreCompleto correo cargo")
+      .select("_id nombre nombreCompleto correo cargo sedeId")
       .sort({ nombreCompleto: 1, nombre: 1 })
       .lean();
 
@@ -477,6 +476,7 @@ const getEmployeeWorkload = async (req, res) => {
       nombre: u.nombreCompleto || u.nombre,
       correo: u.correo,
       cargo: u.cargo,
+      sedeId: u.sedeId ? String(u.sedeId) : null,
       produccionesAsignadas: countByEmployeeId.get(String(u._id)) || 0,
     }));
 
@@ -668,6 +668,9 @@ module.exports = {
   updateOrder,
   anularOrder,
   cambiarEstado,
+  asignarEmpleado,
+  reasignarEmpleado,
+  confirmarEtapa,
   getEstados,
   getOrderDetails,
   createOrderDetail,
@@ -679,8 +682,6 @@ module.exports = {
   deleteAssignment,
   deleteAssignmentsByOrder,
   getEmployeeWorkload,
-  asignarEmpleado,
-  confirmarEtapa,
   getCalendario,
   getAlertas,
   agregarHistorial,

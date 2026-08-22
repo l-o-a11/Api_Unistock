@@ -1,5 +1,6 @@
 // infrastructure/repositories/ProductionRepository.js
 const ProductionOrderModel = require("../db/ProductionOrderModel");
+const ProductionOrderDetailModel = require("../db/ProductionOrderDetailModel");
 const Production = require("../../domain/entities/Production");
 
 class ProductionRepository {
@@ -42,18 +43,106 @@ class ProductionRepository {
       : 1;
     const skip = (page - 1) * limit;
 
+    const pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'productionorderdetails',
+          let: { orderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$id_orden', '$$orderId'] },
+                    { $eq: [{ $toString: '$id_orden' }, { $toString: '$$orderId' }] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'details',
+        },
+      },
+      {
+        $addFields: {
+          detailsCount: { $size: '$details' },
+          totalQty: { $ifNull: [{ $sum: '$details.cantidad' }, 0] },
+          firstColor: {
+            $ifNull: [
+              {
+                $arrayElemAt: [
+                  {
+                    $filter: {
+                      input: '$details.color',
+                      cond: { $ne: ['$$this', ''] },
+                    },
+                  },
+                  0,
+                ],
+              },
+              '',
+            ],
+          },
+          firstRef: { $ifNull: [{ $arrayElemAt: ['$details.id_producto', 0] }, ''] },
+        },
+      },
+      {
+        $project: {
+          details: 0,
+        },
+      },
+      { $sort: { createdAt: 1, _id: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
     const [docs, total] = await Promise.all([
-      ProductionOrderModel.find(query)
-        .select(listProjection)
-        .sort({ createdAt: 1, _id: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      ProductionOrderModel.aggregate(pipeline),
       ProductionOrderModel.countDocuments(query),
     ]);
 
+    const orderIds = docs.map((d) => d._id);
+    const detailSummaries =
+      orderIds.length > 0
+        ? await ProductionOrderDetailModel.aggregate([
+            { $match: { id_orden: { $in: orderIds }, estado: { $ne: false } } },
+            {
+              $group: {
+                _id: "$id_orden",
+                totalQty: { $sum: "$cantidad" },
+                colors: { $push: "$color" },
+                firstRef: { $first: "$id_producto" },
+                detailsCount: { $sum: 1 },
+              },
+            },
+          ])
+        : [];
+
+    const summaryMap = new Map();
+    for (const s of detailSummaries) {
+      const firstColor = (s.colors || []).find((c) => c && String(c).trim() !== '') || null;
+      summaryMap.set(String(s._id), {
+        totalQty: s.totalQty,
+        firstColor,
+        firstRef: s.firstRef,
+        detailsCount: s.detailsCount,
+      });
+    }
+
     return {
-      data: docs.map((d) => this._toEntity(d)),
+      data: docs
+        .map((d) => {
+          const summary = summaryMap.get(String(d._id));
+          if (summary) {
+            d.totalQty = summary.totalQty;
+            d.firstColor = summary.firstColor;
+            d.firstRef = summary.firstRef;
+            d.detailsCount = summary.detailsCount;
+          }
+          return this._toEntity(d);
+        })
+        .filter(Boolean),
       total,
       page,
       limit,
@@ -221,6 +310,11 @@ class ProductionRepository {
   /**
    * findParaCalendario — Devuelve órdenes activas para el calendario.
    */
+  async find(query = {}, projection = null) {
+    const docs = await ProductionOrderModel.find(query).select(projection).lean();
+    return docs.map((d) => this._toEntity(d));
+  }
+
   async findParaCalendario(desde, hasta) {
     const query = {
       estado: { $nin: ["Anulada"] },

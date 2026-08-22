@@ -93,6 +93,7 @@ const toggleThirdParty = async (req, res) => {
     return ok(res, data);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422) return unprocessable(res, err.message);
     console.error('[ThirdParty] toggleThirdParty:', err.message);
     return serverError(res, err.message);
   }
