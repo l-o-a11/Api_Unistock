@@ -1,10 +1,12 @@
 // application/use-cases/users/UpdateUser.js
 
-const normalizeCargos = (cargo) => [...new Set(
-  (Array.isArray(cargo) ? cargo : (cargo ? [cargo] : []))
-    .map((item) => String(item).trim())
-    .filter(Boolean),
-)];
+const normalizeCargos = (cargo) => [
+  ...new Set(
+    (Array.isArray(cargo) ? cargo : cargo ? [cargo] : [])
+      .map((item) => String(item).trim())
+      .filter(Boolean),
+  ),
+];
 
 class UpdateUser {
   constructor(userRepository, roleRepository, siteRepository) {
@@ -21,13 +23,24 @@ class UpdateUser {
       throw error;
     }
 
-    const { tipoDocumento, numeroDocumento, nombreCompleto, correo, rolId, sedeId, cargo, cargos } = data;
+    const {
+      tipoDocumento,
+      numeroDocumento,
+      nombreCompleto,
+      correo,
+      rolId,
+      sedeId,
+      cargo,
+      cargos,
+    } = data;
 
     // Unicidad de correo (excluye el usuario actual)
     if (correo && correo !== existing.correo) {
       const byEmail = await this.userRepository.findByEmail(correo);
       if (byEmail && byEmail.id.toString() !== id.toString()) {
-        const error = new Error("Ya existe otro usuario con ese correo electrónico");
+        const error = new Error(
+          "Ya existe otro usuario con ese correo electrónico",
+        );
         error.statusCode = 409;
         throw error;
       }
@@ -37,17 +50,19 @@ class UpdateUser {
     if (numeroDocumento && numeroDocumento !== existing.numeroDocumento) {
       const byDoc = await this.userRepository.findByDocument(numeroDocumento);
       if (byDoc && byDoc.id.toString() !== id.toString()) {
-        const error = new Error("Ya existe otro usuario con ese número de documento");
+        const error = new Error(
+          "Ya existe otro usuario con ese número de documento",
+        );
         error.statusCode = 409;
         throw error;
       }
     }
 
     const changes = {};
-    if (tipoDocumento)   changes.tipoDocumento   = tipoDocumento;
-    if (numeroDocumento) changes.numeroDocumento  = numeroDocumento;
-    if (nombreCompleto)  changes.nombreCompleto   = nombreCompleto.trim();
-    if (correo)          changes.correo           = correo;
+    if (tipoDocumento) changes.tipoDocumento = tipoDocumento;
+    if (numeroDocumento) changes.numeroDocumento = numeroDocumento;
+    if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
+    if (correo) changes.correo = correo;
 
     if (rolId) {
       const role = await this.roleRepository.findById(rolId);
@@ -56,6 +71,22 @@ class UpdateUser {
         error.statusCode = 422;
         throw error;
       }
+
+      // FIX: misma regla que en CreateUser — máximo un Gerente activo.
+      // Se excluye al propio usuario (id) del conteo: si ya era Gerente y
+      // solo se está editando otro campo, no debe bloquearse a sí mismo.
+      if (role.nombre?.trim().toLowerCase() === "gerente") {
+        const otrosGerentesActivos =
+          await this.userRepository.countActiveByRoleName("Gerente", id);
+        if (otrosGerentesActivos >= 1) {
+          const error = new Error(
+            "Ya existe un Gerente activo. Solo puede haber un Gerente a la vez.",
+          );
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       changes.rolId = rolId;
     }
 
@@ -94,7 +125,9 @@ class UpdateUser {
       error.statusCode = 404;
       throw error;
     }
-    const { password, ...userPublic } = updated.toObject ? updated.toObject() : updated;
+    const { password, ...userPublic } = updated.toObject
+      ? updated.toObject()
+      : updated;
     return userPublic;
   }
 }
