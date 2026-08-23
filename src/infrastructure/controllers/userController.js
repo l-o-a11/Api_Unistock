@@ -280,6 +280,23 @@ const changePassword = async (req, res) => {
 const getRoles = async (req, res) => ok(res, await repo.findAllRoles());
 const getSedes = async (req, res) => ok(res, await repo.findAllSedes());
 
+const getMyPermissions = async (req, res) => {
+  try {
+    const role = await roleRepo.findById(req.user.rolId);
+    if (!role) {
+      return forbidden(res, "Tu rol no es válido o está inactivo");
+    }
+    return ok(res, {
+      rolId: role.id,
+      rolNombre: role.nombre,
+      permisos: role.permisos || [],
+    });
+  } catch (err) {
+    console.error("ERROR getMyPermissions:", err);
+    return serverError(res, "No se pudieron obtener tus permisos");
+  }
+};
+
 module.exports = {
   login,
   prepareWelcome,
@@ -298,4 +315,5 @@ module.exports = {
   changePassword,
   verifyPassword,
   updateProfile,
+  getMyPermissions,
 };

@@ -1,14 +1,16 @@
 const { verify } = require("../../infrastructure/security/token_generator");
-const { unauthorized, forbidden, serverError } = require("../../shared/utils/response");
+const {
+  unauthorized,
+  forbidden,
+  serverError,
+} = require("../../shared/utils/response");
 const UserRepository = require("../../infrastructure/repositories/UserRepository");
 const RoleModel = require("../../infrastructure/db/RoleModel");
 
 const userRepo = new UserRepository();
 
 const normalizeRole = (value) =>
-  typeof value === "string"
-    ? value.trim().toLowerCase()
-    : "";
+  typeof value === "string" ? value.trim().toLowerCase() : "";
 
 // FIX: requireAuth ya no confía ciegamente en los claims del JWT.
 // Antes, un usuario desactivado (o con el rol cambiado) seguía operando
@@ -46,7 +48,10 @@ const requireAuth = async (req, res, next) => {
     const liveUser = await userRepo.findById(claims.id);
 
     if (!liveUser || !liveUser.estado) {
-      return unauthorized(res, "Tu sesión ya no es válida. Tu usuario fue desactivado.");
+      return unauthorized(
+        res,
+        "Tu sesión ya no es válida. Tu usuario fue desactivado.",
+      );
     }
 
     // req.user combina los claims del token (correo, nombreCompleto, etc.)
@@ -65,20 +70,22 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
-const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user) {
-    return unauthorized(res);
-  }
+const requireRole =
+  (...roles) =>
+  (req, res, next) => {
+    if (!req.user) {
+      return unauthorized(res);
+    }
 
-  const rolNombre = normalizeRole(req.user.rolNombre);
-  const rolesLower = roles.map(normalizeRole);
+    const rolNombre = normalizeRole(req.user.rolNombre);
+    const rolesLower = roles.map(normalizeRole);
 
-  if (!rolNombre || !rolesLower.includes(rolNombre)) {
-    return forbidden(res, "No tienes permisos para esta acción");
-  }
+    if (!rolNombre || !rolesLower.includes(rolNombre)) {
+      return forbidden(res, "No tienes permisos para esta acción");
+    }
 
-  next();
-};
+    next();
+  };
 
 // requirePermission: valida que el ROL del usuario tenga, en la BD (no en el
 // token), el módulo solicitado con el privilegio requerido. Es el faltante
@@ -105,7 +112,7 @@ const requirePermission = (modulo, privilegio) => async (req, res, next) => {
     if (!permisoModulo || !permisoModulo.privilegios.includes(privilegio)) {
       return forbidden(
         res,
-        `Tu rol no tiene permiso de '${privilegio}' en el módulo '${modulo}'`
+        `Tu rol no tiene permiso de '${privilegio}' en el módulo '${modulo}'`,
       );
     }
 
