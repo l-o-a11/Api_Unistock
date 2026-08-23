@@ -36,12 +36,36 @@ const normalizeDateValue = (raw) => {
 
 const normalizeProductionPayload = (raw) => {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const cleaned = { ...raw };
+
+    for (const key of ['id_usuario', 'tipo', 'referencia', 'producto', 'asignaciones', 'designImages', 'finishedImages', 'finishedImageUrl', 'fromDamaged', 'originalOrderNumber', 'originalOrderStatus', 'techSpecification', 'empleadoAsignaciones', 'sedeAsignaciones', 'terceroAsignaciones', 'sedeId', 'id_tercero']) {
+      if (cleaned[key] === '' || cleaned[key] === null) cleaned[key] = undefined;
+    }
+
+    if (typeof cleaned.fecha_entrega === 'string') cleaned.fecha_entrega = cleaned.fecha_entrega.trim();
+    if (typeof cleaned.cliente === 'string') cleaned.cliente = cleaned.cliente.trim();
+
+    const asignaciones = cleaned.asignaciones || cleaned.terceros;
+    if (Array.isArray(asignaciones)) {
+      cleaned.asignaciones = asignaciones.map((asig) => {
+        if (!asig || typeof asig !== 'object') return asig;
+        const normalized = { ...asig };
+        if (!normalized.id_tercero && normalized.tercero) {
+          normalized.id_tercero = normalized.tercero;
+        }
+        if (typeof normalized.cantidad === 'string') {
+          normalized.cantidad = Number(normalized.cantidad);
+        }
+        return normalized;
+      });
+    }
+
     return {
-      ...raw,
-      cliente: raw.cliente ?? raw.client ?? raw.nombre ?? raw.customer,
-      fecha_entrega: raw.fecha_entrega ?? raw.deliveryDate ?? raw.fechaSolicitud,
-      id_usuario: raw.id_usuario ?? raw.userId ?? raw.user_id,
-      asignaciones: raw.asignaciones ?? raw.terceros,
+      ...cleaned,
+      cliente: cleaned.cliente ?? cleaned.client ?? cleaned.nombre ?? cleaned.customer ?? '',
+      fecha_entrega: cleaned.fecha_entrega ?? cleaned.deliveryDate ?? cleaned.fechaSolicitud,
+      id_usuario: cleaned.id_usuario ?? cleaned.userId ?? cleaned.user_id,
+      asignaciones: cleaned.asignaciones ?? cleaned.terceros,
     };
   }
   return raw;
@@ -52,9 +76,24 @@ const normalizeProductionPayload = (raw) => {
 const VALID_ESTADOS = ['Diseño', 'Ficha Técnica', 'Corte', 'Compras', 'Producción', 'Recepción', 'Enviado', 'Anulada'];
 
 const createOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
-  cliente: z.string()
-    .min(1, 'Cliente es requerido')
-    .max(100, 'Cliente no puede exceder 100 caracteres'),
+  cliente: z.union([z.string(), z.number()])
+    .transform((val) => String(val).trim())
+    .superRefine((val, ctx) => {
+      if (!val || val.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['cliente'],
+          message: 'Cliente es requerido',
+        });
+      }
+      if (val && val.length > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_big,
+          path: ['cliente'],
+          message: 'Cliente no puede exceder 100 caracteres',
+        });
+      }
+    }),
   
   fecha_entrega: z.any()
     .refine((raw) => raw !== undefined && raw !== null && raw !== '', {
@@ -80,13 +119,44 @@ const createOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
   
   id_usuario: z.string().optional(),
   
+  designImages: z.array(z.any()).optional(),
+  finishedImages: z.array(z.any()).optional(),
+  finishedImageUrl: z.any().optional(),
+  
   asignaciones: z.array(
     z.object({
-      id_tercero: z.string(),
-      cantidad: z.number().min(1, 'Cantidad debe ser mayor a 0'),
+      id_tercero: z.union([z.string(), z.number()])
+        .transform((val) => String(val))
+        .superRefine((val, ctx) => {
+          if (!val || val.trim().length === 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ctx.path,
+              message: 'id_tercero es requerido',
+            });
+          }
+        }),
+      cantidad: z.union([z.number(), z.string()])
+        .transform((val) => Number(val))
+        .superRefine((val, ctx) => {
+          if (Number.isNaN(val) || val < 1) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ctx.path,
+              message: 'Cantidad debe ser mayor a 0',
+            });
+          }
+        }),
     })
   ).optional(),
-}));
+  
+  tipo: z.string().optional(),
+  referencia: z.string().optional(),
+  producto: z.string().optional(),
+  fromDamaged: z.boolean().optional(),
+  originalOrderNumber: z.string().optional(),
+  originalOrderStatus: z.string().optional(),
+}).catchall(z.any()));
 
 const updateOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
   cliente: z.string().min(3).max(100).optional(),

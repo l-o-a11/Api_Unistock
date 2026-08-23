@@ -117,7 +117,11 @@ const createThirdParty = async (req, res) => {
 
     const duplicatedName = await repo.findByCompanyName(nombreEmpresa);
     if (duplicatedName) {
-      return conflict(res, "Ya existe un tercero con ese nombre");
+      const dir = duplicatedName.direccion || '';
+      const msg = dir
+        ? `Ya existe un tercero con ese nombre: ${nombreEmpresa}, dirección: ${dir}`
+        : `Ya existe un tercero con ese nombre`;
+      return conflict(res, msg);
     }
 
     const estadoRaw = data.estado;
@@ -188,7 +192,11 @@ const updateThirdParty = async (req, res) => {
     if (nextNombreEmpresa) {
       const duplicatedName = await repo.findByCompanyName(nextNombreEmpresa, req.params.id);
       if (duplicatedName) {
-        return conflict(res, "Ya existe otro tercero con ese nombre");
+        const dir = duplicatedName.direccion || '';
+        const msg = dir
+          ? `Ya existe otro tercero con ese nombre: ${nextNombreEmpresa}, dirección: ${dir}`
+          : `Ya existe otro tercero con ese nombre`;
+        return conflict(res, msg);
       }
     }
 
@@ -218,6 +226,66 @@ const updateThirdParty = async (req, res) => {
     return ok(res, await repo.update(req.params.id, updateData));
   } catch (err) {
     console.error("[thirdPartiesController] Error updating tercero:", err);
+    return serverError(res);
+  }
+};
+
+const validateUniqueField = async (req, res) => {
+  try {
+    const { campo, valor, excluirId } = req.query;
+
+    if (!campo || valor === undefined || valor === null || String(valor).trim() === '') {
+      return ok(res, { disponible: true, campo, valor: valor || '' });
+    }
+
+    const normalizedValor = String(valor).trim();
+    let duplicated = null;
+
+    switch (campo) {
+      case 'nombre_empresa':
+      case 'nombre':
+        duplicated = await repo.findByCompanyName(normalizedValor, excluirId || null);
+        break;
+      case 'nit':
+        duplicated = await repo.findByNit(normalizedValor, excluirId || null);
+        break;
+      case 'direccion':
+        duplicated = await repo.findByDireccion(normalizedValor, excluirId || null);
+        break;
+      case 'telefono':
+        duplicated = await repo.findByTelefono(normalizedValor, excluirId || null);
+        break;
+      case 'correo_empresa':
+      case 'correo_contacto':
+      case 'correo':
+        duplicated = await repo.findByCorreo(normalizedValor, excluirId || null);
+        break;
+      default:
+        return badRequest(res, `Campo de validación no soportado: ${campo}`);
+    }
+
+    if (duplicated) {
+      const mensajes = {
+        nombre_empresa: 'Ya existe un tercero con ese nombre',
+        nombre: 'Ya existe un tercero con ese nombre',
+        nit: 'Ya existe un tercero con ese NIT',
+        direccion: 'Ya existe un tercero con esa dirección',
+        telefono: 'Ya existe un tercero con ese teléfono',
+        correo_empresa: 'Ya existe un tercero con ese correo',
+        correo_contacto: 'Ya existe un tercero con ese correo',
+        correo: 'Ya existe un tercero con ese correo',
+      };
+      return ok(res, {
+        disponible: false,
+        campo,
+        valor: normalizedValor,
+        mensaje: mensajes[campo] || 'Valor ya registrado',
+      });
+    }
+
+    return ok(res, { disponible: true, campo, valor: normalizedValor });
+  } catch (err) {
+    console.error("[thirdPartiesController] Error validating unique field:", err);
     return serverError(res);
   }
 };
@@ -303,5 +371,6 @@ module.exports = {
   toggleThirdParty,
   deleteThirdParty,
   linkProduccionToTercero,
+  validateUniqueField,
 };
 

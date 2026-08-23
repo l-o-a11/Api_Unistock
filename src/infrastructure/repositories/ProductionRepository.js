@@ -63,6 +63,9 @@ class ProductionRepository {
 
   async findById(id) {
     const doc = await ProductionOrderModel.findById(id).catch(() => null);
+    if (!doc) {
+      console.warn(`[ProductionRepository] findById no encontró orden id=${id}`);
+    }
     return this._toEntity(doc);
   }
 
