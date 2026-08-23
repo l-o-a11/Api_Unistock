@@ -71,7 +71,7 @@ class CambiarEstadoProduction {
       const esElAsignado = String(production.empleadoAsignadoId) === String(solicitante.id);
       if (!esPrivilegiado && !esElAsignado) {
         const err = new Error(
-          "Solo el empleado asignado a esta etapa (o un administrador) puede avanzarla",
+          "Solo el empleado asignado a esta etapa (o un gerente) puede avanzarla",
         );
         err.statusCode = 403;
         throw err;

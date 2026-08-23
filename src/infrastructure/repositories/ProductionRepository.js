@@ -31,10 +31,10 @@ class ProductionRepository {
     // ficha técnica se solicitan mediante GET /ordenes/:id cuando se abre una
     // orden; así no se retransmiten en cada recarga de la tabla.
     const listProjection =
-      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones createdAt updatedAt";
+      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones historial createdAt updatedAt";
     const requestedLimit = Number.parseInt(filters.limit, 10);
     const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 100)
+      ? Math.max(requestedLimit, 1)
       : 50;
     const requestedPage = Number.parseInt(filters.page, 10);
     const page = Number.isFinite(requestedPage)
