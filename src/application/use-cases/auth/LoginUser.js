@@ -2,6 +2,9 @@
 
 const { compare } = require("../../../infrastructure/security/password_encrypter");
 const { generate } = require("../../../infrastructure/security/token_generator");
+const { sendAccountLockedEmail } = require("../../../shared/utils/emailService");
+
+const MAX_INTENTOS_FALLIDOS = 5;
 
 class LoginUser {
   // ── El use case recibe los dos repositorios que necesita ──────────────────
@@ -10,6 +13,35 @@ class LoginUser {
   constructor(userRepository, roleRepository) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
+  }
+
+  // Busca a los Gerentes activos y les envía el aviso de bloqueo.
+  // Se resuelve en segundo plano (fire-and-forget desde execute()) para que
+  // un problema de envío de correo nunca bloquee ni retrase la respuesta del
+  // login — el usuario ya recibió su 403, esto es solo la notificación.
+  async _notifyGerentes(usuarioBloqueado) {
+    try {
+      const rolGerente = await this.roleRepository.findByName("Gerente");
+      if (!rolGerente) return;
+
+      const gerentes = await this.userRepository.findActiveByRoleId(rolGerente.id);
+      await Promise.all(
+        gerentes.map((g) =>
+          sendAccountLockedEmail({
+            gerenteNombre: g.nombreCompleto,
+            gerenteCorreo: g.correo,
+            usuarioBloqueado: {
+              nombreCompleto: usuarioBloqueado.nombreCompleto,
+              correo: usuarioBloqueado.correo,
+            },
+          }).catch((err) =>
+            console.error(`[login] Error enviando correo de bloqueo a ${g.correo}:`, err.message),
+          ),
+        ),
+      );
+    } catch (err) {
+      console.error("[login] Error notificando a Gerentes sobre bloqueo de cuenta:", err.message);
+    }
   }
 
   async execute({ correo, password }) {
@@ -44,10 +76,34 @@ class LoginUser {
     // 2. Verificar contraseña
     const match = await compare(password, user.password);
     if (!match) {
+      // FIX: bloqueo automático tras MAX_INTENTOS_FALLIDOS consecutivos.
+      // incrementFailedAttempts devuelve el contador YA actualizado.
+      const intentos = await this.userRepository.incrementFailedAttempts(user.id);
+
+      if (intentos >= MAX_INTENTOS_FALLIDOS) {
+        await this.userRepository.update(user.id, { estado: false, intentosFallidos: 0 });
+
+        // No se espera (await) para no retrasar la respuesta al usuario —
+        // si el correo falla, queda logueado pero el bloqueo ya se aplicó.
+        this._notifyGerentes(user);
+
+        const error = new Error(
+          "Tu cuenta fue bloqueada por múltiples intentos fallidos. Se notificó a un gerente para que la reactive.",
+        );
+        error.statusCode = 403;
+        throw error;
+      }
+
       const error = new Error("Credenciales inválidas");
       error.statusCode = 401;
       throw error;
     }
+
+    // Login correcto: resetear el contador de intentos fallidos.
+    // Nota: no se condiciona a "si tenía intentos" porque la entidad User no
+    // expone intentosFallidos (su constructor no lo destructura) — llamamos
+    // siempre; es una escritura barata e idempotente contra Mongo.
+    await this.userRepository.resetFailedAttempts(user.id);
 
     // 3. Verificar que el rol existe y está activo — a través del repositorio,
     //    no importando RoleModel directamente.

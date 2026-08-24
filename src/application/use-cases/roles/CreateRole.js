@@ -18,8 +18,8 @@ class CreateRole {
     } = data;
 
     // Basic validations
-    if (!nombre || !descripcion) {
-      const error = new Error("Nombre y descripción son requeridos");
+    if (!nombre) {
+      const error = new Error("Nombre es requerido");
       error.statusCode = 422;
       throw error;
     }

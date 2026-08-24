@@ -249,16 +249,28 @@ const createTechnicalSpecification = async (req, res) => {
     const productId = await resolveProductId(id_producto);
     if (!productId) return notFound(res, "Producto no encontrado");
 
-    // ✅ Fix: aceptar el payload completo de la ficha técnica (igual que createProduct),
+// ✅ Fix: aceptar el payload completo de la ficha técnica (igual que createProduct),
     // no solo los 5 campos básicos. Antes se ignoraban materiales/fabrics/cups/etc.
     const body = req.body || {};
-    const { responsable, fecha_inicio, fecha_fin, versiones, descripciones } = body;
-    if (!responsable || !fecha_inicio || !fecha_fin || !versiones || !descripciones) {
-      return badRequest(res, "Todos los campos requeridos deben ser proporcionados");
-    }
+    const today = new Date().toISOString().split("T")[0];
+
+    // ✅ Aceptar las DOS formas de payload que envía el frontend:
+    //   1) { id_producto, responsable, fecha_inicio, fecha_fin, versiones, ... }
+    //   2) { productId, version: número, date: 'YYYY-MM-DD', ... }
+    // La forma 2 no trae responsable/fecha_inicio/fecha_fin/versiones, así que
+    // se derivan de los campos equivalentes (createdBy/client, date, version).
+    // Con esto se elimina el 400 "Todos los campos requeridos..." al guardar
+    // una nueva versión desde el modal técnico.
+    const responsable  = body.responsable || body.createdBy || body.client || "Sin responsable";
+    const fecha_inicio = body.fecha_inicio || body.date || today;
+    const fecha_fin    = body.fecha_fin || body.date || today;
+    const versiones    = Number(body.versiones ?? body.version ?? 1);
+    // ✅ `descripciones` puede venir vacío (""). En lugar de rechazar con 400,
+    // se usa un valor por defecto igual que hace createProduct.
+    const descripciones =
+      body.descripciones || body.description || body.observations || "Ficha tecnica";
 
     const materiales = body.materiales || body.materials || [];
-    const today = new Date().toISOString().split("T")[0];
 
     techSpec = await techSpecRepo.create({
       id_producto: productId,

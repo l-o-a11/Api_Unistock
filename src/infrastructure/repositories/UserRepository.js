@@ -2,7 +2,6 @@
 const User = require("../../domain/entities/User");
 
 class UserRepository {
-
   // ── Conversión doc → entidad ───────────────────────────────────────────────
   // Usa .toObject() para obtener el POJO limpio del documento Mongoose.
   // IMPORTANTE: .toObject() NO dispara toJSON(), así que el password llega íntegro.
@@ -37,7 +36,11 @@ class UserRepository {
     const query = {};
     if (filters.search) {
       const re = new RegExp(filters.search, "i");
-      query.$or = [{ nombreCompleto: re }, { correo: re }, { numeroDocumento: re }];
+      query.$or = [
+        { nombreCompleto: re },
+        { correo: re },
+        { numeroDocumento: re },
+      ];
     }
     if (filters.rolId) query.rolId = filters.rolId;
     if (filters.sedeId) query.sedeId = filters.sedeId;
@@ -50,7 +53,10 @@ class UserRepository {
     if (filters.excludeRoleNames) {
       const nombres = Array.isArray(filters.excludeRoleNames)
         ? filters.excludeRoleNames
-        : String(filters.excludeRoleNames).split(",").map((n) => n.trim()).filter(Boolean);
+        : String(filters.excludeRoleNames)
+            .split(",")
+            .map((n) => n.trim())
+            .filter(Boolean);
 
       if (nombres.length) {
         const RoleModel = require("../db/RoleModel");
@@ -63,7 +69,10 @@ class UserRepository {
           // Si ya había un filtro de rolId puntual, combinamos con $and
           // para no pisarlo accidentalmente.
           if (query.rolId) {
-            query.$and = [{ rolId: query.rolId }, { rolId: { $nin: idsAExcluir } }];
+            query.$and = [
+              { rolId: query.rolId },
+              { rolId: { $nin: idsAExcluir } },
+            ];
             delete query.rolId;
           } else {
             query.rolId = { $nin: idsAExcluir };
@@ -77,12 +86,16 @@ class UserRepository {
   }
 
   async findById(id) {
-    const doc = await UserModel.findById(id).populate("rolId", "nombre").catch(() => null);
+    const doc = await UserModel.findById(id)
+      .populate("rolId", "nombre")
+      .catch(() => null);
     return this._toEntity(doc);
   }
 
   async findByEmail(correo) {
-    const doc = await UserModel.findOne({ correo }).populate("rolId", "nombre").catch(() => null);
+    const doc = await UserModel.findOne({ correo })
+      .populate("rolId", "nombre")
+      .catch(() => null);
     return this._toEntity(doc);
   }
 
@@ -91,8 +104,7 @@ class UserRepository {
    * Usar EXCLUSIVAMENTE en LoginUser para comparar el hash. Ver findByIdWithPassword.
    */
   async findByEmailWithPassword(correo) {
-    const obj = await UserModel
-      .findOne({ correo })
+    const obj = await UserModel.findOne({ correo })
       .select("+password")
       .lean()
       .catch(() => null);
@@ -102,10 +114,16 @@ class UserRepository {
     // lean() no soporta populate, así que resolvemos rolNombre aparte
     const RoleModel = require("../db/RoleModel");
     const rol = obj.rolId
-      ? await RoleModel.findById(obj.rolId).lean().catch(() => null)
+      ? await RoleModel.findById(obj.rolId)
+          .lean()
+          .catch(() => null)
       : null;
 
-    return new User({ ...obj, id: obj._id.toString(), rolNombre: rol?.nombre ?? null });
+    return new User({
+      ...obj,
+      id: obj._id.toString(),
+      rolNombre: rol?.nombre ?? null,
+    });
   }
 
   async findByDocument(numeroDocumento) {
@@ -126,10 +144,9 @@ class UserRepository {
    * sin pasar por toJSON(), que elimina el password.
    */
   async findByIdWithPassword(id) {
-    const obj = await UserModel
-      .findById(id)
+    const obj = await UserModel.findById(id)
       .select("+password")
-      .lean()                // devuelve POJO, no documento Mongoose → no dispara toJSON()
+      .lean() // devuelve POJO, no documento Mongoose → no dispara toJSON()
       .catch(() => null);
 
     if (!obj) return null;
@@ -137,10 +154,16 @@ class UserRepository {
     // lean() no soporta populate, así que resolvemos rolNombre aparte
     const RoleModel = require("../db/RoleModel");
     const rol = obj.rolId
-      ? await RoleModel.findById(obj.rolId).lean().catch(() => null)
+      ? await RoleModel.findById(obj.rolId)
+          .lean()
+          .catch(() => null)
       : null;
 
-    return new User({ ...obj, id: obj._id.toString(), rolNombre: rol?.nombre ?? null });
+    return new User({
+      ...obj,
+      id: obj._id.toString(),
+      rolNombre: rol?.nombre ?? null,
+    });
   }
 
   // ── Escritura ──────────────────────────────────────────────────────────────
@@ -155,11 +178,10 @@ class UserRepository {
     // pueda responder con un 400 informativo en lugar de un 500 genérico.
     let doc;
     try {
-      doc = await UserModel.findByIdAndUpdate(
-        id,
-        changes,
-        { new: true, runValidators: true },
-      );
+      doc = await UserModel.findByIdAndUpdate(id, changes, {
+        new: true,
+        runValidators: true,
+      });
     } catch (err) {
       // Relanzar con un mensaje descriptivo según el tipo de error
       if (err.name === "ValidationError") {
@@ -190,16 +212,68 @@ class UserRepository {
   // por un rol inexistente).
   async countActiveAdmins() {
     const RoleModel = require("../db/RoleModel");
-    const rol = await RoleModel.findOne({ nombre: "Administrador" }).lean().catch(() => null);
+    const rol = await RoleModel.findOne({ nombre: "Administrador" })
+      .lean()
+      .catch(() => null);
     if (!rol) return 0;
     return UserModel.countDocuments({ estado: true, rolId: rol._id });
   }
 
+  // Genérico: cuenta usuarios activos con un rol dado por nombre.
+  // Usado por la regla de negocio "no puede haber más de un Gerente activo"
+  // (CreateUser/UpdateUser), pero sirve para cualquier rol a futuro.
+  // excludeUserId opcional: al editar un usuario que YA es Gerente, no debe
+  // contarse a sí mismo como "otro" Gerente.
+  async countActiveByRoleName(nombre, excludeUserId = null) {
+    const RoleModel = require("../db/RoleModel");
+    const rol = await RoleModel.findOne({ nombre })
+      .lean()
+      .catch(() => null);
+    if (!rol) return 0;
+    const query = { estado: true, rolId: rol._id };
+    if (excludeUserId) query._id = { $ne: excludeUserId };
+    return UserModel.countDocuments(query);
+  }
+
+  // ── Intentos fallidos de login ──────────────────────────────────────────
+  // Incrementa el contador y devuelve el valor YA actualizado (atómico via
+  // $inc + findOneAndUpdate, evita condiciones de carrera si llegaran dos
+  // intentos fallidos casi simultáneos).
+  async incrementFailedAttempts(id) {
+    const doc = await UserModel.findByIdAndUpdate(
+      id,
+      { $inc: { intentosFallidos: 1 } },
+      { new: true },
+    ).catch(() => null);
+    return doc?.intentosFallidos ?? 0;
+  }
+
+  async resetFailedAttempts(id) {
+    await UserModel.findByIdAndUpdate(id, { intentosFallidos: 0 }).catch(
+      () => null,
+    );
+  }
+
+  // ── Usuarios activos con un rol puntual — usado para notificar a Gerentes
+  // cuando se bloquea una cuenta por intentos fallidos ─────────────────────
+  async findActiveByRoleId(rolId) {
+    const docs = await UserModel.find({ rolId, estado: true }).catch(() => []);
+    return docs.map((d) => this._toEntity(d));
+  }
+
   // ── Stubs heredados — se mantienen por compatibilidad con CreateUser/UpdateUser
-  findAllRoles() { return []; }
-  findRoleById(id) { return id ? { id } : null; }
-  findAllSedes() { return []; }
-  findSedeById(id) { return id ? { id } : null; }
+  findAllRoles() {
+    return [];
+  }
+  findRoleById(id) {
+    return id ? { id } : null;
+  }
+  findAllSedes() {
+    return [];
+  }
+  findSedeById(id) {
+    return id ? { id } : null;
+  }
 }
 
 module.exports = UserRepository;

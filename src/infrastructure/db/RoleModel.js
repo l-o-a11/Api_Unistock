@@ -14,7 +14,7 @@ const permisoSchema = new mongoose.Schema(
 const roleSchema = new mongoose.Schema(
   {
     nombre: { type: String, required: true, unique: true, trim: true },
-    descripcion: { type: String, required: true, trim: true },
+    descripcion: { type: String, trim: true },
     estado: { type: Boolean, default: true },
     permisos: { type: [permisoSchema], default: [] },
   },

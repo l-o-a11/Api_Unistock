@@ -1,7 +1,9 @@
+.gitignore
 node_modules/
 .env
-package-lock.json
 .qodo/
+credentials.json
+token.json
 
 # Playwright
 /test-results/

@@ -86,19 +86,14 @@ const aplicarIngresoStockPorEnvio = async (idOrden) => {
 const getOrders = async (req, res) => {
   try {
     const result = await prodRepo.findAll(req.query);
-    // 🐛 FIX: ProductionRepository.findAll() devuelve un ARRAY plano de
-    // entidades, NO un objeto paginado { data, total, page, ... }.
-    // Por eso result?.data siempre era undefined y la respuesta llegaba
-    // con una lista vacía al frontend, haciendo que la tabla de órdenes
-    // de producción nunca mostrara datos.
-    const orders = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : []);
+    const orders = Array.isArray(result?.data) ? result.data : [];
     const mappedOrders = orders.map((o) => o.toJSON?.() || o);
     return ok(res, {
       data: mappedOrders,
-      total: mappedOrders.length,
-      page: 1,
-      limit: mappedOrders.length || 10,
-      totalPages: 1,
+      total: result.total || 0,
+      page: result.page || 1,
+      limit: result.limit || mappedOrders.length,
+      totalPages: result.totalPages || 0,
     });
   } catch (err) {
     return handleError(res, err);

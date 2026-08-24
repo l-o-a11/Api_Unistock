@@ -2,11 +2,13 @@ const { hash } = require("../../../infrastructure/security/password_encrypter");
 const { sendWelcomeEmail } = require("../../../shared/utils/emailService");
 const { generatePassword } = require("../../../shared/utils/generatePassword");
 
-const normalizeCargos = (cargo) => [...new Set(
-  (Array.isArray(cargo) ? cargo : (cargo ? [cargo] : []))
-    .map((item) => String(item).trim())
-    .filter(Boolean),
-)];
+const normalizeCargos = (cargo) => [
+  ...new Set(
+    (Array.isArray(cargo) ? cargo : cargo ? [cargo] : [])
+      .map((item) => String(item).trim())
+      .filter(Boolean),
+  ),
+];
 
 class CreateUser {
   constructor(userRepository, roleRepository, siteRepository) {
@@ -17,12 +19,20 @@ class CreateUser {
 
   async execute(data, createdBy) {
     const {
-      tipoDocumento, numeroDocumento, nombreCompleto,
-      correo, rolId, sedeId, cargo, cargos,
+      tipoDocumento,
+      numeroDocumento,
+      nombreCompleto,
+      correo,
+      rolId,
+      sedeId,
+      cargo,
+      cargos,
     } = data;
 
-    if (createdBy.rolNombre?.toLowerCase() !== "gerente" &&
-      createdBy.sedeId.toString() !== sedeId.toString()) {
+    if (
+      createdBy.rolNombre?.toLowerCase() !== "gerente" &&
+      createdBy.sedeId.toString() !== sedeId.toString()
+    ) {
       const error = new Error("Solo puedes crear usuarios de tu sede");
       error.statusCode = 403;
       throw error;
@@ -35,7 +45,9 @@ class CreateUser {
     }
 
     if (await this.userRepository.findByDocument(numeroDocumento)) {
-      const error = new Error("Ya existe un usuario con ese número de documento");
+      const error = new Error(
+        "Ya existe un usuario con ese número de documento",
+      );
       error.statusCode = 409;
       throw error;
     }
@@ -45,6 +57,21 @@ class CreateUser {
       const error = new Error("Rol inválido o inactivo");
       error.statusCode = 422;
       throw error;
+    }
+
+    // FIX: regla de negocio — solo puede haber un Gerente activo a la vez.
+    // Se compara por nombre (no ID hardcodeado) para no depender del orden
+    // en que se sembraron los roles en cada ambiente.
+    if (role.nombre?.trim().toLowerCase() === "gerente") {
+      const gerentesActivos =
+        await this.userRepository.countActiveByRoleName("Gerente");
+      if (gerentesActivos >= 1) {
+        const error = new Error(
+          "Ya existe un Gerente activo. Solo puede haber un Gerente a la vez.",
+        );
+        error.statusCode = 409;
+        throw error;
+      }
     }
 
     const site = await this.siteRepository.findById(sedeId);

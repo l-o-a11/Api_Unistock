@@ -122,4 +122,12 @@ productionOrderSchema.pre("validate", function () {
   return;
 });
 
+// Índices para los listados, calendario, alertas y carga laboral. MongoDB los
+// crea en segundo plano al desplegar; verificar con explain() antes de borrar
+// índices existentes en producción.
+productionOrderSchema.index({ estado: 1, createdAt: 1 });
+productionOrderSchema.index({ id_usuario: 1, createdAt: 1 });
+productionOrderSchema.index({ estado: 1, fecha_entrega: 1 });
+productionOrderSchema.index({ estado: 1, empleadoAsignadoId: 1 });
+
 module.exports = mongoose.model("ProductionOrder", productionOrderSchema);

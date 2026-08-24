@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema(
     // de acceso (Empleado/Administrador/Gerente).
     cargo: { type: [String], default: [] },
     estado: { type: Boolean, default: true },
+    // Contador de logins fallidos consecutivos. Se resetea a 0 en cada login
+    // exitoso; al llegar a MAX_INTENTOS (ver LoginUser.js) la cuenta se
+    // desactiva automáticamente y se notifica a los Gerentes.
+    intentosFallidos: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
