@@ -35,7 +35,7 @@ const productionRepo = new ProductionRepository();
 const login = async (req, res) => {
   try {
     // LoginUser necesita roleRepository para verificar el rol sin importar RoleModel
-    const result = await new LoginUser(repo, roleRepo).execute(req.body);
+    const result = await new LoginUser(repo, roleRepo, siteRepo).execute(req.body);
     return ok(res, result);
   } catch (err) {
     console.error("ERROR LOGIN:", err);

@@ -26,11 +26,10 @@ const MODULO = "insumos";
 router.use(requireAuth);
 
 // Rutas de catálogos (deben ir ANTES de /:id para evitar conflictos de ruta)
-
-// Las categorías se sirven en /api/categorias-insumos (supplyCategoryRoutes.js)
 router.get("/catalogos/medidas", requirePermission(MODULO, "leer"), ctrl.getMedidas);
 router.get("/catalogos/propiedades", requirePermission(MODULO, "leer"), ctrl.getPropiedades);
 router.get("/catalogos/categorias", requirePermission(MODULO, "leer"), ctrl.getCategorias);
+
 // Rutas CRUD
 router.get("/", requirePermission(MODULO, "leer"), ctrl.getSupplies);
 router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getSupplyById);
