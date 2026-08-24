@@ -18,25 +18,26 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/roleController");
-const { requireAuth, requireRole } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
+const MODULO = "roles";
 
 // Middleware: Requerir autenticación en todos los endpoints
 router.use(requireAuth);
 
 // Catalog routes
-router.get("/catalogo", ctrl.getCatalogos);
+router.get("/catalogo", requirePermission(MODULO, "leer"), ctrl.getCatalogos);
 
-router.get("/:id/users-count", ctrl.countUsersByRole);
+router.get("/:id/users-count", requirePermission(MODULO, "leer"), ctrl.countUsersByRole);
 
 // Rutas CRUD
-router.get("/", ctrl.getRoles);
-router.get("/:id", ctrl.getRoleById);
-router.post("/", ctrl.createRole);
-router.put("/:id", ctrl.updateRole);
-router.delete("/:id", ctrl.deleteRole);
-router.patch("/:id/toggle", ctrl.toggleRole);
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getRoles);
+router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getRoleById);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createRole);
+router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.updateRole);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteRole);
+router.patch("/:id/toggle", requirePermission(MODULO, "actualizar"), ctrl.toggleRole);
 
 module.exports = router;

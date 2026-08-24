@@ -1,25 +1,25 @@
 /**
  * productRoutes.js
- * 
- * Define las rutas para la gestiÃ³n de Productos.
- * 
- * Endpoints Productos:
- * - GET    /productos          - Listar productos
- * - GET    /productos/:id      - Obtener producto
- * - POST   /productos          - Crear producto
- * - PUT    /productos/:id      - Actualizar producto
- * - DELETE /productos/:id      - Eliminar producto
- * - PATCH  /productos/:id/status - Cambiar estado del producto
- * 
- * Endpoints Ficha Técnica:
- * - GET    /productos/:id/fichas-tecnicas          - Listar fichas técnicas de un producto
- * - GET    /productos/:id/fichas-tecnicas/:techSpecId - Obtener ficha técnica
- * - POST   /productos/:id/fichas-tecnicas          - Crear ficha técnica
- * - PUT    /productos/:id/fichas-tecnicas/:techSpecId - Actualizar ficha técnica
- * - DELETE /productos/:id/fichas-tecnicas/:techSpecId - Eliminar ficha técnica
- * 
- * Todos requieren autenticación (JWT token)
- * 
+ *
+ * Define las rutas para la gestion de Productos.
+ *
+ * Endpoints Productos (montados en /api/products):
+ * - GET    /api/products          - Listar productos
+ * - GET    /api/products/:id      - Obtener producto
+ * - POST   /api/products          - Crear producto
+ * - PUT    /api/products/:id      - Actualizar producto
+ * - DELETE /api/products/:id      - Eliminar producto
+ * - PATCH  /api/products/:id/status - Cambiar estado del producto
+ *
+ * Endpoints Ficha Tecnica:
+ * - GET    /api/products/:id/tecnicas          - Listar fichas tecnicas de un producto
+ * - GET    /api/products/:id/tecnicas/:techSpecId - Obtener ficha tecnica
+ * - POST   /api/products/:id/tecnicas          - Crear ficha tecnica
+ * - PUT    /api/products/:id/tecnicas/:techSpecId - Actualizar ficha tecnica
+ * - DELETE /api/products/:id/tecnicas/:techSpecId - Eliminar ficha tecnica
+ *
+ * Todos requieren autenticacion (JWT token)
+ *
  * @author Unistock Team
  * @version 1.0.0
  */

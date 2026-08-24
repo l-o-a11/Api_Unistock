@@ -107,9 +107,22 @@ const requirePermission = (modulo, privilegio) => async (req, res, next) => {
       return forbidden(res, "Tu rol ya no es válido o está inactivo");
     }
 
-    const permisoModulo = role.permisos.find((p) => p.modulo === modulo);
+    const permisoModulo = role.permisos.find(
+      (p) => normalizeRole(p.modulo) === normalizeRole(modulo),
+    );
 
-    if (!permisoModulo || !permisoModulo.privilegios.includes(privilegio)) {
+    if (!permisoModulo) {
+      return forbidden(
+        res,
+        `Tu rol no tiene permiso de '${privilegio}' en el módulo '${modulo}'`,
+      );
+    }
+
+    const tienePrivilegio = permisoModulo.privilegios.some(
+      (priv) => normalizeRole(priv) === normalizeRole(privilegio),
+    );
+
+    if (!tienePrivilegio) {
       return forbidden(
         res,
         `Tu rol no tiene permiso de '${privilegio}' en el módulo '${modulo}'`,

@@ -72,17 +72,18 @@ class Production {
     originalOrderStatus = null,
     producto = null,
     referencia = null,
-    // ✅ Persistidas en BD — antes solo vivían en localStorage del navegador
     sedeAsignaciones = [],
     terceroAsignaciones = [],
-    // ✅ Empleado asignado a la etapa actual del flujo
     empleadoAsignadoId = null,
-    // ✅ Confirmación del empleado asignado de que terminó su etapa actual.
-    // Inicia como false y se marca true cuando el empleado confirma finalización.
     etapaConfirmada = false,
-    // ✅ Sede dueña de la producción desde su creación (no confundir con
-    // sedeAsignaciones, que es el reparto del producto terminado)
     sedeId = null,
+    // ✅ Resumen de detalles agregados desde ProductionOrderDetail
+    // (se calculan en el listado para evitar N+1).
+    totalQty = 0,
+    firstColor = null,
+    firstRef = null,
+    detailsCount = 0,
+
   }) {
     this.id = id;
     this.numero_orden = numero_orden;
@@ -108,6 +109,11 @@ class Production {
     this.empleadoAsignadoId = empleadoAsignadoId;
     this.etapaConfirmada = etapaConfirmada;
     this.sedeId = sedeId;
+    this.totalQty = totalQty;
+    this.firstColor = firstColor;
+    this.firstRef = firstRef;
+    this.detailsCount = detailsCount;
+
   }
 
   /** Devuelve true si la orden ya está anulada */
@@ -145,6 +151,10 @@ class Production {
       empleadoAsignadoId: this.empleadoAsignadoId,
       etapaConfirmada: this.etapaConfirmada,
       sedeId: this.sedeId,
+      totalQty: this.totalQty,
+      firstColor: this.firstColor,
+      firstRef: this.firstRef,
+      detailsCount: this.detailsCount,
     };
   }
 }

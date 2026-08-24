@@ -71,9 +71,24 @@ class CambiarEstadoProduction {
       const esElAsignado = String(production.empleadoAsignadoId) === String(solicitante.id);
       if (!esPrivilegiado && !esElAsignado) {
         const err = new Error(
-          "Solo el empleado asignado a esta etapa (o un administrador) puede avanzarla",
+          "Solo el empleado asignado a esta etapa (o un gerente) puede avanzarla",
         );
         err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    const ETAPAS_REQUIEREN_CONFIRMACION = ["Ficha Técnica", "Corte", "Compras", "Recepción", "Producción"];
+
+    // 🔒 La etapa actual debe estar confirmada por el empleado asignado
+    // antes de permitir avanzar. Si no hay empleado asignado, no aplica
+    // (órdenes legacy o etapas sin asignación).
+    if (!force && ETAPAS_REQUIEREN_CONFIRMACION.includes(production.estado)) {
+      if (production.empleadoAsignadoId && !production.etapaConfirmada) {
+        const err = new Error(
+          `La etapa "${production.estado}" debe ser confirmada por el empleado asignado antes de poder avanzar.`,
+        );
+        err.statusCode = 422;
         throw err;
       }
     }
@@ -88,9 +103,10 @@ const updated = await this.productionRepository.cambiarEstado(
       nuevoEstado,
       id_usuario,
       user,
-      // 🔁 Se limpia la asignación y la confirmación al avanzar:
-      // la nueva etapa necesita que el admin asigne a alguien de nuevo
-      // y el empleado de la nueva etapa debe confirmar desde cero.
+      // 🔁 Se limpia la asignación al avanzar: la nueva etapa necesita que
+      // el admin asigne a alguien de nuevo. También se resetea
+      // etapaConfirmada para que el empleado de la nueva etapa pueda
+      // confirmar su trabajo.
       { ...(options.extra || {}), empleadoAsignadoId: null, etapaConfirmada: false },
     );
 

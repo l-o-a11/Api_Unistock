@@ -1,7 +1,10 @@
 // infrastructures/repositorie/ThirdPartyRepository.js
 
-const ThirdPartyModel = require('../db/ThirdPartyModel');
-const ThirdParty      = require('../../domain/entities/ThirdParty');
+const ThirdPartyModel      = require('../db/ThirdPartyModel');
+const ProductionOrderModel = require('../db/ProductionOrderModel');
+const ThirdParty           = require('../../domain/entities/ThirdParty');
+
+const ESTADOS_BLOQUEANTES = ['Diseño', 'Ficha Técnica', 'Corte', 'Compras', 'Producción'];
 
 class ThirdPartyRepository {
   _toEntity(doc) {
@@ -130,6 +133,23 @@ class ThirdPartyRepository {
   async tieneProduccion(id) {
     const doc = await ThirdPartyModel.findById(id).select('producciones').catch(() => null);
     return doc ? doc.producciones.length > 0 : false;
+  }
+
+  async tieneProduccionActiva(id) {
+    const doc = await ThirdPartyModel.findById(id).select('producciones').catch(() => null);
+    if (!doc || !doc.producciones || doc.producciones.length === 0) return false;
+
+    const produccionIds = doc.producciones
+      .map((p) => p.produccionId)
+      .filter(Boolean);
+    if (produccionIds.length === 0) return false;
+
+    const count = await ProductionOrderModel.countDocuments({
+      _id: { $in: produccionIds },
+      estado: { $in: ESTADOS_BLOQUEANTES },
+    }).catch(() => 0);
+
+    return count > 0;
   }
 }
 

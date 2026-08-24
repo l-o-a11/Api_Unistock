@@ -14,19 +14,20 @@
 //  DELETE /api/sites/:id            — Eliminar sede
 //  PATCH  /api/sites/:id/toggle     — Activar / Inactivar
 
-const { Router }      = require("express");
-const ctrl            = require("../controllers/siteController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { Router } = require("express");
+const ctrl = require("../controllers/siteController");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = Router();
+const MODULO = "sedes";
 
 router.use(requireAuth);
 
-router.get("/",                ctrl.getSites);
-router.get("/:id",             ctrl.getSiteById);
-router.post("/",               ctrl.createSite);
-router.put("/:id",             ctrl.updateSite);
-router.delete("/:id",          ctrl.deleteSite);
-router.patch("/:id/toggle",    ctrl.toggleSite);
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getSites);
+router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getSiteById);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createSite);
+router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.updateSite);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteSite);
+router.patch("/:id/toggle", requirePermission(MODULO, "actualizar"), ctrl.toggleSite);
 
 module.exports = router;
