@@ -26,13 +26,9 @@
     "mongodb": "^7.2.0",
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
-<<<<<<< HEAD
     "node": "^22.22.3",
     "nodemailer": "^9.0.3",
-=======
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemailer": "^9.0.4",
->>>>>>> 312be4d43b257eadd93005e10c1bfb396d96d5d9
     "react": "^19.2.5",
     "serverless-http": "^4.0.0",
     "swagger-jsdoc": "^6.2.8",
