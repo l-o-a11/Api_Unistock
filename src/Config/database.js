@@ -95,6 +95,7 @@ const connectDatabase = async () => {
   // Fail-fast configuration to avoid 10s buffering timeouts
   // when the app receives requests before the connection is ready.
   mongoose.set("bufferCommands", false);
+  mongoose.set("sanitizeFilter", true);
 
   // Note: option names may differ slightly between mongoose versions.
   // These are widely supported by the underlying MongoDB driver.

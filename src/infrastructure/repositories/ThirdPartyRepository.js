@@ -3,6 +3,7 @@
 const ThirdPartyModel      = require('../db/ThirdPartyModel');
 const ProductionOrderModel = require('../db/ProductionOrderModel');
 const ThirdParty           = require('../../domain/entities/ThirdParty');
+const { escapeRegex }      = require('../../shared/utils/securityInput');
 
 const ESTADOS_BLOQUEANTES = ['Diseño', 'Ficha Técnica', 'Corte', 'Compras', 'Producción'];
 
@@ -32,7 +33,7 @@ class ThirdPartyRepository {
 
     const query = {};
     if (search) {
-      const re = new RegExp(search, 'i');
+      const re = new RegExp(escapeRegex(search).slice(0, 100), 'i');
       query.$or = [
         { nombre_empresa:  re },
         { nombre_contacto: re },

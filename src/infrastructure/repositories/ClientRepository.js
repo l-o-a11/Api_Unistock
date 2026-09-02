@@ -1,4 +1,5 @@
 const ClientModel = require("../db/ClientModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 
 class ClientRepository {
   async findAll(filters = {}) {
@@ -6,12 +7,12 @@ class ClientRepository {
     const { search, documento, nombre } = filters;
 
     if (search) {
-      const regex = new RegExp(search, "i");
+      const regex = new RegExp(escapeRegex(search).slice(0, 100), "i");
       query.$or = [{ nombre: regex }, { documento: regex }, { correo: regex }, { telefono: regex }];
     }
 
     if (documento) query.documento = String(documento).trim();
-    if (nombre) query.nombre = new RegExp(nombre, "i");
+    if (nombre) query.nombre = new RegExp(escapeRegex(nombre).slice(0, 100), "i");
 
     return ClientModel.find(query).sort({ nombre: 1 });
   }

@@ -7,6 +7,7 @@ const PurchaseDetailRepository = require("../repositories/PurchaseDetailReposito
 const SupplyRepository = require("../repositories/SupplyRepository");
 const AnularPurchase = require("../../application/use-cases/purchases/AnularPurchase");
 const CreatePurchase = require("../../application/use-cases/purchases/CreatePurchase");
+const { pickAllowedFields } = require("../../shared/utils/securityInput");
 
 const {
   ok, created, badRequest, notFound, conflict, unprocessable, serverError,
@@ -123,7 +124,13 @@ const actualizarPurchase = async (req, res) => {
       return badRequest(res, "No se puede editar una compra anulada");
     }
 
-    const { motivoAnulacion, fechaAnulacion, anulada, ...cambiosPermitidos } = req.body;
+    const cambiosPermitidos = pickAllowedFields(req.body, [
+      "fecha",
+      "proveedorId",
+      "total",
+      "observaciones",
+      "numeroFactura",
+    ]);
     const updated = await purchaseRepo.update(req.params.id, cambiosPermitidos);
     return ok(res, updated.toPublic());
   } catch (err) {
