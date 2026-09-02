@@ -13,24 +13,16 @@ const app = require("./interfaces/server");
 
 const PORT = process.env.PORT || 3000;
 
-// ==========================================================
-// DETECTAR ENTORNO
-// ==========================================================
-
 const isVercel = !!process.env.VERCEL;
 const isRender = !!process.env.RENDER;
 
 console.log("==========================================");
-console.log("🚀 UniStock API");
+console.log("UniStock API");
 console.log("Vercel:", isVercel);
 console.log("Render:", isRender);
 console.log("PORT:", PORT);
 console.log("==========================================");
 
-
-// ==========================================================
-// VERCEL - SERVERLESS
-// ==========================================================
 
 if (isVercel) {
 
@@ -49,17 +41,9 @@ if (isVercel) {
   module.exports.app = app;
 
 
-// ==========================================================
-// RENDER / LOCAL
-// ==========================================================
-
 } else {
 
   const startServer = async (dbConnected = true) => {
-
-    // ------------------------------------------------------
-    // Seeder
-    // ------------------------------------------------------
 
     if (dbConnected) {
 
@@ -79,32 +63,28 @@ if (isVercel) {
     }
 
 
-    // ------------------------------------------------------
-    // Iniciar Express
-    // ------------------------------------------------------
-
     app.listen(PORT, "0.0.0.0", () => {
 
       if (isRender) {
 
         console.log(
-          `🚀 Unistock API ejecutándose en Render`
+          `Unistock API ejecutándose en Render`
         );
 
         console.log(
-          `📡 Puerto: ${PORT}`
+          `Puerto: ${PORT}`
         );
 
       } else if (dbConnected) {
 
         console.log(
-          `🖥️ Unistock API local → http://localhost:${PORT}`
+          `Unistock API local: http://localhost:${PORT}`
         );
 
       } else {
 
         console.warn(
-          `⚠️ Unistock API arrancó SIN base de datos → puerto ${PORT}`
+          `Unistock API arrancó sin base de datos en el puerto ${PORT}`
         );
 
       }
@@ -114,10 +94,6 @@ if (isVercel) {
   };
 
 
-  // ========================================================
-  // CONECTAR MONGODB Y ARRANCAR SERVIDOR
-  // ========================================================
-
   connectDatabase()
 
     .then(() => startServer(true))
@@ -126,7 +102,7 @@ if (isVercel) {
 
       console.error(
         `[mongo] Error de conexión: ${err?.message || err}\n` +
-        `→ Revisa MONGO_URI y la configuración de MongoDB Atlas.`
+        `Revisa MONGO_URI y la configuración de MongoDB Atlas.`
       );
 
       process.exit(1);

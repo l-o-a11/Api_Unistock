@@ -1,20 +1,20 @@
-﻿# 📦 API Unistock - Sistema de Gestión Integral
+﻿# API Unistock: Sistema de Gestión Integral
 
 ## Descripción General
 
 **Unistock** es una API RESTful desarrollada con **Node.js**, **Express** y **MongoDB** que proporciona un sistema completo de gestión para empresas de producción, incluyendo:
 
-- 👥 **Gestión de Usuarios** (Admin, Operarios)
-- 📋 **Gestión de Proveedores** (Suppliers)
-- 👨‍💼 **Gestión de Terceros** (Contratistas externos)
-- 🏭 **Órdenes de Producción** (Production Orders)
-- 🔄 **Asignación de Terceros a Órdenes**
-- 📊 **Estados y Procesos de Producción**
-- 🏢 **Traslado entre Sedes**
+- **Gestión de usuarios** (administradores y operarios)
+- **Gestión de proveedores**
+- **Gestión de terceros** (contratistas externos)
+- **Órdenes de producción**
+- **Asignación de terceros a órdenes**
+- **Estados y procesos de producción**
+- **Traslado entre sedes**
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 El proyecto implementa **Arquitectura Limpia** (Clean Architecture) con separación clara de responsabilidades:
 
@@ -39,11 +39,13 @@ src/
 
 ---
 
-## 🚀 Instalación
+## Instalación
 
-### Requisitos Previos
-- Node.js >= 14.x
-- npm >= 6.x
+### Requisitos previos
+
+- Node.js 18 o superior (se recomienda Node.js 20 o superior)
+- npm incluido con Node.js
+- MongoDB local o MongoDB Atlas
 - MongoDB (local o Atlas)
 
 ### Pasos
@@ -56,11 +58,11 @@ cd Api_Unistock
 # Instalar dependencias
 npm install
 
-# Crear .env
-cp .env.example .env
+# Crear el archivo .env y completar las variables requeridas
 ```
 
 ### Configurar Variables de Entorno
+
 ```env
 NODE_ENV=development
 PORT=3000
@@ -69,6 +71,7 @@ JWT_SECRET=your_secret_key
 ```
 
 ### Iniciar
+
 ```bash
 npm run dev     # Desarrollo
 npm start       # Producción
@@ -78,9 +81,10 @@ API disponible en: http://localhost:3000
 
 ---
 
-## 🔐 Autenticación
+## Autenticación
 
 ### Login
+
 ```http
 POST /auth/login
 {
@@ -90,6 +94,7 @@ POST /auth/login
 ```
 
 **Respuesta:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -98,25 +103,29 @@ POST /auth/login
 ```
 
 ### Usar en Requests
+
 ```http
 Authorization: Bearer <token>
 ```
 
 ---
 
-## 📚 Endpoints API
+## Endpoints principales
+
+La referencia completa de endpoints, esquemas, middlewares y modelos está en [DOCUMENTACION_API.md](DOCUMENTACION_API.md). La especificación interactiva está disponible en `/api/docs` cuando el servidor está en ejecución.
 
 ### PROVEEDORES (Suppliers)
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | /proveedores | Listar proveedores |
-| GET | /proveedores/:id | Obtener proveedor |
-| POST | /proveedores | Crear proveedor |
-| PUT | /proveedores/:id | Actualizar proveedor |
-| DELETE | /proveedores/:id | Eliminar proveedor |
+| Método | Endpoint         | Descripción          |
+| ------ | ---------------- | -------------------- |
+| GET    | /proveedores     | Listar proveedores   |
+| GET    | /proveedores/:id | Obtener proveedor    |
+| POST   | /proveedores     | Crear proveedor      |
+| PUT    | /proveedores/:id | Actualizar proveedor |
+| DELETE | /proveedores/:id | Eliminar proveedor   |
 
 **Crear Proveedor:**
+
 ```json
 POST /proveedores
 {
@@ -134,15 +143,16 @@ POST /proveedores
 
 ### TERCEROS (Third Parties)
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | /terceros | Listar terceros |
-| GET | /terceros/:id | Obtener tercero |
-| POST | /terceros | Crear tercero |
-| PUT | /terceros/:id | Actualizar tercero |
-| DELETE | /terceros/:id | Eliminar tercero |
+| Método | Endpoint      | Descripción        |
+| ------ | ------------- | ------------------ |
+| GET    | /terceros     | Listar terceros    |
+| GET    | /terceros/:id | Obtener tercero    |
+| POST   | /terceros     | Crear tercero      |
+| PUT    | /terceros/:id | Actualizar tercero |
+| DELETE | /terceros/:id | Eliminar tercero   |
 
 **Crear Tercero:**
+
 ```json
 POST /terceros
 {
@@ -160,15 +170,16 @@ POST /terceros
 
 #### Órdenes de Producción
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | /produccion/ordenes | Listar órdenes |
-| GET | /produccion/ordenes/:id | Obtener orden |
-| POST | /produccion/ordenes | Crear orden |
-| PUT | /produccion/ordenes/:id | Actualizar orden |
-| DELETE | /produccion/ordenes/:id | Eliminar orden |
+| Método | Endpoint                | Descripción      |
+| ------ | ----------------------- | ---------------- |
+| GET    | /produccion/ordenes     | Listar órdenes   |
+| GET    | /produccion/ordenes/:id | Obtener orden    |
+| POST   | /produccion/ordenes     | Crear orden      |
+| PUT    | /produccion/ordenes/:id | Actualizar orden |
+| DELETE | /produccion/ordenes/:id | Eliminar orden   |
 
 **Crear Orden:**
+
 ```json
 POST /produccion/ordenes
 {
@@ -180,12 +191,13 @@ POST /produccion/ordenes
 
 #### Detalles de Órdenes
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | /produccion/detalle-orden | Listar detalles |
-| POST | /produccion/detalle-orden | Agregar detalle |
+| Método | Endpoint                  | Descripción     |
+| ------ | ------------------------- | --------------- |
+| GET    | /produccion/detalle-orden | Listar detalles |
+| POST   | /produccion/detalle-orden | Agregar detalle |
 
 **Agregar Detalle:**
+
 ```json
 POST /produccion/detalle-orden
 {
@@ -198,12 +210,13 @@ POST /produccion/detalle-orden
 
 #### Asignación de Terceros
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | /produccion/asignaciones | Listar asignaciones |
-| POST | /produccion/asignaciones | Asignar tercero |
+| Método | Endpoint                 | Descripción         |
+| ------ | ------------------------ | ------------------- |
+| GET    | /produccion/asignaciones | Listar asignaciones |
+| POST   | /produccion/asignaciones | Asignar tercero     |
 
 **Asignar Tercero:**
+
 ```json
 POST /produccion/asignaciones
 {
@@ -218,6 +231,7 @@ POST /produccion/asignaciones
 ## 📊 Estructura de Datos
 
 ### Proveedor
+
 ```javascript
 {
   id: Number,
@@ -233,6 +247,7 @@ POST /produccion/asignaciones
 ```
 
 ### Tercero
+
 ```javascript
 {
   id: Number,
@@ -246,6 +261,7 @@ POST /produccion/asignaciones
 ```
 
 ### Orden de Producción
+
 ```javascript
 {
   id: Number,
@@ -257,6 +273,7 @@ POST /produccion/asignaciones
 ```
 
 ### Detalle de Orden
+
 ```javascript
 {
   id: Number,
@@ -269,6 +286,7 @@ POST /produccion/asignaciones
 ```
 
 ### Asignación de Tercero
+
 ```javascript
 {
   id: Number,
@@ -284,31 +302,35 @@ POST /produccion/asignaciones
 ## 🔧 Patrones de Desarrollo
 
 ### 1. Repository Pattern (Capa de Datos)
+
 Abstrae el acceso a datos. Cambiar de BD es solo cambiar el repositorio.
 
 ### 2. Use Cases (Lógica de Negocio)
+
 Encapsulan la lógica independiente de HTTP.
 
 ### 3. Controllers (HTTP Handlers)
+
 Traducen requests HTTP a use cases.
 
 ### 4. Routes (Definición de Endpoints)
+
 Mapean HTTP methods y paths a controladores.
 
 ---
 
 ## 📝 Códigos de Respuesta HTTP
 
-| Código | Descripción |
-|--------|-------------|
-| 200 | OK - Éxito |
-| 201 | Created - Recurso creado |
-| 204 | No Content - Eliminado |
-| 400 | Bad Request - Solicitud inválida |
-| 401 | Unauthorized - Sin autenticación |
-| 404 | Not Found - No existe |
-| 409 | Conflict - Duplicado/Conflicto |
-| 500 | Internal Server Error |
+| Código | Descripción                      |
+| ------ | -------------------------------- |
+| 200    | OK - Éxito                       |
+| 201    | Created - Recurso creado         |
+| 204    | No Content - Eliminado           |
+| 400    | Bad Request - Solicitud inválida |
+| 401    | Unauthorized - Sin autenticación |
+| 404    | Not Found - No existe            |
+| 409    | Conflict - Duplicado/Conflicto   |
+| 500    | Internal Server Error            |
 
 ---
 
@@ -325,6 +347,7 @@ Mapean HTTP methods y paths a controladores.
 ## 📝 Datos de Prueba
 
 **Usuario Admin:**
+
 - Email: admin@admin.com
 - Password: admin123
 - Rol: Administrador (2)

@@ -1,6 +1,7 @@
 // infrastructure/repositories/ThirdPartiesRepository.js
 const mongoose = require("mongoose");
 const ThirdPartiesModel = require("../db/ThirdPartiesModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const ThirdParties = require("../../domain/entities/ThirdParties");
 
 class ThirdPartiesRepository {
@@ -23,7 +24,7 @@ class ThirdPartiesRepository {
       query._id = { $in: idsFilter.map((id) => new mongoose.Types.ObjectId(id)) };
     }
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre_empresa: re }, { nombre_contacto: re }, { nombre: re }, { contacto: re }];
     }
     if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;

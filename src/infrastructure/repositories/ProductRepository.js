@@ -1,6 +1,7 @@
 // infrastructure/repositories/ProductRepository.js
 const ProductModel = require("../db/ProductModel");
 const Product = require("../../domain/entities/Products");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 
 class ProductRepository {
   _toEntity(doc) {
@@ -12,7 +13,7 @@ class ProductRepository {
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre: re }, { referencia: re }];
     }
     if (filters.estado !== undefined) {

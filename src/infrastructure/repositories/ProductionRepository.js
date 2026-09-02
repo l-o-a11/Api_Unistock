@@ -1,5 +1,6 @@
 // infrastructure/repositories/ProductionRepository.js
 const ProductionOrderModel = require("../db/ProductionOrderModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const Production = require("../../domain/entities/Production");
 
 class ProductionRepository {
@@ -16,7 +17,7 @@ class ProductionRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.cliente) query.cliente = new RegExp(filters.cliente, "i");
+    if (filters.cliente) query.cliente = new RegExp(escapeRegex(filters.cliente).slice(0, 100), "i");
     if (filters.id_usuario) query.id_usuario = filters.id_usuario;
     if (filters.estado) query.estado = filters.estado;
     if (filters.fecha_desde || filters.fecha_hasta) {

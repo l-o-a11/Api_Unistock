@@ -57,7 +57,7 @@ class CambiarEstadoProduction {
       }
     }
 
-    // 🔒 Solo el empleado asignado a la etapa actual (o Gerente/Administrador)
+    // Solo el empleado asignado a la etapa actual o un gerente/administrador.
     // puede avanzarla. Si la orden todavía no tiene empleado asignado (ej.
     // órdenes creadas antes de este cambio, o el admin no lo asignó), no se
     // restringe — así no se rompen flujos existentes.
@@ -80,7 +80,7 @@ class CambiarEstadoProduction {
 
     const ETAPAS_REQUIEREN_CONFIRMACION = ["Ficha Técnica", "Corte", "Compras", "Recepción", "Producción"];
 
-    // 🔒 La etapa actual debe estar confirmada por el empleado asignado
+    // La etapa actual debe estar confirmada por el empleado asignado.
     // antes de permitir avanzar. Si no hay empleado asignado, no aplica
     // (órdenes legacy o etapas sin asignación).
     if (!force && ETAPAS_REQUIEREN_CONFIRMACION.includes(production.estado)) {
@@ -103,14 +103,14 @@ const updated = await this.productionRepository.cambiarEstado(
       nuevoEstado,
       id_usuario,
       user,
-      // 🔁 Se limpia la asignación al avanzar: la nueva etapa necesita que
+      // Se limpia la asignación al avanzar: la nueva etapa necesita que
       // el admin asigne a alguien de nuevo. También se resetea
       // etapaConfirmada para que el empleado de la nueva etapa pueda
       // confirmar su trabajo.
       { ...(options.extra || {}), empleadoAsignadoId: null, etapaConfirmada: false },
     );
 
-    // 📧 Avisar al admin de la sede DEL EMPLEADO que acaba de terminar su
+    // Avisar al administrador de la sede del empleado que acaba de terminar su
     // parte (no de "la sede de la producción" — la orden no tiene sede
     // asignada hasta Recepción). Fire-and-forget: un fallo de correo no debe
     // bloquear el avance de la orden.

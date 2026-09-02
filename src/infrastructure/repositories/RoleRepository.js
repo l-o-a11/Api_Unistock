@@ -1,6 +1,7 @@
 // infrastructure/repositories/RoleRepository.js
 const RoleModel = require("../db/RoleModel");
 const Role = require("../../domain/entities/Role");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 
 class RoleRepository {
   _toEntity(doc) {
@@ -26,7 +27,7 @@ class RoleRepository {
     const query = {};
 
     if (search) {
-      const re = new RegExp(search, "i");
+      const re = new RegExp(escapeRegex(search).slice(0, 100), "i");
       query.$or = [{ nombre: re }, { descripcion: re }];
     }
 
@@ -34,11 +35,13 @@ class RoleRepository {
       query.estado = estado === "true" || estado === true;
     }
 
+    const allowedSortFields = new Set(["nombre", "descripcion", "estado", "createdAt"]);
+    const safeSortBy = allowedSortFields.has(sortBy) ? sortBy : "nombre";
     const sortDir = order === "desc" ? -1 : 1;
 
     // Sin paginación: devuelve array plano
     if (!page) {
-      const docs = await RoleModel.find(query).sort({ [sortBy]: sortDir });
+      const docs = await RoleModel.find(query).sort({ [safeSortBy]: sortDir });
       return docs.map((d) => this._toEntity(d));
     }
 
@@ -48,7 +51,7 @@ class RoleRepository {
     const skip = (pageNum - 1) * limitNum;
 
     const [docs, total] = await Promise.all([
-      RoleModel.find(query).sort({ [sortBy]: sortDir }).skip(skip).limit(limitNum),
+      RoleModel.find(query).sort({ [safeSortBy]: sortDir }).skip(skip).limit(limitNum),
       RoleModel.countDocuments(query),
     ]);
 

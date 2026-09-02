@@ -1,5 +1,6 @@
 // infrastructure/repositories/SupplierRepository.js
 const SuppliersModel = require("../db/SuppliersModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const Suppliers = require("../../domain/entities/Suppliers");
 
 class SupplierRepository {
@@ -12,7 +13,7 @@ class SupplierRepository {
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre_de_empresa: re }, { correo: re }];
     }
     if (filters.activo !== undefined) query.activo = filters.activo === "true" || filters.activo === true;
