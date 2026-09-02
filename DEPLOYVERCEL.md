@@ -21,7 +21,14 @@ JWT_SECRET=<tu_secreto_jwt>
 JWT_EXPIRES_IN=8h
 BCRYPT_ROUNDS=10
 
-# Email (nodemailer)
+# Email (elige una opción)
+# Opción recomendada: Gmail OAuth2
+GOOGLE_GMAIL_CLIENT_ID=<client_id>
+GOOGLE_GMAIL_CLIENT_SECRET=<client_secret>
+GOOGLE_GMAIL_REDIRECT_URI=https://developers.google.com/oauthplayground
+GOOGLE_GMAIL_REFRESH_TOKEN=<refresh_token>
+
+# Opción alternativa: Gmail SMTP con contraseña de aplicación
 EMAIL_USER=unistockoficial@gmail.com
 EMAIL_PASS=<app_password>
 

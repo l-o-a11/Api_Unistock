@@ -1,4 +1,5 @@
 const { google } = require("googleapis");
+const nodemailer = require("nodemailer");
 
 // Cliente OAuth2 dedicado exclusivamente al envío de correos (Gmail API).
 // Usa un refresh token guardado en variables de entorno, por lo que no
@@ -37,7 +38,42 @@ function getGmailAuthClient() {
     return gmailOAuthClient;
 }
 
+function hasOAuthCredentials() {
+    return Boolean(
+        process.env.GOOGLE_GMAIL_CLIENT_ID &&
+        process.env.GOOGLE_GMAIL_CLIENT_SECRET &&
+        process.env.GOOGLE_GMAIL_REFRESH_TOKEN
+    );
+}
+
+function getSmtpTransporter() {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error(
+            "Faltan credenciales de correo. Configura GOOGLE_GMAIL_CLIENT_ID, " +
+            "GOOGLE_GMAIL_CLIENT_SECRET y GOOGLE_GMAIL_REFRESH_TOKEN, o EMAIL_USER y EMAIL_PASS."
+        );
+    }
+
+    return nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+}
+
 async function sendEmail({ to, subject, html, from }) {
+    if (!hasOAuthCredentials()) {
+        const sender = from || process.env.EMAIL_USER;
+        return getSmtpTransporter().sendMail({
+            from: `"Equipo Unistock" <${sender}>`,
+            to,
+            subject,
+            html,
+        });
+    }
+
     const auth = getGmailAuthClient();
     const gmail = google.gmail({ version: "v1", auth });
 
