@@ -1,4 +1,4 @@
-const { sendEmail } = require("./googleService");
+const { sendEmail } = require("./gmailService");
 
 const sendWelcomeEmail = async ({ nombreCompleto, correo, password }) => {
   const html = `
@@ -131,29 +131,25 @@ const sendProductionStageCompletedEmail = async ({ nombreCompleto, correo, numer
 };
 
 const sendAccountLockedEmail = async ({ gerenteNombre, gerenteCorreo, usuarioBloqueado }) => {
-  await transporter.sendMail({
-    from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
-    to: gerenteCorreo,
-    subject: `Cuenta bloqueada por intentos fallidos — ${usuarioBloqueado.nombreCompleto}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
-        <h2>Hola, ${gerenteNombre}</h2>
-        <p>La cuenta de <strong>${usuarioBloqueado.nombreCompleto}</strong> (${usuarioBloqueado.correo}) fue
-        <strong>desactivada automáticamente</strong> tras 5 intentos fallidos de inicio de sesión consecutivos.</p>
-        <p>Si el usuario confirma que fue él quien olvidó su contraseña, puedes reactivar la cuenta desde
-        el módulo de Usuarios y sugerirle usar la opción "Olvidé mi contraseña".</p>
-        <p>Si <strong>no reconoce</strong> estos intentos, podría tratarse de un intento de acceso no autorizado —
-        te recomendamos dejar la cuenta desactivada y verificar con el usuario antes de reactivarla.</p>
-        <p>
-          <a href="${process.env.APP_URL || "http://localhost:5173/login"}">
-            Ingresar a Unistock
-          </a>
-        </p>
-        <hr/>
-        <p><strong>Equipo de Unistock</strong></p>
-      </div>
-    `,
-  });
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+      <h2>Hola, ${gerenteNombre}</h2>
+      <p>La cuenta de <strong>${usuarioBloqueado.nombreCompleto}</strong> (${usuarioBloqueado.correo}) fue
+      <strong>desactivada automáticamente</strong> tras 5 intentos fallidos de inicio de sesión consecutivos.</p>
+      <p>Si el usuario confirma que fue él quien olvidó su contraseña, puedes reactivar la cuenta desde
+      el módulo de Usuarios y sugerirle usar la opción "Olvidé mi contraseña".</p>
+      <p>Si <strong>no reconoce</strong> estos intentos, podría tratarse de un intento de acceso no autorizado —
+      te recomendamos dejar la cuenta desactivada y verificar con el usuario antes de reactivarla.</p>
+      <p>
+        <a href="${process.env.APP_URL || "http://localhost:5173/login"}">
+          Ingresar a Unistock
+        </a>
+      </p>
+      <hr/>
+      <p><strong>Equipo de Unistock</strong></p>
+    </div>
+  `;
+  await sendEmail({ to: gerenteCorreo, subject: `🔒 Cuenta bloqueada por intentos fallidos — ${usuarioBloqueado.nombreCompleto}`, html });
 };
 
 module.exports = {
