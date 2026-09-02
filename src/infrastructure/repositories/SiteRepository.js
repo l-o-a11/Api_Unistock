@@ -2,6 +2,7 @@
 
 const SiteModel = require("../db/SiteModel");
 const Site      = require("../../domain/entities/Site");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 
 class SiteRepository {
   _toEntity(doc) {
@@ -16,7 +17,7 @@ class SiteRepository {
     const query = {};
 
     if (search) {
-      const re = new RegExp(search, "i");
+      const re = new RegExp(escapeRegex(search).slice(0, 100), "i");
       query.$or = [{ nombre: re }, { ciudad: re }, { barrio: re }, { direccion: re }];
     }
 
@@ -27,10 +28,12 @@ class SiteRepository {
     const pageNum  = Math.max(1, parseInt(page)  || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
     const skip     = (pageNum - 1) * limitNum;
+    const allowedSortFields = new Set(["nombre", "ciudad", "barrio", "estado", "createdAt"]);
+    const safeSortBy = allowedSortFields.has(sortBy) ? sortBy : "nombre";
     const sortDir  = order === "desc" ? -1 : 1;
 
     const [docs, total] = await Promise.all([
-      SiteModel.find(query).sort({ [sortBy]: sortDir }).skip(skip).limit(limitNum),
+      SiteModel.find(query).sort({ [safeSortBy]: sortDir }).skip(skip).limit(limitNum),
       SiteModel.countDocuments(query),
     ]);
 
@@ -50,7 +53,7 @@ class SiteRepository {
 
   async findByName(nombre) {
     const doc = await SiteModel.findOne({
-      nombre: { $regex: new RegExp(`^${nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+      nombre: { $regex: new RegExp(`^${escapeRegex(nombre).slice(0, 100)}$`, "i") },
     }).catch(() => null);
     return this._toEntity(doc);
   }

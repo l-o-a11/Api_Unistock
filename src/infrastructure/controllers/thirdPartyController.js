@@ -19,7 +19,6 @@ const idToString = (value, depth = 0) => {
   if (!value) return "";
   if (depth > 5) return value?.toString ? value.toString() : String(value);
 
-  // Evitar recursión infinita si Mongoose/valor se refiere a sí mismo
   if (value._id && value._id !== value) return idToString(value._id, depth + 1);
 
   return value.toString ? value.toString() : String(value);
@@ -27,8 +26,6 @@ const idToString = (value, depth = 0) => {
 
 const entityToJSON = (entity) => (entity?.toJSON ? entity.toJSON() : entity);
 
-// Estados que ya no cuentan como orden activa (mismo criterio usado en
-// productionController.js para la carga laboral de empleados).
 const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
 
 const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
@@ -54,10 +51,6 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
   );
   const orderById = new Map(orders);
 
-  // 🐛 FIX: antes se devolvían todas las asignaciones sin importar el estado
-  // de la orden, dejando que el frontend filtrara las finalizadas/anuladas
-  // (y ese filtro no se estaba aplicando). Ahora se descartan aquí mismo las
-  // órdenes ya "Enviado" o "Anulada" para que /terceros solo traiga activas.
   const activeAssignments = assignments.filter((assignment) => {
     const order = orderById.get(idToString(assignment.id_orden));
     if (!order) return false;
@@ -83,8 +76,6 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
       fecha: order?.fecha_entrega || assignment.fecha || "",
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
-      // ✅ Incluir estado de la orden para que el frontend pueda filtrar
-      // las que ya pasaron de "Producción" a "Recepción" o posteriores
       estado: order?.estado || null,
     });
     grouped.set(terceroId, producciones);
@@ -153,9 +144,6 @@ const createThirdParty = async (req, res) => {
         ? String(data.telefono)
         : undefined;
 
-    // Mongo tiene índice único sobre `codigo` y el error indica que está quedando `null`.
-    // Para evitarlo: calculamos `codigo` SIEMPRE como string no-vacío.
-    // Tomamos el máximo valor numérico existente (y si no hay, arrancamos en 1).
     const codigo = await (async () => {
       const incoming = data.codigo ?? data.codigo_tercero;
       if (
@@ -279,10 +267,6 @@ const deleteThirdParty = async (req, res) => {
   }
 };
 
-// ── Vinculación Tercero ↔ Producción ───────────────────────────────────────
-// Endpoint: POST /api/terceros/:id/producciones
-// Payload esperado (frontend): { orden, fecha, produccionId, cantidad }
-// Persistencia real: ThirdPartyAssignment (id_tercero, id_orden, cantidad)
 const linkProduccionToTercero = async (req, res) => {
   try {
     const thirdPartyId = req.params.id;
@@ -302,7 +286,6 @@ const linkProduccionToTercero = async (req, res) => {
     if (!cantidad || cantidad <= 0)
       return badRequest(res, "La cantidad debe ser > 0");
 
-    // Validar que la orden exista
     const production = await productionRepo
       .findById(produccionId)
       .catch(() => null);
@@ -310,7 +293,6 @@ const linkProduccionToTercero = async (req, res) => {
       return notFound(res, "Producción/orden no encontrada");
     }
 
-    // Upsert: si ya existe asignación para (id_tercero, id_orden), sumar/actualizar cantidad
     const all = await assignmentRepo.findAll({
       id_tercero: thirdPartyId,
       id_orden: produccionId,
@@ -318,7 +300,6 @@ const linkProduccionToTercero = async (req, res) => {
     if (all && all.length > 0) {
       const existing = all[0];
       const nextCantidad = (Number(existing.cantidad) || 0) + cantidad;
-      // assignmentRepo.update usa id del documento
       const updated = await assignmentRepo.update(existing.id || existing._id, {
         cantidad: nextCantidad,
         fecha: data.fecha || undefined,
@@ -333,7 +314,6 @@ const linkProduccionToTercero = async (req, res) => {
       fecha: data.fecha ? new Date(data.fecha) : undefined,
     });
 
-    // Devolver el tercero actualizado con producciones (frontend espera algo, aunque no es crítico)
     return ok(res, await attachProducciones(await repo.findById(thirdPartyId)));
   } catch (err) {
     console.error(

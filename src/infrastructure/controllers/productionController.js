@@ -25,6 +25,7 @@ const GetCalendarioProduction = require("../../application/use-cases/production/
 const GetAlertasProduction    = require("../../application/use-cases/production/GetAlertasProduction");
 const GetProductions          = require("../../application/use-cases/production/GetProductions");
 const AsignarEmpleadoProduccion  = require("../../application/use-cases/production/AsignarEmpleadoProduccion");
+const ReasignarEmpleadoProduccion = require("../../application/use-cases/production/ReasignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository             = require("../repositories/UserRepository");
 
@@ -46,6 +47,22 @@ const handleError = (res, err) => {
   console.error("[ProductionController]", err);
   const msg = process.env.NODE_ENV !== "production" ? err.message : undefined;
   return serverError(res, msg);
+};
+
+const resolveUserName = async (req, userId) => {
+  if (!userId) return "Sistema";
+  if (req.user?.nombreCompleto) return req.user.nombreCompleto;
+  if (req.user?.nombre) return req.user.nombre;
+  if (req.user?.username) return req.user.username;
+  try {
+    const user = await new UserRepository().findById(userId);
+    const name = user?.nombreCompleto || user?.nombre || user?.username || String(userId);
+    req.user = req.user || {};
+    req.user.nombreCompleto = name;
+    return name;
+  } catch {
+    return String(userId);
+  }
 };
 
 /**
@@ -102,9 +119,16 @@ const getOrders = async (req, res) => {
 
 const getOrderById = async (req, res) => {
   try {
-    const order = await prodRepo.findById(req.params.id);
-    if (!order) return notFound(res, "Orden no encontrada");
-    const details = await detailRepo.findAll({ id_orden: req.params.id });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
+    const order = await prodRepo.findById(id);
+    if (!order) {
+      console.warn(`[ProductionController] getOrderById 404 id=${id}`);
+      return notFound(res, "Orden no encontrada");
+    }
+    const details = await detailRepo.findAll({ id_orden: id });
     return ok(res, { ...order.toJSON(), detalles: details.map((d) => d.toJSON()) });
   } catch (err) {
     return handleError(res, err);
@@ -113,34 +137,47 @@ const getOrderById = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
-    const { fecha_entrega, cliente, id_usuario } = req.body;
+    const data = req.validatedData || req.body;
+    const { fecha_entrega, cliente, id_usuario } = data;
     const userId = id_usuario || req.user?.id || "anonymous";
 
     if (!fecha_entrega || !cliente)
       return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
 
-    // 🐛 FIX: este createOrder ignoraba por completo el campo "tipo" que
-    // manda el frontend y SIEMPRE creaba la orden en estado "Diseño" —
-    // incluso las de tipo "produccion" (artículo con ficha técnica YA
-    // EXISTENTE, elegido de un producto del catálogo), que deben arrancar
-    // directamente en "Ficha Técnica" (el "Diseño" se da por completado
-    // automáticamente porque ya existe) para que el flujo respete el orden
-    // real de las etapas: Diseño → Ficha Técnica → Corte → ... En Api/src
-    // (puerto 3000) esta lógica ya existía correctamente; aquí faltaba.
-    const tipo = req.body.tipo || req.body.type || "produccion";
-    const referencia = req.body.referencia || req.body.reference || null;
-    const producto = req.body.producto || req.body.product || null;
-    const designImages = Array.isArray(req.body.designImages) ? req.body.designImages : [];
-    const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === "true";
-    const originalOrderNumber = req.body.originalOrderNumber || req.body.original_order_number || null;
-    const originalOrderStatus = req.body.originalOrderStatus || req.body.original_order_status || null;
+    const tipo = data.tipo || data.type || "produccion";
+    const referencia = data.referencia || data.reference || null;
+    const producto = data.producto || data.product || null;
+    const designImages = Array.isArray(data.designImages) ? data.designImages : [];
+    const finishedImages = Array.isArray(data.finishedImages) ? data.finishedImages : [];
+    const finishedImageUrl = typeof data.finishedImageUrl === 'string' ? data.finishedImageUrl : null;
 
-    let techSpecification = req.body.techSpecification || req.body.techSheet || null;
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    const normalizedDesignImages = normalizeImageArray(designImages);
+    const normalizedFinishedImages = normalizeImageArray(finishedImages);
+    const normalizedFinishedImageUrl = (typeof finishedImageUrl === 'string' && finishedImageUrl.trim()) || null;
+
+    console.log('[ProductionController] createOrder imagenes:', {
+      designImages: normalizedDesignImages,
+      finishedImages: normalizedFinishedImages,
+      finishedImageUrl: normalizedFinishedImageUrl,
+    });
+    const fromDamaged = data.fromDamaged === true || data.fromDamaged === "true";
+    const originalOrderNumber = data.originalOrderNumber || data.original_order_number || null;
+    const originalOrderStatus = data.originalOrderStatus || data.original_order_status || null;
+
+    let techSpecification = data.techSpecification || data.techSheet || null;
     const isProduccion = tipo === "produccion";
 
-    // Las órdenes tipo "produccion" referencian un producto que YA tiene
-    // ficha técnica registrada — se busca y se copia dentro de la orden
-    // para que quede disponible de inmediato en la etapa "Ficha Técnica".
     if (isProduccion && !techSpecification && referencia) {
       let product = null;
       const refTrimmed = String(referencia).trim();
@@ -168,15 +205,13 @@ const createOrder = async (req, res) => {
       producto,
       referencia,
       techSpecification,
-      designImages,
+      designImages: normalizedDesignImages,
+      finishedImages: normalizedFinishedImages,
+      finishedImageUrl: normalizedFinishedImageUrl,
       fromDamaged,
       originalOrderNumber,
       originalOrderStatus,
       estado: estadoInicial,
-      // "Diseño" se registra como paso automático completado cuando la
-      // orden arranca directo en "Ficha Técnica" (tipo producción), igual
-      // que hace Api/src, para que el historial/stepper no muestre un
-      // salto de etapa.
       historial: [{ estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null }],
     });
     return created(res, order.toJSON());
@@ -187,7 +222,11 @@ const createOrder = async (req, res) => {
 
 const updateOrder = async (req, res) => {
   try {
-    const order = await prodRepo.findById(req.params.id);
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
+    const order = await prodRepo.findById(id);
     if (!order) return notFound(res, "Orden no encontrada");
 
     if (order.estaAnulada())
@@ -234,6 +273,30 @@ const updateOrder = async (req, res) => {
       safeChanges.fecha_entrega = fecha;
     }
 
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "designImages")) {
+      safeChanges.designImages = normalizeImageArray(safeChanges.designImages);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "finishedImages")) {
+      safeChanges.finishedImages = normalizeImageArray(safeChanges.finishedImages);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "finishedImageUrl")) {
+      const url = safeChanges.finishedImageUrl;
+      safeChanges.finishedImageUrl = (typeof url === 'string' && url.trim()) || null;
+    }
+
+    console.log('[ProductionController] updateOrder safeChanges:', JSON.stringify(safeChanges));
+
     const updated = await prodRepo.update(req.params.id, safeChanges);
     if (!updated) return serverError(res, "Error al actualizar la orden");
     return ok(res, updated.toJSON());
@@ -249,15 +312,22 @@ const updateOrder = async (req, res) => {
 
 const anularOrder = async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
     const { motivo, id_usuario: bodyUser, user: bodyUserName } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = await resolveUserName(req, id_usuario);
 
     const useCase = new AnularProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
+    const result  = await useCase.execute(id, motivo, id_usuario, user);
     return ok(res, result);
   } catch (err) {
-    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 404) {
+      console.warn(`[ProductionController] anularOrder 404 id=${req.params.id} motivo=${err.message}`);
+      return notFound(res, err.message);
+    }
     if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
     return handleError(res, err);
   }
@@ -267,11 +337,33 @@ const anularOrder = async (req, res) => {
 
 const cambiarEstado = async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
     const { estado, id_usuario: bodyUser, user: bodyUserName, force, ...rest } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
-    console.log(`[ProductionController] cambiarEstado called id=${req.params.id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
+    const user = await resolveUserName(req, id_usuario);
+    console.log(`[ProductionController] cambiarEstado called id=${id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
     console.log('[ProductionController] payload extra:', rest);
+
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    if (rest.designImages !== undefined) rest.designImages = normalizeImageArray(rest.designImages);
+    if (rest.finishedImages !== undefined) rest.finishedImages = normalizeImageArray(rest.finishedImages);
+    if (rest.finishedImageUrl !== undefined) {
+      const url = rest.finishedImageUrl;
+      rest.finishedImageUrl = (typeof url === 'string' && url.trim()) || null;
+    }
 
     // Si retrocedemos a un estado igual o anterior a "Compras", eliminamos las asignaciones de terceros de la orden
     const Production = require("../../domain/entities/Production");
@@ -282,8 +374,13 @@ const cambiarEstado = async (req, res) => {
       await assignmentRepo.deleteByOrder(req.params.id);
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, { force: !!force, extra: rest });
+    const useCase = new CambiarEstadoProduction(prodRepo, new UserRepository());
+    const result  = await useCase.execute(req.params.id, estado, id_usuario, user, {
+      force: !!force, extra: rest,
+      solicitante: req.user
+        ? { id: req.user.id || req.user._id, rolNombre: req.user.rolNombre }
+        : null,
+    });
       console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
     // Al confirmar el envío, los productos fabricados ingresan al stock
@@ -299,7 +396,7 @@ const cambiarEstado = async (req, res) => {
   }
 };
 
-// ── Estados válidos ───────────────────────────────────────────────────────────
+// ── Obtener estados válidos ───────────────────────────────────────────────────
 
 const getEstados = (_req, res) => {
   return ok(res, Production.ESTADOS_VALIDOS);
@@ -422,15 +519,14 @@ const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
 const getEmployeeWorkload = async (req, res) => {
   try {
     const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
+    const sedeId = typeof req.query.sedeId === "string" ? req.query.sedeId.trim() : "";
     const employeeFilter = { estado: true };
 
-    // El cargo es el nombre de la etapa (p. ej. Corte o Recepción). Se usa una
-    // expresión regular anclada e insensible a mayúsculas para no mezclar
-    // empleados de otras etapas ni fallar por diferencias de capitalización.
     if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+    if (sedeId && mongoose.isValidObjectId(sedeId)) employeeFilter.sedeId = sedeId;
 
     const employees = await UserModel.find(employeeFilter)
-      .select("_id nombre nombreCompleto correo cargo")
+      .select("_id nombre nombreCompleto correo cargo sedeId")
       .sort({ nombreCompleto: 1, nombre: 1 })
       .lean();
 
@@ -456,6 +552,7 @@ const getEmployeeWorkload = async (req, res) => {
       nombre: u.nombreCompleto || u.nombre,
       correo: u.correo,
       cargo: u.cargo,
+      sedeId: u.sedeId ? String(u.sedeId) : null,
       produccionesAsignadas: countByEmployeeId.get(String(u._id)) || 0,
     }));
 
@@ -508,6 +605,28 @@ const asignarEmpleado = async (req, res) => {
   }
 };
 
+// ── Reasignar empleado a etapa actual (reemplazo con justificación) ─────────
+
+const reasignarEmpleado = async (req, res) => {
+  try {
+    const empleadoId = req.body.id_empleado || req.body.empleadoId;
+    const motivo = (req.body.motivo || "").toString().trim();
+    if (!empleadoId) return badRequest(res, "El campo id_empleado es requerido");
+
+    const solicitanteId = req.user?.id || req.user?._id || null;
+    const solicitanteNombre = await resolveUserName(req, solicitanteId);
+
+    const useCase = new ReasignarEmpleadoProduccion(prodRepo, new UserRepository());
+    const result = await useCase.execute(req.params.id, empleadoId, motivo, solicitanteId, solicitanteNombre);
+
+    return ok(res, result);
+  } catch (err) {
+    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 422 || err.statusCode === 403 || err.statusCode === 401) return badRequest(res, err.message);
+    return handleError(res, err);
+  }
+};
+
 // ── Confirmar etapa por empleado ─────────────────────────────────────────────
 
 const confirmarEtapa = async (req, res) => {
@@ -515,9 +634,11 @@ const confirmarEtapa = async (req, res) => {
     const solicitanteId = req.user?.id || req.body.id_usuario;
     if (!solicitanteId) return badRequest(res, "No se pudo identificar al usuario solicitante");
 
+    const solicitanteNombre = await resolveUserName(req, solicitanteId);
+
     const userRepo = new UserRepository();
     const useCase  = new ConfirmarEtapaProduccion(prodRepo, userRepo);
-    const result   = await useCase.execute(req.params.id, solicitanteId);
+    const result   = await useCase.execute(req.params.id, solicitanteId, solicitanteNombre);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -549,8 +670,8 @@ const updateOrderDetail = async (req, res) => {
     if (!updated) return serverError(res, "Error al actualizar el detalle");
 
     // Registrar en el historial de la orden
-    const userId   = req.user?.id || req.user?._id || null;
-    const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
+    const userId = req.user?.id || req.user?._id || null;
+    const userName = await resolveUserName(req, userId);
     await prodRepo.agregarHistorial(
       detail.id_orden,
       `Detalle actualizado: producto ${detail.id_producto} - cambios: ${JSON.stringify(changes)}`,
@@ -585,14 +706,8 @@ const deleteAssignment = async (req, res) => {
 // Elimina todas las asignaciones de terceros para una orden
 const deleteAssignmentsByOrder = async (req, res) => {
   try {
-    const assignments = await assignmentRepo.findAll({ id_orden: req.params.id_orden });
-    if (!assignments || assignments.length === 0) return ok(res, { deleted: 0 });
-
-    let deletedCount = 0;
-    for (const assignment of assignments) {
-      const removed = await assignmentRepo.delete(assignment.id);
-      if (removed) deletedCount++;
-    }
+    const deletedCount = await assignmentRepo.deleteByOrder(req.params.id_orden);
+    return ok(res, { deleted: deletedCount });
   } catch (err) {
     return handleError(res, err);
   }
@@ -601,8 +716,8 @@ const deleteAssignmentsByOrder = async (req, res) => {
 const agregarHistorial = async (req, res) => {
   try {
     const { motivo, estado } = req.body;
-    const userId = req.body.id_usuario || req.user?.id || req.user?.nombre || "Sistema";
-    const user = req.body.user || req.user?.nombre || "Sistema";
+    const userId = req.body.id_usuario || req.user?.id || null;
+    const user = await resolveUserName(req, userId);
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const estadoRegistro = estado || order.estado;
@@ -620,6 +735,9 @@ module.exports = {
   updateOrder,
   anularOrder,
   cambiarEstado,
+  asignarEmpleado,
+  reasignarEmpleado,
+  confirmarEtapa,
   getEstados,
   getOrderDetails,
   createOrderDetail,
@@ -630,8 +748,6 @@ module.exports = {
   deleteAssignment,
   deleteAssignmentsByOrder,
   getEmployeeWorkload,
-  asignarEmpleado,
-  confirmarEtapa,
   getCalendario,
   getAlertas,
   agregarHistorial,

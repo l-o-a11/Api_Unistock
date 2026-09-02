@@ -1,5 +1,7 @@
 // infrastructure/repositories/ThirdPartiesRepository.js
+const mongoose = require("mongoose");
 const ThirdPartiesModel = require("../db/ThirdPartiesModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const ThirdParties = require("../../domain/entities/ThirdParties");
 
 class ThirdPartiesRepository {
@@ -15,8 +17,14 @@ class ThirdPartiesRepository {
 
   async findAll(filters = {}) {
     const query = {};
+    const idsFilter = filters.ids
+      ? (Array.isArray(filters.ids) ? filters.ids : [filters.ids])
+      : [];
+    if (idsFilter.length > 0) {
+      query._id = { $in: idsFilter.map((id) => new mongoose.Types.ObjectId(id)) };
+    }
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre_empresa: re }, { nombre_contacto: re }, { nombre: re }, { contacto: re }];
     }
     if (filters.estado !== undefined) query.estado = filters.estado === "true" || filters.estado === true;
@@ -39,6 +47,59 @@ class ThirdPartiesRepository {
 
     const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
     return this._toEntity(doc);
+  }
+
+  async findByDireccion(direccion, excludeId = null) {
+    const normalized = String(direccion || "").trim();
+    if (!normalized) return null;
+
+    const query = { direccion: new RegExp(`^${this._escapeRegex(normalized)}$`, "i") };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
+    return this._toEntity(doc);
+  }
+
+  async findByTelefono(telefono, excludeId = null) {
+    const normalized = String(telefono || "").trim();
+    if (!normalized) return null;
+
+    const query = { telefono: normalized };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
+    return this._toEntity(doc);
+  }
+
+  async findByNit(nit, excludeId = null) {
+    const normalized = String(nit || "").trim();
+    if (!normalized) return null;
+
+    const query = { nit: normalized };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
+    return this._toEntity(doc);
+  }
+
+  async findByCorreo(correo, excludeId = null) {
+    const normalized = String(correo || "").trim().toLowerCase();
+    if (!normalized) return null;
+
+    const query = {
+      $or: [
+        { correo_empresa: new RegExp(`^${this._escapeRegex(normalized)}$`, "i") },
+        { correo_contacto: new RegExp(`^${this._escapeRegex(normalized)}$`, "i") },
+      ],
+    };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const doc = await ThirdPartiesModel.findOne(query).catch(() => null);
+    return this._toEntity(doc);
+  }
+
+  _escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   async create(data) {

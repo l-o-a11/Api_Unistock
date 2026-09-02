@@ -69,6 +69,7 @@ router.post("/upload", upload.single("file"), (req, res) => {
 
 router.post("/upload-multiple", upload.array("files", 10), (req, res) => {
   try {
+    console.log('[Upload] /upload-multiple files:', req.files ? req.files.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype })) : 'none');
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)

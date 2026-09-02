@@ -1,5 +1,6 @@
 // infrastructure/repositories/ProductionRepository.js
 const ProductionOrderModel = require("../db/ProductionOrderModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const Production = require("../../domain/entities/Production");
 
 class ProductionRepository {
@@ -16,7 +17,7 @@ class ProductionRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    if (filters.cliente) query.cliente = new RegExp(filters.cliente, "i");
+    if (filters.cliente) query.cliente = new RegExp(escapeRegex(filters.cliente).slice(0, 100), "i");
     if (filters.id_usuario) query.id_usuario = filters.id_usuario;
     if (filters.estado) query.estado = filters.estado;
     if (filters.fecha_desde || filters.fecha_hasta) {
@@ -31,10 +32,10 @@ class ProductionRepository {
     // ficha técnica se solicitan mediante GET /ordenes/:id cuando se abre una
     // orden; así no se retransmiten en cada recarga de la tabla.
     const listProjection =
-      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones createdAt updatedAt";
+      "numero_orden fecha_creacion fecha_entrega cliente id_usuario estado motivo_anulacion tipo producto referencia etapaConfirmada empleadoAsignadoId sedeId sedeAsignaciones terceroAsignaciones historial createdAt updatedAt";
     const requestedLimit = Number.parseInt(filters.limit, 10);
     const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 100)
+      ? Math.max(requestedLimit, 1)
       : 50;
     const requestedPage = Number.parseInt(filters.page, 10);
     const page = Number.isFinite(requestedPage)
@@ -63,6 +64,9 @@ class ProductionRepository {
 
   async findById(id) {
     const doc = await ProductionOrderModel.findById(id).catch(() => null);
+    if (!doc) {
+      console.warn(`[ProductionRepository] findById no encontró orden id=${id}`);
+    }
     return this._toEntity(doc);
   }
 

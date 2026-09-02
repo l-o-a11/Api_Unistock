@@ -9,6 +9,7 @@
  */
 
 const mongoose = require("mongoose");
+const { pickAllowedFields } = require("../../shared/utils/securityInput");
 const productRepository = require("../repositories/ProductRepository");
 const technicalSpecificationsRepository = require("../repositories/TechnicalSpecificationsRepository");
 const materialTechnicalSpecificationsRepository = require("../repositories/MaterialTechnicalSpecificationsRepository");
@@ -162,7 +163,17 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    const updated = await repo.update(product.id, req.body);
+    const changes = pickAllowedFields(req.body, [
+      "id_categorias",
+      "sedeId",
+      "imagenes_Url",
+      "referencia",
+      "nombre",
+      "precio",
+      "stock",
+      "estado",
+    ]);
+    const updated = await repo.update(product.id, changes);
     return ok(res, updated);
   } catch (err) {
     return serverError(res);
@@ -448,7 +459,17 @@ const updateMaterialTechnicalSpecification = async (req, res) => {
     if (!materialTechSpec) return notFound(res, "Material de la ficha tecnica no encontrado");
 
     const changes = {
-      ...req.body,
+      ...pickAllowedFields(req.body, [
+        "id_insumo",
+        "id_insumos",
+        "id_medida",
+        "nombre",
+        "unidad",
+        "cantidades",
+        "precio_unitario",
+        "precio_total",
+        "observaciones",
+      ]),
       id_insumo: req.body.id_insumo || req.body.id_insumos || req.body.id_insumo,
       cantidades: req.body.cantidades !== undefined ? String(req.body.cantidades) : req.body.cantidades,
     };

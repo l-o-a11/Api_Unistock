@@ -1,6 +1,6 @@
-// application/use-cases/thirdParties/DeleteThirdParties.js
+// application/use-cases/thirdParties/ToggleThirdParty.js
 
-class DeleteThirdParties {
+class ToggleThirdParty {
   constructor(thirdPartiesRepository) {
     this.thirdPartiesRepository = thirdPartiesRepository;
   }
@@ -16,15 +16,21 @@ class DeleteThirdParties {
     const tieneActiva = await this.thirdPartiesRepository.tieneProduccionActiva(id);
     if (tieneActiva) {
       const error = new Error(
-        "No se puede eliminar el tercero porque tiene producciones activas asignadas",
+        "No se puede cambiar el estado del tercero porque tiene producciones activas asignadas",
       );
       error.statusCode = 422;
       throw error;
     }
 
-    await this.thirdPartiesRepository.delete(id);
-    return true;
+    const updated = await this.thirdPartiesRepository.toggleEstado(id);
+    if (!updated) {
+      const error = new Error("No se pudo cambiar el estado del tercero");
+      error.statusCode = 500;
+      throw error;
+    }
+
+    return updated;
   }
 }
 
-module.exports = DeleteThirdParties;
+module.exports = ToggleThirdParty;

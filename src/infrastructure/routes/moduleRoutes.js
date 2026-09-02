@@ -11,15 +11,17 @@
 
 const express = require("express");
 const ctrl = require("../controllers/moduleController");
-const { requireAuth } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 
 const router = express.Router();
+const MODULO = "roles"; // el catálogo de módulos alimenta la pantalla de gestión de roles
+
 router.use(requireAuth);
 
-router.get("/",      ctrl.getModules);
-router.get("/:id",   ctrl.getModuleById);
-router.post("/",     ctrl.createModule);
-router.put("/:id",   ctrl.updateModule);
-router.delete("/:id",ctrl.deleteModule);
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getModules);
+router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getModuleById);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createModule);
+router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.updateModule);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteModule);
 
 module.exports = router;
