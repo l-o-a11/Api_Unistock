@@ -13,6 +13,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { uploadImage, deleteImage } = require("../cloudinary/cloudinary.service");
+const { pickAllowedFields } = require("../../shared/utils/securityInput");
 
 const SupplyRepository = require("../repositories/SupplyRepository");
 const SupplyCategoryRepository = require("../repositories/SupplyCategoryRepository");
@@ -298,7 +299,17 @@ const updateSupply = async (req, res) => {
     const supply = await repo.findById(req.params.id);
     if (!supply) return notFound(res, "Insumo no encontrado");
 
-    const updates = { ...req.body };
+    const updates = pickAllowedFields(req.body, [
+      "nombre",
+      "categoria",
+      "stock",
+      "valor_medida",
+      "medida",
+      "imagen",
+      "imagenPublicId",
+      "estado",
+      "propiedades",
+    ]);
     // Campo heredado de un patrón distinto (productos/ImgBB) que no existe
     // en el esquema de Supply; si llega del frontend, se descarta.
     delete updates.imagenes_Url;
@@ -317,7 +328,7 @@ const updateSupply = async (req, res) => {
       } catch (uploadErr) {
         return serverError(res, `No se pudo subir la imagen a Cloudinary: ${uploadErr.message}`);
       }
-    } else if (updates.eliminarImagen === "true" || updates.eliminarImagen === true) {
+    } else if (req.body.eliminarImagen === "true" || req.body.eliminarImagen === true) {
       // Permite quitar la imagen sin subir una nueva.
       if (supply.imagenPublicId) {
         await deleteImage(supply.imagenPublicId).catch(() => {});
@@ -325,8 +336,6 @@ const updateSupply = async (req, res) => {
       updates.imagen = null;
       updates.imagenPublicId = null;
     }
-    delete updates.eliminarImagen;
-
     // ── Si se actualizan propiedades, validar y normalizar ───────────────────
     // multipart/form-data serializa arrays como JSON string; parsear si es necesario.
     if (updates.propiedades !== undefined && typeof updates.propiedades === "string") {

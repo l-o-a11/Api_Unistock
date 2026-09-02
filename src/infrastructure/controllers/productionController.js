@@ -509,7 +509,7 @@ const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
  * de la etapa ACTUAL (empleadoAsignadoId), para poder repartir
  * la carga de trabajo al asignar un nuevo responsable.
  *
- * 🐛 FIX: antes contaba desde `empleadoAsignaciones` (objeto que acumula
+ * Cuenta desde `empleadoAsignaciones` (objeto que acumula
  * TODAS las asignaciones históricas del empleado por etapa), lo cual podía
  * inflar el conteo o mostrar 0 si el empleado solo estaba asignado en la
  * etapa actual. Ahora cuenta desde `empleadoAsignadoId` (el empleado
@@ -530,7 +530,7 @@ const getEmployeeWorkload = async (req, res) => {
       .sort({ nombreCompleto: 1, nombre: 1 })
       .lean();
 
-    // 🐛 FIX: contar desde `empleadoAsignadoId` (campo plano) en vez de
+    // Cuenta desde `empleadoAsignadoId` (campo plano) en vez de
     // `empleadoAsignaciones` (objeto con todas las etapas históricas).
     // Así el conteo refleja la carga REAL del empleado en la etapa actual.
     const activeOrders = await ProductionOrderModel.find(
