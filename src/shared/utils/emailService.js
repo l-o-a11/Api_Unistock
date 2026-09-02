@@ -134,7 +134,7 @@ const sendAccountLockedEmail = async ({ gerenteNombre, gerenteCorreo, usuarioBlo
   await transporter.sendMail({
     from: `"Equipo Unistock" <${process.env.EMAIL_USER}>`,
     to: gerenteCorreo,
-    subject: `🔒 Cuenta bloqueada por intentos fallidos — ${usuarioBloqueado.nombreCompleto}`,
+    subject: `Cuenta bloqueada por intentos fallidos — ${usuarioBloqueado.nombreCompleto}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
         <h2>Hola, ${gerenteNombre}</h2>
