@@ -17,11 +17,17 @@ class ThirdPartiesRepository {
 
   async findAll(filters = {}) {
     const query = {};
-    const idsFilter = filters.ids
-      ? (Array.isArray(filters.ids) ? filters.ids : [filters.ids])
-      : [];
+    const idsFilter = Array.isArray(filters.ids)
+      ? filters.ids.flatMap((value) => String(value).split(','))
+      : filters.ids
+        ? String(filters.ids).split(',')
+        : [];
     if (idsFilter.length > 0) {
-      query._id = { $in: idsFilter.map((id) => new mongoose.Types.ObjectId(id)) };
+      const validIds = idsFilter
+        .map((id) => id.trim())
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+      query._id = { $in: validIds };
     }
     if (filters.search) {
       const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");

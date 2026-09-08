@@ -44,11 +44,30 @@ class ProductionOrderDetailRepository {
    * refCorte asignado y no se cuentan aquí.
    */
   async countRefCorteByProducto(id_producto) {
-    const regex = new RegExp(`^${id_producto}-\\d+$`);
+    const escapedProduct = String(id_producto).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`^${escapedProduct}-\\d+$`);
     return ProductionOrderDetailModel.countDocuments({
       id_producto,
       refCorte: { $regex: regex },
     });
+  }
+
+  async assignRefCorteForOrder(id_orden) {
+    const details = (await ProductionOrderDetailModel.find({ id_orden })
+      .sort({ createdAt: 1, _id: 1 }))
+      .filter((detail) => !detail.refCorte);
+
+    const assigned = [];
+    for (const detail of details) {
+      const siguiente = (await this.countRefCorteByProducto(detail.id_producto)) + 1;
+      const updated = await ProductionOrderDetailModel.findByIdAndUpdate(
+        detail._id,
+        { refCorte: `${detail.id_producto}-${siguiente}` },
+        { new: true },
+      );
+      if (updated) assigned.push(this._toEntity(updated));
+    }
+    return assigned;
   }
 }
 
