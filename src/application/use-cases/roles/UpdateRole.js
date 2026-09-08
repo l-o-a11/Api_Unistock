@@ -2,6 +2,8 @@
 
 const { validatePermissions } = require("../../../shared/utils/rolePermissionValidator");
 
+const ROLE_NAME_PATTERN = /^\p{L}+(?: +\p{L}+)*$/u;
+
 class UpdateRole {
   constructor(roleRepository, moduleRepository, privilegeRepository) {
     this.roleRepository = roleRepository;
@@ -24,9 +26,24 @@ class UpdateRole {
       estado,
     } = data;
 
+    let nombreNormalizado;
+    if (nombre !== undefined) {
+      nombreNormalizado = typeof nombre === "string" ? nombre.trim() : "";
+      if (!nombreNormalizado) {
+        const error = new Error("Nombre es requerido");
+        error.statusCode = 422;
+        throw error;
+      }
+      if (!ROLE_NAME_PATTERN.test(nombreNormalizado)) {
+        const error = new Error("El nombre solo puede contener letras y espacios");
+        error.statusCode = 422;
+        throw error;
+      }
+    }
+
     // Validate name uniqueness if changed
-    if (nombre && nombre !== existing.nombre) {
-      const nameConflict = await this.roleRepository.findByName(nombre);
+    if (nombreNormalizado !== undefined && nombreNormalizado !== existing.nombre) {
+      const nameConflict = await this.roleRepository.findByName(nombreNormalizado);
       if (nameConflict) {
         const error = new Error("Ya existe un rol con ese nombre");
         error.statusCode = 409;
@@ -35,7 +52,7 @@ class UpdateRole {
     }
 
     const changes = {};
-    if (nombre !== undefined) changes.nombre = nombre;
+    if (nombreNormalizado !== undefined) changes.nombre = nombreNormalizado;
     if (descripcion !== undefined) changes.descripcion = descripcion;
     if (permisos !== undefined) {
       changes.permisos = await validatePermissions(
