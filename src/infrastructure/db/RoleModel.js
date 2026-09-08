@@ -21,8 +21,14 @@ const permisoSchema = new mongoose.Schema(
 
 const roleSchema = new mongoose.Schema(
   {
-    nombre: { type: String, required: true, unique: true, trim: true },
-    descripcion: { type: String, trim: true },
+    nombre: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      match: [/^\p{L}+(?: +\p{L}+)*$/u, "El nombre solo puede contener letras y espacios"],
+    },
+    descripcion: { type: String, trim: true, required: false },
     estado: { type: Boolean, default: true },
     permisos: { type: [permisoSchema], default: [] },
   },
