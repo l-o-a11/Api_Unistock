@@ -381,6 +381,13 @@ const cambiarEstado = async (req, res) => {
         ? { id: req.user.id || req.user._id, rolNombre: req.user.rolNombre }
         : null,
     });
+
+    let response = result;
+    if (estado === "Corte") {
+      await detailRepo.assignRefCorteForOrder(req.params.id);
+      const details = await detailRepo.findAll({ id_orden: req.params.id });
+      response = { ...result, detalles: details.map((detail) => detail.toJSON()) };
+    }
       console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
     // Al confirmar el envío, los productos fabricados ingresan al stock
@@ -388,7 +395,7 @@ const cambiarEstado = async (req, res) => {
       await aplicarIngresoStockPorEnvio(req.params.id);
     }
 
-    return ok(res, result);
+    return ok(res, response);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
@@ -420,6 +427,12 @@ const createOrderDetail = async (req, res) => {
       ...req.body,
       cantidad: req.body.cantidad !== undefined ? Number(req.body.cantidad) : undefined,
     };
+
+    const order = await prodRepo.findById(payload.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    if (order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden agregar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const useCase = new CreateOrderDetail(detailRepo, prodRepo);
     const detail  = await useCase.execute(payload);
@@ -456,6 +469,13 @@ const deleteOrderDetail = async (req, res) => {
   try {
     const detail = await detailRepo.findById(req.params.id);
     if (!detail) return notFound(res, 'Detalle no encontrado');
+
+    const order = await prodRepo.findById(detail.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    const isDamageAdjustment = req.body?.ajusteDanio === true;
+    if (!isDamageAdjustment && order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden eliminar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const deleted = await detailRepo.delete(req.params.id);
     if (!deleted) return notFound(res, 'No se pudo eliminar el detalle');
@@ -520,23 +540,44 @@ const getEmployeeWorkload = async (req, res) => {
   try {
     const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
     const sedeId = typeof req.query.sedeId === "string" ? req.query.sedeId.trim() : "";
-    const employeeFilter = { estado: true };
+    const normalizar = (value) => String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const cargoNormalizado = normalizar(cargo);
 
-    if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
-    if (sedeId && mongoose.isValidObjectId(sedeId)) employeeFilter.sedeId = sedeId;
+    const userQuery = { estado: true };
+    if (sedeId && mongoose.isValidObjectId(sedeId)) {
+      userQuery.sedeId = new mongoose.Types.ObjectId(sedeId);
+    }
 
-    const employees = await UserModel.find(employeeFilter)
-      .select("_id nombre nombreCompleto correo cargo sedeId")
+    // Usar la colección nativa evita que un documento legacy provoque un
+    // CastError en el modelo Mongoose y tumbe todo el catálogo de empleados.
+    const employees = await UserModel.collection
+      .find(userQuery, {
+        projection: { _id: 1, nombre: 1, nombreCompleto: 1, correo: 1, cargo: 1, sedeId: 1 },
+      })
       .sort({ nombreCompleto: 1, nombre: 1 })
-      .lean();
+      .toArray();
+
+    const disponibles = employees.filter((employee) => {
+      const cargos = Array.isArray(employee.cargo) ? employee.cargo : [employee.cargo];
+      return !cargoNormalizado || cargos.some((value) => normalizar(value) === cargoNormalizado);
+    });
 
     // Cuenta desde `empleadoAsignadoId` (campo plano) en vez de
     // `empleadoAsignaciones` (objeto con todas las etapas históricas).
     // Así el conteo refleja la carga REAL del empleado en la etapa actual.
-    const activeOrders = await ProductionOrderModel.find(
-      { estado: { $nin: ESTADOS_FINALIZADOS } },
-      { empleadoAsignadoId: 1 },
-    ).lean();
+    let activeOrders = [];
+    try {
+      activeOrders = await ProductionOrderModel.find(
+        { estado: { $nin: ESTADOS_FINALIZADOS } },
+        { empleadoAsignadoId: 1 },
+      ).lean();
+    } catch (err) {
+      console.error("[Producción] No se pudo calcular la carga laboral:", err.message);
+    }
 
     const countByEmployeeId = new Map();
     for (const order of activeOrders) {
@@ -547,7 +588,7 @@ const getEmployeeWorkload = async (req, res) => {
       }
     }
 
-    const result = employees.map((u) => ({
+    const result = disponibles.map((u) => ({
       id: String(u._id),
       nombre: u.nombreCompleto || u.nombre,
       correo: u.correo,
@@ -653,6 +694,13 @@ const updateOrderDetail = async (req, res) => {
   try {
     const detail = await detailRepo.findById(req.params.id);
     if (!detail) return notFound(res, "Detalle no encontrado");
+
+    const order = await prodRepo.findById(detail.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    const isDamageAdjustment = req.body?.ajusteDanio === true;
+    if (!isDamageAdjustment && order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden editar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const ALLOWED_FIELDS = new Set(["cantidad", "color", "id_producto", "refCorte"]);
     const changes = {};

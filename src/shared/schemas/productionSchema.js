@@ -60,13 +60,39 @@ const normalizeProductionPayload = (raw) => {
       });
     }
 
-    return {
-      ...cleaned,
-      cliente: cleaned.cliente ?? cleaned.client ?? cleaned.nombre ?? cleaned.customer ?? '',
-      fecha_entrega: cleaned.fecha_entrega ?? cleaned.deliveryDate ?? cleaned.fechaSolicitud,
-      id_usuario: cleaned.id_usuario ?? cleaned.userId ?? cleaned.user_id,
-      asignaciones: cleaned.asignaciones ?? cleaned.terceros,
-    };
+    const clientValue = cleaned.cliente ?? cleaned.client ?? cleaned.nombre ?? cleaned.customer;
+    const fechaEntregaValue = cleaned.fecha_entrega ?? cleaned.deliveryDate ?? cleaned.fechaSolicitud;
+    const usuarioValue = cleaned.id_usuario ?? cleaned.userId ?? cleaned.user_id;
+
+    const normalized = { ...cleaned };
+    if (clientValue !== undefined && clientValue !== null && String(clientValue).trim() !== '') {
+      normalized.cliente = String(clientValue).trim();
+    } else {
+      delete normalized.cliente;
+      delete normalized.client;
+      delete normalized.nombre;
+      delete normalized.customer;
+    }
+
+    if (fechaEntregaValue !== undefined && fechaEntregaValue !== null && String(fechaEntregaValue).trim() !== '') {
+      normalized.fecha_entrega = fechaEntregaValue;
+    } else {
+      delete normalized.fecha_entrega;
+      delete normalized.deliveryDate;
+      delete normalized.fechaSolicitud;
+    }
+
+    if (usuarioValue !== undefined && usuarioValue !== null && String(usuarioValue).trim() !== '') {
+      normalized.id_usuario = usuarioValue;
+    } else {
+      delete normalized.id_usuario;
+      delete normalized.userId;
+      delete normalized.user_id;
+    }
+
+    normalized.asignaciones = cleaned.asignaciones ?? cleaned.terceros;
+
+    return normalized;
   }
   return raw;
 };
@@ -185,7 +211,7 @@ const updateOrderSchema = z.preprocess(normalizeProductionPayload, z.object({
   fromDamaged: z.boolean().optional(),
   originalOrderNumber: z.string().optional(),
   originalOrderStatus: z.string().optional(),
-}));
+}).catchall(z.any()));
 
 const cambiarEstadoSchema = z.object({
   estado: z.enum(VALID_ESTADOS, {

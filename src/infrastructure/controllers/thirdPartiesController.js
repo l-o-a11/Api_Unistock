@@ -83,8 +83,23 @@ const attachProducciones = async (thirdParties) => {
 
 const getThirdParties = async (req, res) => {
   try {
-    const terceros = await repo.findAll(req.query);
     const idsValue = req.query.ids;
+    const ids = Array.isArray(idsValue)
+      ? idsValue.flatMap((value) => String(value).split(','))
+      : idsValue
+        ? String(idsValue).split(',')
+        : [];
+    const validIds = ids
+      .map((id) => id.trim())
+      .filter((id) => /^[a-f\d]{24}$/i.test(id));
+
+    if (validIds.length > 0) {
+      const terceros = (await Promise.all(validIds.map((id) => repo.findById(id))))
+        .filter(Boolean);
+      return ok(res, terceros);
+    }
+
+    const terceros = await repo.findAll(req.query);
     const hasIdsFilter = idsValue && (
       (Array.isArray(idsValue) && idsValue.length > 0) ||
       (typeof idsValue === 'string' && idsValue.trim().length > 0)
