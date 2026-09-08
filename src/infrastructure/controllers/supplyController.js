@@ -310,6 +310,23 @@ const updateSupply = async (req, res) => {
       "estado",
       "propiedades",
     ]);
+
+    if (updates.stock !== undefined) {
+      if (updates.stock === null || updates.stock === "" || !Number.isFinite(Number(updates.stock))) {
+        return badRequest(res, "El stock debe ser un número válido.");
+      }
+
+      const newStock = Number(updates.stock);
+      if (newStock < 0) {
+        return badRequest(res, "El stock no puede ser negativo.");
+      }
+      if (newStock > Number(supply.stock)) {
+        return badRequest(res, "El stock solo puede disminuirse, no aumentarse.");
+      }
+
+      updates.stock = newStock;
+    }
+
     // Campo heredado de un patrón distinto (productos/ImgBB) que no existe
     // en el esquema de Supply; si llega del frontend, se descarta.
     delete updates.imagenes_Url;

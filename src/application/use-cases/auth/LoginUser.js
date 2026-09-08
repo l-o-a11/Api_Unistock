@@ -7,12 +7,14 @@ const { sendAccountLockedEmail } = require("../../../shared/utils/emailService")
 const MAX_INTENTOS_FALLIDOS = 5;
 
 class LoginUser {
-  // ── El use case recibe los dos repositorios que necesita ──────────────────
+  // ── El use case recibe los tres repositorios que necesita ──────────────────
   // userRepository → buscar el usuario y su hash de contraseña
   // roleRepository → verificar que el rol existe y está activo
-  constructor(userRepository, roleRepository) {
+  // siteRepository → resolver el nombre de la sede para incluirlo en el token
+  constructor(userRepository, roleRepository, siteRepository) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
+    this.siteRepository = siteRepository;
   }
 
   // Busca a los Gerentes activos y les envía el aviso de bloqueo.
@@ -115,6 +117,15 @@ class LoginUser {
       throw error;
     }
 
+    // 3.1 Resolver la sede — mismo patrón que el rol
+    const sede = await this.siteRepository.findById(user.sedeId);
+
+    if (!sede || !sede.nombre) {
+      const error = new Error("La sede del usuario no existe");
+      error.statusCode = 403;
+      throw error;
+    }
+
     // 4. Generar token
     const token = generate({
       id: user.id,
@@ -122,6 +133,7 @@ class LoginUser {
       rolId: user.rolId,
       sedeId: user.sedeId,
       rolNombre: rol.nombre,
+      sedeNombre: sede.nombre,
       nombreCompleto: user.nombreCompleto,
     });
 
