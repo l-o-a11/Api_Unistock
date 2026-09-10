@@ -572,11 +572,11 @@ Todas las rutas están montadas bajo el prefijo `/api` (ver `interfaces/server.j
 
 ### 🖼️ Subida de archivos (`/api/upload`) — `uploadRoutes.js`
 
-| Método | Ruta                       | Descripción                                    |
-| ------ | -------------------------- | ---------------------------------------------- |
-| POST   | `/upload/upload`           | Subir una imagen (campo `file`, JPG/JPEG o PNG, máx. 10 MB)                |
+| Método | Ruta                       | Descripción                                                                       |
+| ------ | -------------------------- | --------------------------------------------------------------------------------- |
+| POST   | `/upload/upload`           | Subir una imagen (campo `file`, JPG/JPEG o PNG, máx. 10 MB)                       |
 | POST   | `/upload/upload-multiple`  | Subir varias imágenes (campo `files`, máx. 10, JPG/JPEG o PNG, 10 MB por archivo) |
-| DELETE | `/upload/upload/:publicId` | Eliminar imagen de Cloudinary                  |
+| DELETE | `/upload/upload/:publicId` | Eliminar imagen de Cloudinary                                                     |
 
 **Formato:** `multipart/form-data`. Almacena en Cloudinary (carpeta `unistock/products`). Solo se permiten archivos `JPG/JPEG` o `PNG`, con un máximo de `10 MB por archivo` y hasta `10` archivos en `/upload-multiple`.
 
