@@ -22,13 +22,20 @@ class GetEmployeeWorkload {
             if (u.estado === false) return false;
             if (normalizar(u.rolNombre) !== "empleado") return false;
             if (!cargoNorm) return true;
-            return (u.cargos || []).some((c) => normalizar(c) === cargoNorm);
+            const cargos = Array.isArray(u.cargo ?? u.cargos)
+                ? (u.cargo ?? u.cargos)
+                : [u.cargo ?? u.cargos];
+            return cargos.some((c) => normalizar(c) === cargoNorm);
         });
 
         const ordenes = await this.productionRepository.findAll({});
         const counts = {};
         (ordenes || []).forEach((o) => {
-            const empId = o.empleadoAsignadoId;
+            const legacyAssignment = o.empleadoAsignaciones?.[o.estado];
+            const empId = o.empleadoAsignadoId ||
+                (typeof legacyAssignment === "string"
+                    ? legacyAssignment
+                    : legacyAssignment?.id_empleado || legacyAssignment?.empleadoId);
             if (!empId || o.estado === "Anulada" || o.estado === "Enviado") return;
             const key = String(empId);
             counts[key] = (counts[key] || 0) + 1;

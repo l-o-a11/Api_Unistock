@@ -1,11 +1,16 @@
 // application/use-cases/production/CambiarEstadoProduction.js
 const Production = require("../../../domain/entities/Production");
-const { sendProductionStageCompletedEmail } = require("../../../shared/utils/emailService");
+const {
+  sendProductionStageCompletedEmail,
+  sendProductionCompletedEmail,
+} = require("../../../shared/utils/emailService");
 
 class CambiarEstadoProduction {
-  constructor(productionRepository, userRepository) {
+  constructor(productionRepository, userRepository, clientRepository, siteRepository) {
     this.productionRepository = productionRepository;
     this.userRepository = userRepository;
+    this.clientRepository = clientRepository;
+    this.siteRepository = siteRepository;
   }
 
   /**
@@ -120,6 +125,12 @@ const updated = await this.productionRepository.cambiarEstado(
       });
     }
 
+    if (nuevoEstado === "Enviado" && this.clientRepository) {
+      this._notificarCliente(updated).catch((err) => {
+        console.error("No se pudo enviar el correo de orden terminada:", err.message);
+      });
+    }
+
     return updated.toJSON();
   }
 
@@ -139,6 +150,32 @@ const updated = await this.productionRepository.cambiarEstado(
       numeroOrden: production.numero_orden,
       etapaCompletada,
       empleadoNombre: empleado.nombreCompleto,
+    });
+  }
+
+  async _notificarCliente(production) {
+    const cliente = await this.clientRepository.findByNombre(production.cliente);
+    if (!cliente?.correo) return;
+
+    let sedes = Array.isArray(production.sedeAsignaciones)
+      ? production.sedeAsignaciones
+          .map((asignacion) => {
+            if (typeof asignacion === "string") return asignacion.trim();
+            return String(asignacion?.option || asignacion?.nombre || "").trim();
+          })
+          .filter(Boolean)
+      : [];
+
+    if (sedes.length === 0 && production.sedeId && this.siteRepository) {
+      const sede = await this.siteRepository.findById(production.sedeId);
+      if (sede?.nombre) sedes = [sede.nombre];
+    }
+
+    await sendProductionCompletedEmail({
+      nombreCliente: cliente.nombre,
+      correo: cliente.correo,
+      numeroOrden: production.numero_orden,
+      sedeDestino: sedes.length ? sedes.join(", ") : "No especificada",
     });
   }
 }
