@@ -1,11 +1,16 @@
 // application/use-cases/production/CambiarEstadoProduction.js
 const Production = require("../../../domain/entities/Production");
-const { sendProductionStageCompletedEmail } = require("../../../shared/utils/emailService");
+const {
+  sendProductionStageCompletedEmail,
+  sendProductionCompletedEmail,
+} = require("../../../shared/utils/emailService");
 
 class CambiarEstadoProduction {
-  constructor(productionRepository, userRepository) {
+  constructor(productionRepository, userRepository, clientRepository, siteRepository) {
     this.productionRepository = productionRepository;
     this.userRepository = userRepository;
+    this.clientRepository = clientRepository;
+    this.siteRepository = siteRepository;
   }
 
   /**
@@ -57,7 +62,7 @@ class CambiarEstadoProduction {
       }
     }
 
-    // 🔒 Solo el empleado asignado a la etapa actual (o Gerente/Administrador)
+    // Solo el empleado asignado a la etapa actual o un gerente/administrador.
     // puede avanzarla. Si la orden todavía no tiene empleado asignado (ej.
     // órdenes creadas antes de este cambio, o el admin no lo asignó), no se
     // restringe — así no se rompen flujos existentes.
@@ -71,7 +76,7 @@ class CambiarEstadoProduction {
       const esElAsignado = String(production.empleadoAsignadoId) === String(solicitante.id);
       if (!esPrivilegiado && !esElAsignado) {
         const err = new Error(
-          "Solo el empleado asignado a esta etapa (o un administrador) puede avanzarla",
+          "Solo el empleado asignado a esta etapa (o un gerente) puede avanzarla",
         );
         err.statusCode = 403;
         throw err;
@@ -80,7 +85,7 @@ class CambiarEstadoProduction {
 
     const ETAPAS_REQUIEREN_CONFIRMACION = ["Ficha Técnica", "Corte", "Compras", "Recepción", "Producción"];
 
-    // 🔒 La etapa actual debe estar confirmada por el empleado asignado
+    // La etapa actual debe estar confirmada por el empleado asignado.
     // antes de permitir avanzar. Si no hay empleado asignado, no aplica
     // (órdenes legacy o etapas sin asignación).
     if (!force && ETAPAS_REQUIEREN_CONFIRMACION.includes(production.estado)) {
@@ -103,20 +108,26 @@ const updated = await this.productionRepository.cambiarEstado(
       nuevoEstado,
       id_usuario,
       user,
-      // 🔁 Se limpia la asignación al avanzar: la nueva etapa necesita que
+      // Se limpia la asignación al avanzar: la nueva etapa necesita que
       // el admin asigne a alguien de nuevo. También se resetea
       // etapaConfirmada para que el empleado de la nueva etapa pueda
       // confirmar su trabajo.
       { ...(options.extra || {}), empleadoAsignadoId: null, etapaConfirmada: false },
     );
 
-    // 📧 Avisar al admin de la sede DEL EMPLEADO que acaba de terminar su
+    // Avisar al administrador de la sede del empleado que acaba de terminar su
     // parte (no de "la sede de la producción" — la orden no tiene sede
     // asignada hasta Recepción). Fire-and-forget: un fallo de correo no debe
     // bloquear el avance de la orden.
     if (empleadoQueTermina && this.userRepository) {
       this._notificarCheckIn(empleadoQueTermina, updated, etapaCompletada).catch((err) => {
         console.error("No se pudo enviar el correo de check-in:", err.message);
+      });
+    }
+
+    if (nuevoEstado === "Enviado" && this.clientRepository) {
+      this._notificarCliente(updated).catch((err) => {
+        console.error("No se pudo enviar el correo de orden terminada:", err.message);
       });
     }
 
@@ -139,6 +150,32 @@ const updated = await this.productionRepository.cambiarEstado(
       numeroOrden: production.numero_orden,
       etapaCompletada,
       empleadoNombre: empleado.nombreCompleto,
+    });
+  }
+
+  async _notificarCliente(production) {
+    const cliente = await this.clientRepository.findByNombre(production.cliente);
+    if (!cliente?.correo) return;
+
+    let sedes = Array.isArray(production.sedeAsignaciones)
+      ? production.sedeAsignaciones
+          .map((asignacion) => {
+            if (typeof asignacion === "string") return asignacion.trim();
+            return String(asignacion?.option || asignacion?.nombre || "").trim();
+          })
+          .filter(Boolean)
+      : [];
+
+    if (sedes.length === 0 && production.sedeId && this.siteRepository) {
+      const sede = await this.siteRepository.findById(production.sedeId);
+      if (sede?.nombre) sedes = [sede.nombre];
+    }
+
+    await sendProductionCompletedEmail({
+      nombreCliente: cliente.nombre,
+      correo: cliente.correo,
+      numeroOrden: production.numero_orden,
+      sedeDestino: sedes.length ? sedes.join(", ") : "No especificada",
     });
   }
 }

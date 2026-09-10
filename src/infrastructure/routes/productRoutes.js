@@ -26,41 +26,42 @@
 
 const { Router } = require("express");
 const ctrl = require("../controllers/productController");
-const { requireAuth, requireRole } = require("../../interfaces/middlewares/authMiddleware");
+const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = Router();
 
 // Middleware: Requerir autenticaciÃ³n en todos los endpoints (REMOVIDO para desarrollo pÃºblico)
 router.use(requireAuth);
+const MODULO = "productos";
 
 // Rutas producto
 router.get("/", ctrl.getProducts);
 router.get("/:id", ctrl.getProductById);
-router.post("/", ctrl.createProduct);
-router.put("/:id", ctrl.updateProduct);
-router.delete("/:id", ctrl.deleteProduct);
-router.patch("/:id/status", ctrl.toggleProductStatus);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createProduct);
+router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.updateProduct);
+router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.deleteProduct);
+router.patch("/:id/status", requirePermission(MODULO, "actualizar"), ctrl.toggleProductStatus);
 
 // Rutas ficha tÃ©cnica
 router.get("/:id/tecnicas", ctrl.getTechnicalSpecifications);
 router.get("/:id/tecnicas/:techSpecId", ctrl.getTechnicalSpecificationById);
-router.post("/:id/tecnicas", ctrl.createTechnicalSpecification);
-router.put("/:id/tecnicas/:techSpecId", ctrl.updateTechnicalSpecification);
-router.delete("/:id/tecnicas/:techSpecId", ctrl.deleteTechnicalSpecification);
+router.post("/:id/tecnicas", requirePermission(MODULO, "crear"), ctrl.createTechnicalSpecification);
+router.put("/:id/tecnicas/:techSpecId", requirePermission(MODULO, "actualizar"), ctrl.updateTechnicalSpecification);
+router.delete("/:id/tecnicas/:techSpecId", requirePermission(MODULO, "eliminar"), ctrl.deleteTechnicalSpecification);
 
 // Rutas material ficha t�cnica, anidadas por ficha t�cnica
 router.get("/:id/tecnicas/:techSpecId/materiales", ctrl.getMaterialTechnicalSpecifications);
 router.get("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
-router.post("/:id/tecnicas/:techSpecId/materiales", ctrl.createMaterialTechnicalSpecification);
-router.put("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.updateMaterialTechnicalSpecification);
-router.delete("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", ctrl.deleteMaterialTechnicalSpecification);
+router.post("/:id/tecnicas/:techSpecId/materiales", requirePermission(MODULO, "crear"), ctrl.createMaterialTechnicalSpecification);
+router.put("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", requirePermission(MODULO, "actualizar"), ctrl.updateMaterialTechnicalSpecification);
+router.delete("/:id/tecnicas/:techSpecId/materiales/:materialTechSpecId", requirePermission(MODULO, "eliminar"), ctrl.deleteMaterialTechnicalSpecification);
 
 // Compatibilidad con rutas antiguas
 router.get("/:id/materiales", ctrl.getMaterialTechnicalSpecifications);
 router.get("/:id/materiales/:materialTechSpecId", ctrl.getMaterialTechnicalSpecificationById);
-router.post("/:id/materiales", ctrl.createMaterialTechnicalSpecification);
-router.put("/:id/materiales/:materialTechSpecId", ctrl.updateMaterialTechnicalSpecification);
-router.delete("/:id/materiales/:materialTechSpecId", ctrl.deleteMaterialTechnicalSpecification);
+router.post("/:id/materiales", requirePermission(MODULO, "crear"), ctrl.createMaterialTechnicalSpecification);
+router.put("/:id/materiales/:materialTechSpecId", requirePermission(MODULO, "actualizar"), ctrl.updateMaterialTechnicalSpecification);
+router.delete("/:id/materiales/:materialTechSpecId", requirePermission(MODULO, "eliminar"), ctrl.deleteMaterialTechnicalSpecification);
 
 module.exports = router;

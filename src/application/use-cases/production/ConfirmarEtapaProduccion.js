@@ -24,99 +24,101 @@ class ConfirmarEtapaProduccion {
     this.userRepository = userRepository;
   }
 
-  async execute(id, solicitanteId) {
-    // 1. Validar que el solicitanteId está presente
-    if (!solicitanteId) {
-      const error = new Error("No se pudo identificar al usuario solicitante");
-      error.statusCode = 401;
-      throw error;
+    async execute(id, solicitanteId, solicitanteNombre = null) {
+        // 1. Validar que el solicitanteId está presente
+        if (!solicitanteId) {
+            const error = new Error("No se pudo identificar al usuario solicitante");
+            error.statusCode = 401;
+            throw error;
+        }
+
+        // 2. Buscar la orden
+        const production = await this.productionRepository.findById(id);
+        if (!production) {
+            const error = new Error("Orden de producción no encontrada");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        // 3. Validar que no esté anulada
+        if (production.estaAnulada()) {
+            const error = new Error("No se puede confirmar la etapa de una orden anulada");
+            error.statusCode = 422;
+            throw error;
+        }
+
+        // 4. Validar que la orden esté en una etapa asignable
+        if (!ETAPAS_ASIGNABLES.includes(production.estado)) {
+            const error = new Error(
+                `La etapa "${production.estado}" no requiere confirmación del empleado. ` +
+                `Solo las etapas ${ETAPAS_ASIGNABLES.join(", ")} requieren confirmación.`,
+            );
+            error.statusCode = 422;
+            throw error;
+        }
+
+        // 5. Validar que la orden tenga un empleado asignado
+        if (!production.empleadoAsignadoId) {
+            const error = new Error(
+                "No hay un empleado asignado a esta etapa. El Gerente debe asignar a alguien primero.",
+            );
+            error.statusCode = 422;
+            throw error;
+        }
+
+        // 6. Validar que el solicitante ES el empleado asignado
+        if (String(production.empleadoAsignadoId) !== String(solicitanteId)) {
+            const error = new Error(
+                "Solo el empleado asignado a esta etapa puede confirmar su finalización.",
+            );
+            error.statusCode = 403;
+            throw error;
+        }
+
+        // 7. Validar que no esté ya confirmada
+        if (production.etapaConfirmada) {
+            const error = new Error("La etapa ya fue confirmada anteriormente.");
+            error.statusCode = 422;
+            throw error;
+        }
+
+        const nombreSolicitante = solicitanteNombre || "El empleado";
+
+        // 8. Marcar etapaConfirmada = true y agregar entrada al historial
+        const historialEntry = {
+            estado: production.estado,
+            fecha: new Date(),
+            id_usuario: solicitanteId,
+            user: nombreSolicitante,
+            motivo: "Empleado confirmó finalización de la etapa",
+        };
+
+        const updated = await this.productionRepository.update(id, {
+            etapaConfirmada: true,
+        });
+
+        if (updated) {
+            await this.productionRepository.agregarHistorial(
+                id,
+                `${nombreSolicitante} confirmó finalización de la etapa`,
+                solicitanteId,
+                nombreSolicitante,
+                production.estado,
+            );
+        }
+
+        if (!updated) {
+            const error = new Error("Error al confirmar la etapa");
+            error.statusCode = 500;
+            throw error;
+        }
+
+        this._notificarGerentes(production, solicitanteId).catch((err) => {
+            console.error("No se pudo notificar a los gerentes:", err.message);
+        });
+
+        return updated.toJSON();
     }
-
-    // 2. Buscar la orden
-    const production = await this.productionRepository.findById(id);
-    if (!production) {
-      const error = new Error("Orden de producción no encontrada");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    // 3. Validar que no esté anulada
-    if (production.estaAnulada()) {
-      const error = new Error("No se puede confirmar la etapa de una orden anulada");
-      error.statusCode = 422;
-      throw error;
-    }
-
-    // 4. Validar que la orden esté en una etapa asignable
-    if (!ETAPAS_ASIGNABLES.includes(production.estado)) {
-      const error = new Error(
-        `La etapa "${production.estado}" no requiere confirmación del empleado. ` +
-        `Solo las etapas ${ETAPAS_ASIGNABLES.join(", ")} requieren confirmación.`,
-      );
-      error.statusCode = 422;
-      throw error;
-    }
-
-    // 5. Validar que la orden tenga un empleado asignado
-    if (!production.empleadoAsignadoId) {
-      const error = new Error(
-        "No hay un empleado asignado a esta etapa. El Gerente debe asignar a alguien primero.",
-      );
-      error.statusCode = 422;
-      throw error;
-    }
-
-    // 6. Validar que el solicitante ES el empleado asignado
-    if (String(production.empleadoAsignadoId) !== String(solicitanteId)) {
-      const error = new Error(
-        "Solo el empleado asignado a esta etapa puede confirmar su finalización.",
-      );
-      error.statusCode = 403;
-      throw error;
-    }
-
-    // 7. Validar que no esté ya confirmada
-    if (production.etapaConfirmada) {
-      const error = new Error("La etapa ya fue confirmada anteriormente.");
-      error.statusCode = 422;
-      throw error;
-    }
-
-    // 8. Marcar etapaConfirmada = true y agregar entrada al historial
-    const historialEntry = {
-      estado: production.estado,
-      fecha: new Date(),
-      id_usuario: solicitanteId,
-      user: null,
-      motivo: "Empleado confirmó finalización de la etapa",
-    };
-
-    const updated = await this.productionRepository.update(id, {
-      etapaConfirmada: true,
-    });
-
-    if (updated) {
-      await this.productionRepository.agregarHistorial(
-        id,
-        "Empleado confirmó finalización de la etapa",
-        solicitanteId,
-        null,
-        production.estado,
-      );
-    }
-
-    if (!updated) {
-      const error = new Error("Error al confirmar la etapa");
-      error.statusCode = 500;
-      throw error;
-    }
-
-    this._notificarGerentes(production, solicitanteId).catch((err) => {
-      console.error("No se pudo notificar a los gerentes:", err.message);
-    });
-
-    return updated.toJSON();
-  }
 
   async _notificarGerentes(production, empleadoId) {
     if (!this.userRepository) return;

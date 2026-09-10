@@ -1,19 +1,21 @@
-// application/use-cases/productions/GetUserById.js
+// application/use-cases/production/GetProductionById.js
 
 class GetProductionById {
   constructor(productionRepository) {
     this.productionRepository = productionRepository;
   }
 
-  execute(id) {
-    const production = this.productionRepository.findById(id);
+  async execute(id) {
+    const production = await this.productionRepository.findById(id);
 
     if (!production) {
-      const error = new Error("Produccion no encontrado");
+      const error = new Error("Orden de producción no encontrada");
       error.statusCode = 404;
       throw error;
     }
 
-    return production.toPublic();
+    return production.toJSON();
   }
 }
+
+module.exports = GetProductionById;

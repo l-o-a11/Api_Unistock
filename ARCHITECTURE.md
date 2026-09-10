@@ -1,273 +1,326 @@
-# 🏗️ Arquitectura de Unistock
+# Arquitectura de Unistock
 
-## Clean Architecture (Arquitectura Limpia)
+## Objetivo
 
-Unistock implementa los principios de **Clean Architecture** de Robert Martin (Uncle Bob).
+Este documento describe la arquitectura real del backend de Unistock, la ubicacion de los componentes principales y el flujo de uso de la API desde una peticion hasta la base de datos.
 
-```
-┌─────────────────────────────────────────────┐
-│   ENTITIES (Entidades del Dominio)          │
-│   - Suppliers                               │
-│   - ThirdParties                            │
-│   - Production                              │
-└─────────────────────────────────────────────┘
-              ▲
-              │
-┌─────────────────────────────────────────────┐
-│   USE CASES (Casos de Uso / Lógica)         │
-│   - CreateSupplier                          │
-│   - UpdateProduction                        │
-└─────────────────────────────────────────────┘
-              ▲
-              │
-┌─────────────────────────────────────────────┐
-│   REPOSITORIES (Abstracción de Datos)       │
-│   - SupplierRepository                      │
-│   - ProductionRepository                    │
-└─────────────────────────────────────────────┘
-              ▲
-              │
-┌─────────────────────────────────────────────┐
-│   DATABASE / EXTERNAL SERVICES              │
-│   - MongoDB / Mongoose                      │
-│   - Store en-memoria                        │
-└─────────────────────────────────────────────┘
-```
+---
 
-### Flujo de Datos
+## Visión general
 
-```
-HTTP Request
-    │
-    ▼
-Route (productionRoutes.js)
-    │
-    ▼
-Controller (productionController.js)
-    │ - Valida input HTTP
-    │ - Llama Use Case
-    │
-    ▼
-Use Case (CreateProduction.js)
-    │ - Lógica de negocio
-    │ - Validaciones
-    │
-    ▼
-Repository (ProductionRepository.js)
-    │ - Acceso a datos
-    │
-    ▼
-Database / Store
-    │
-    ▼
-HTTP Response (JSON)
+La aplicacion tiene una arquitectura por capas con separacion entre:
+
+- transporte HTTP
+- validacion y control
+- logica de negocio
+- acceso a datos
+- persistencia y servicios externos
+
+La base de datos principal es MongoDB con Mongoose y la capa web usa Express.
+
+```text
+Cliente / Frontend
+   -> Express API
+   -> Rutas
+   -> Controladores
+   -> Casos de uso
+   -> Repositorios
+   -> Modelos Mongoose
+   -> MongoDB
 ```
 
 ---
 
-## 📁 Estructura por Capas
+## Capas del sistema
 
-### 1. **Domain Layer** (src/domain/entities/)
+### 1. Capa de transporte
 
-Contiene la lógica del negocio pura, **sin dependencias externas**.
+Archivo principal:
 
-```javascript
-// domain/entities/Suppliers.js
-class Suppliers {
-  constructor({ id, nit, nombre_de_empresa, ... }) { }
-  toJSON() { /* Serialización */ }
-}
+- src/interfaces/server.js
+- src/app.js
+
+Responsabilidad:
+
+- levantar Express
+- configurar CORS
+- parsear JSON
+- montar rutas
+- verificar MongoDB activo
+- exponer Swagger
+
+Puntos importantes:
+
+- La API monta rutas bajo /api
+- Los origenes permitidos se validan por CORS
+- Si la base de datos no esta disponible, las rutas responden con 503
+
+### 2. Capa de rutas
+
+Ubicacion:
+
+- src/infrastructure/routes/
+
+Responsabilidad:
+
+- definir endpoints por modulo
+- llamar controladores
+- aplicar middleware de autenticacion y permisos
+
+Ejemplo:
+
+```js
+router.get("/", requirePermission(MODULO, "leer"), ctrl.getRoles);
+router.post("/", requirePermission(MODULO, "crear"), ctrl.createRole);
 ```
 
-**Características:**
+### 3. Capa de control
 
-- ✅ Sin imports externos
-- ✅ Sin acceso a BD
-- ✅ Reglas de negocio puro
-- ✅ Testeable sin dependencias
+Ubicacion:
+
+- src/infrastructure/controllers/
+
+Responsabilidad:
+
+- recibir req y res
+- validar argumento HTTP
+- delegar en casos de uso
+- devolver respuestas normalizadas
+
+Ejemplo:
+
+- userController.js
+- productionController.js
+- purchaseController.js
+- suppliersController.js
+
+### 4. Capa de aplicacion
+
+Ubicacion:
+
+- src/application/use-cases/
+
+Responsabilidad:
+
+- aplicar reglas del negocio
+- validar invariantes
+- orquestar repositorios
+- devolver entidades o DTOs
+
+Ejemplo:
+
+- LoginUser
+- CreateUser
+- UpdateUser
+- DeleteUser
+- ChangePassword
+
+### 5. Capa de persistencia
+
+Ubicacion:
+
+- src/infrastructure/repositories/
+- src/infrastructure/db/
+
+Responsabilidad:
+
+- encapsular acceso a MongoDB
+- consultar y guardar entidades
+- mantener logica de query y filtros
+
+### 6. Capa de dominio
+
+Ubicacion:
+
+- src/domain/entities/
+
+Responsabilidad:
+
+- representar entidades del negocio
+- mantener logica propia del dominio
+- no depender de Express ni de Mongo
 
 ---
 
-### 2. **Application Layer** (src/application/use-cases/)
+## Flujo de una peticion
 
-Contiene los **casos de uso** - las operaciones que el sistema puede realizar.
-
-```javascript
-// application/use-cases/suppliers/CreateSupplier.js
-class CreateSupplier {
-  constructor(supplierRepository) {}
-
-  async execute(data) {
-    // Validaciones de negocio
-    // Llamar al repositorio
-    // Retornar resultado
-  }
-}
+```text
+1. Cliente envia request a /api/usuarios o /api/produccion
+2. Express recibe la peticion en src/interfaces/server.js
+3. La ruta coincide con un router de src/infrastructure/routes
+4. Se ejecutan middlewares de autenticacion / permisos
+5. Controlador adapta la request
+6. Caso de uso valida reglas de negocio
+7. Repositorio consulta o modifica MongoDB
+8. Response JSON con success/data o error
 ```
 
-**Características:**
+Ejemplo concreto: login
 
-- ✅ Encapsula lógica de un caso de uso
-- ✅ Independiente de HTTP
-- ✅ Reutilizable desde múltiples interfaces
-- ✅ Fácil de testear
-
----
-
-### 3. **Infrastructure Layer** (src/infrastructure/)
-
-#### 3a. **Repositories** (Data Access Layer)
-
-Abstrae la fuente de datos (BD, caché, etc).
-
-```javascript
-// infrastructure/repositories/SupplierRepository.js
-class SupplierRepository {
-  findAll(filters) {}
-  findById(id) {}
-  create(data) {}
-  update(id, data) {}
-  delete(id) {}
-}
-```
-
-**Ventaja:** Cambiar de MongoDB a PostgreSQL solo requiere cambiar el repositorio.
-
-#### 3b. **Database Models** (db/)
-
-Esquemas Mongoose para MongoDB.
-
-```javascript
-// infrastructure/db/SuppliersModel.js
-const suppliersSchema = new Schema({
-  nit: { type: Number, unique: true },
-  nombre_de_empresa: String,
-  // ...
-});
-```
-
-#### 3c. **Controllers** (HTTP Handlers)
-
-Traducen HTTP requests a use cases.
-
-```javascript
-// infrastructure/controllers/suppliersController.js
-const createSupplier = (req, res) => {
-  const supplier = repo.create(req.body);
-  return created(res, supplier);
-};
-```
-
-**Responsabilidades:**
-
-- ✅ Recibir HTTP request
-- ✅ Validar input
-- ✅ Llamar use case
-- ✅ Retornar HTTP response
-
----
-
-### 4. **Interfaces Layer** (src/interfaces/)
-
-Define cómo el sistema expone funcionalidades.
-
-#### Routes (server.js)
-
-```javascript
-// infrastructure/routes/suppliersRoutes.js
-router.post("/", ctrl.createSupplier);
-router.get("/:id", ctrl.getSupplierById);
-```
-
-#### Middlewares
-
-```javascript
-// interfaces/middlewares/authMiddleware.js
-const requireAuth = (req, res, next) => {
-  if (!token) return unauthorized(res);
-  next();
-};
-```
-
----
-
-## 🔄 Flujo de Ejemplo: Crear Proveedor
-
-```
-1. Cliente HTTP
-   POST /proveedores
-   { "nit": 123, "nombre_de_empresa": "XYZ" }
-
-2. Route (suppliersRoutes.js)
-   → router.post("/", ctrl.createSupplier)
-
-3. Controller (suppliersController.js)
-   const createSupplier = (req, res) => {
-     const supplier = repo.create(req.body);
-     return created(res, supplier);
-   }
-
-4. Repository (SupplierRepository.js)
-   create(data) {
-     const maxId = Math.max(...);
-     const newSupplier = { id: maxId+1, ...data };
-     suppliers.push(newSupplier);
-     return this._toEntity(newSupplier);
-   }
-
-5. Database
-   store._suppliers = [..., newSupplier]
-
-6. Response
-   201 Created
-   { id: 1, nit: 123, nombre_de_empresa: "XYZ", ... }
+```text
+POST /api/auth/login
+  -> authRoutes.js
+  -> userController.login
+  -> LoginUser.execute(req.body)
+  -> UserRepository verifica usuario y password
+  -> genera JWT
+  -> responde { success: true, data: { token, user } }
 ```
 
 ---
 
-## 🔌 Inversión de Control (IoC)
+## Seguridad y autenticacion
 
-Los repositorios se **inyectan** en los controladores:
+Archivo importante:
 
-```javascript
-// Sin IoC (acoplado)
-const createSupplier = (req, res) => {
-  const repo = new SupplierRepository(); // ❌ Acoplado
-  repo.create(...);
-};
+- src/interfaces/middlewares/authMiddleware.js
 
-// Con IoC (desacoplado)
-const repo = new SupplierRepository();
-const createSupplier = (req, res) => {
-  repo.create(...); // ✅ Inyectado
-};
-```
+Reglas actuales:
 
-**Ventaja:** Fácil de testear, cambiar implementación.
+- requireAuth valida el JWT
+- verifica que el usuario exista y este activo en la base de datos
+- reemplaza valores del token por los datos actuales del usuario
+- aplica 401 si el token no es valido o el usuario fue desactivado
+
+Esto es importante porque evita que una sesion antigua siga funcionando cuando el rol o estado del usuario cambian.
+
+La validacion de permisos se hace con requirePermission(modulo, accion). Se consulta el rol real de la base de datos y no solo los claims del token.
 
 ---
 
-## 📊 Dependencias y Flujo
+## Reglas de negocio principales
 
+### Usuarios
+
+- Los usuarios inactivos no pueden operar la API.
+- No se permite dejar al unico administrador activo inhabilitado.
+- Si un usuario tiene produccion activa asignada, no puede ser desactivado.
+- Si se reactiva un gerente y ya existe otro gerente activo, se bloquea.
+
+### Roles y permisos
+
+- Los permisos se asignan por modulo.
+- El backend valida permisos generando la decision desde la base de datos.
+- Un usuario autenticado pero sin permisos sobre un modulo no puede usarlo.
+
+### Proveedores
+
+- Deben evitarse duplicados de campos clave como nit o correo.
+- Las compras asociadas pueden impedir la eliminacion del proveedor.
+
+### Compras
+
+- La compra y su detalle se tratan como una operacion integrada.
+- La anulacion exige motivo.
+
+### Produccion
+
+- Las ordenes tienen estados y etapas.
+- La asignacion de empleados se valida con reglas internas.
+- La anulacion de una orden implica dejar trazabilidad de la accion.
+
+### Terceros
+
+- La validacion de campos unicos y la asociacion con operaciones del negocio deben resolverse en backend antes de persistir.
+
+---
+
+## Estructura relevante por modulo
+
+```text
+src/
+├── app.js
+├── Config/
+├── application/
+│   └── use-cases/
+├── domain/
+│   └── entities/
+├── infrastructure/
+│   ├── controllers/
+│   ├── db/
+│   ├── repositories/
+│   ├── routes/
+│   ├── security/
+│   └── cloudinary/
+├── interfaces/
+│   ├── middlewares/
+│   └── server.js
+├── shared/
+├── swagger/
+└── server.js
 ```
-Domain Layer (Entities)
-    ▲
-    │ (no depende de nada)
-    │
-Application Layer (Use Cases)
-    ▲
-    │ (depende de Entities)
-    │
-Infrastructure Layer (Repos, Controllers)
-    ▲
-    │ (depende de Use Cases, Entities, DB)
-    │
-Interfaces Layer (Routes, Middlewares)
-    ▲
-    │ (depende de Controllers, Use Cases)
-    │
-Express App
+
+---
+
+## Flujo de uso con el frontend
+
+El frontend consulta la API con un cliente centralizado y usa la sesion del usuario para decidir que vistas puede acceder.
+
+```text
+Frontend
+  -> AuthContext / session
+  -> service module
+  -> httpClient
+  -> /api/<modulo>
+  -> backend
+  -> MongoDB
 ```
+
+El frontend no debe decidir los permisos de forma aislada; el backend sigue siendo la fuente de verdad.
+
+---
+
+## TODO y seguimiento
+
+Pendientes documentados:
+
+- Consolidar rutas alias de /api/suppliers y /api/proveedores
+- Reforzar documentacion de endpoints legacy o parcialmente migrados
+- Completar pruebas por modulo y por flujo critico
+- Mantener la semilla de modulos y permisos sincronizada con la UI
+- Revisar y homogeneizar los nombres de los modulos entre backend y frontend
+
+---
+
+## Resultado esperado
+
+Cuando una peticion llega al backend, la secuencia esperada es:
+
+```text
+Request HTTP
+  -> route
+  -> middleware auth
+  -> middleware permission
+  -> controller
+  -> use case
+  -> repository
+  -> MongoDB
+  -> response JSON
+```
+
+Esto permite una API consistente, segura y mantenible para toda la operacion del sistema.
+
+---
+
+## Referencias
+
+- src/interfaces/server.js
+- src/infrastructure/routes/
+- src/infrastructure/controllers/
+- src/interfaces/middlewares/authMiddleware.js
+- src/Config/seedModulesPrivileges.js
+- src/Config/database.js
+  Infrastructure Layer (Repos, Controllers)
+  ▲
+  │ (depende de Use Cases, Entities, DB)
+  │
+  Interfaces Layer (Routes, Middlewares)
+  ▲
+  │ (depende de Controllers, Use Cases)
+  │
+  Express App
+
+````
 
 **Regla de Oro:** Las capas internas NO deben depender de las capas externas.
 
@@ -292,7 +345,7 @@ describe("CreateSupplier", () => {
     expect(result.nit).toBe(123);
   });
 });
-```
+````
 
 ---
 

@@ -6,7 +6,7 @@ class ReasignarEmpleadoProduccion {
         this.userRepository = userRepository;
     }
 
-    async execute(ordenId, nuevoEmpleadoId, motivo) {
+    async execute(ordenId, nuevoEmpleadoId, motivo, solicitanteId = null, solicitanteNombre = null) {
         const orden = await this.productionRepository.findById(ordenId);
         if (!orden) {
             const err = new Error("Orden de producción no encontrada");
@@ -82,12 +82,13 @@ class ReasignarEmpleadoProduccion {
         const nombreAnterior = empleadoAnterior?.nombreCompleto || "Sin asignar";
         const nombreNuevo = nuevoEmpleado.nombreCompleto;
         const justificacion = String(motivo).trim();
+        const quienReasigna = solicitanteNombre || "Sistema";
 
         await this.productionRepository.agregarHistorial(
             ordenId,
-            `Reasignado de ${nombreAnterior} a ${nombreNuevo}. Motivo: ${justificacion}`,
-            null,
-            null,
+            `Reasignado de ${nombreAnterior} a ${nombreNuevo} por ${quienReasigna}. Motivo: ${justificacion}`,
+            solicitanteId,
+            quienReasigna,
             orden.estado,
         );
 
@@ -113,7 +114,13 @@ class ReasignarEmpleadoProduccion {
             });
         }
 
-        return actualizado.toJSON();
+        const response = actualizado.toJSON();
+        response.empleadoAnteriorNombre = nombreAnterior;
+        response.empleadoNuevoNombre = nombreNuevo;
+        response.quienReasigna = quienReasigna;
+        response.justificacion = justificacion;
+
+        return response;
     }
 }
 

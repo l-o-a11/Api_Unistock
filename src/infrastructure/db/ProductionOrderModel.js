@@ -67,11 +67,6 @@ const productionOrderSchema = new mongoose.Schema(
     // que terminó su trabajo. Se limpia automáticamente al avanzar de etapa
     // junto con empleadoAsignadoId. El Gerente ve esta bandera para saber
     // que debe asignar a alguien para la siguiente etapa.
-    etapaConfirmada: { type: Boolean, default: false },
-    // ✅ Sede a la que pertenece la producción desde su creación (no confundir
-    // con sedeAsignaciones, que es el reparto del producto TERMINADO entre
-    // sedes). Esta es la sede cuyos empleados trabajan la orden en cada
-    // etapa, y la que usa el admin de sede para ver sus propias órdenes.
     sedeId: { type: mongoose.Schema.Types.ObjectId, ref: "Sede", default: null },
     sedeAsignaciones: { type: [mongoose.Schema.Types.Mixed], default: [] },
     terceroAsignaciones: { type: [mongoose.Schema.Types.Mixed], default: [] },

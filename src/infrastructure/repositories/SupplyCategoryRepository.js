@@ -1,6 +1,7 @@
 // infrastructure/repositories/SupplyCategoryRepository.js
 
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const SupplyCategory = require("../../domain/entities/SupplyCategory");
 
 class SupplyCategoryRepository {
@@ -14,7 +15,7 @@ class SupplyCategoryRepository {
     const query = {};
 
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre: re }, { descripcion: re }];
     }
 

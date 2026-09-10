@@ -92,15 +92,12 @@ const connectDatabase = async () => {
     throw new Error("Missing env var MONGO_URI");
   }
 
-  // Fail-fast configuration to avoid 10s buffering timeouts
-  // when the app receives requests before the connection is ready.
+  // Evita que Mongoose acumule peticiones mientras la conexión aún no está lista.
   mongoose.set("bufferCommands", false);
+  mongoose.set("sanitizeFilter", true);
 
-  // Note: option names may differ slightly between mongoose versions.
-  // These are widely supported by the underlying MongoDB driver.
   const conn = await mongoose.connect(uri, {
     dbName,
-    // Aumentamos para evitar timeouts agresivos si la red tiene latencia o Atlas tarda en responder.
     serverSelectionTimeoutMS: 30_000,
     connectTimeoutMS: 20_000,
     socketTimeoutMS: 30_000,

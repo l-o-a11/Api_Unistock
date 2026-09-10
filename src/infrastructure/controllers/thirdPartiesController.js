@@ -2,11 +2,14 @@
 const ThirdPartiesRepository = require("../repositories/ThirdPartiesRepository");
 const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
 const ProductionRepository = require("../repositories/ProductionRepository");
-const { ok, created, badRequest, notFound, conflict, serverError } = require("../../shared/utils/response");
+const UserRepository = require("../repositories/UserRepository");
+const { ok, created, badRequest, notFound, conflict, forbidden, serverError } = require("../../shared/utils/response");
+const { extractManagerPassword, verifyManagerPassword } = require("../../shared/utils/managerAuth");
 
 const repo = new ThirdPartiesRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
 const productionRepo = new ProductionRepository();
+const userRepo = new UserRepository();
 
 const idToString = (value, depth = 0) => {
   if (!value) return "";
@@ -32,14 +35,13 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
   });
 
   const orderIds = [...new Set(filtered.map((assignment) => idToString(assignment.id_orden)).filter(Boolean))];
-  const validOrderIds = orderIds.filter((id) => {
-    try { new mongoose.Types.ObjectId(id); return true; }
-    catch { return false; }
-  });
-  const orders = validOrderIds.length > 0
-    ? await productionRepo.find({ _id: { $in: validOrderIds.map((id) => new mongoose.Types.ObjectId(id)) } })
-    : [];
-  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const orders = await Promise.all(
+    orderIds.map(async (orderId) => [
+      orderId,
+      await productionRepo.findById(orderId).catch(() => null),
+    ]),
+  );
+  const orderById = new Map(orders.filter(([, order]) => order));
 
   const grouped = new Map();
   for (const assignment of filtered) {
@@ -55,8 +57,8 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
     }
 
     producciones.push({
-      orden: order?.numero_orden || order?.orderNumber || orderId,
-      orderNumber: order?.numero_orden || order?.orderNumber || orderId,
+      orden: order?.numero_orden || order?.orderNumber || "",
+      orderNumber: order?.numero_orden || order?.orderNumber || "",
       fecha: order?.fecha_entrega || assignment.fecha || "",
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
@@ -83,8 +85,23 @@ const attachProducciones = async (thirdParties) => {
 
 const getThirdParties = async (req, res) => {
   try {
-    const terceros = await repo.findAll(req.query);
     const idsValue = req.query.ids;
+    const ids = Array.isArray(idsValue)
+      ? idsValue.flatMap((value) => String(value).split(','))
+      : idsValue
+        ? String(idsValue).split(',')
+        : [];
+    const validIds = ids
+      .map((id) => id.trim())
+      .filter((id) => /^[a-f\d]{24}$/i.test(id));
+
+    if (validIds.length > 0) {
+      const terceros = (await Promise.all(validIds.map((id) => repo.findById(id))))
+        .filter(Boolean);
+      return ok(res, terceros);
+    }
+
+    const terceros = await repo.findAll(req.query);
     const hasIdsFilter = idsValue && (
       (Array.isArray(idsValue) && idsValue.length > 0) ||
       (typeof idsValue === 'string' && idsValue.trim().length > 0)
@@ -117,7 +134,11 @@ const createThirdParty = async (req, res) => {
 
     const duplicatedName = await repo.findByCompanyName(nombreEmpresa);
     if (duplicatedName) {
-      return conflict(res, "Ya existe un tercero con ese nombre");
+      const dir = duplicatedName.direccion || '';
+      const msg = dir
+        ? `Ya existe un tercero con ese nombre: ${nombreEmpresa}, dirección: ${dir}`
+        : `Ya existe un tercero con ese nombre`;
+      return conflict(res, msg);
     }
 
     const estadoRaw = data.estado;
@@ -188,7 +209,11 @@ const updateThirdParty = async (req, res) => {
     if (nextNombreEmpresa) {
       const duplicatedName = await repo.findByCompanyName(nextNombreEmpresa, req.params.id);
       if (duplicatedName) {
-        return conflict(res, "Ya existe otro tercero con ese nombre");
+        const dir = duplicatedName.direccion || '';
+        const msg = dir
+          ? `Ya existe otro tercero con ese nombre: ${nextNombreEmpresa}, dirección: ${dir}`
+          : `Ya existe otro tercero con ese nombre`;
+        return conflict(res, msg);
       }
     }
 
@@ -222,10 +247,80 @@ const updateThirdParty = async (req, res) => {
   }
 };
 
+const validateUniqueField = async (req, res) => {
+  try {
+    const { campo, valor, excluirId } = req.query;
+
+    if (!campo || valor === undefined || valor === null || String(valor).trim() === '') {
+      return ok(res, { disponible: true, campo, valor: valor || '' });
+    }
+
+    const normalizedValor = String(valor).trim();
+    let duplicated = null;
+
+    switch (campo) {
+      case 'nombre_empresa':
+      case 'nombre':
+        duplicated = await repo.findByCompanyName(normalizedValor, excluirId || null);
+        break;
+      case 'nit':
+        duplicated = await repo.findByNit(normalizedValor, excluirId || null);
+        break;
+      case 'direccion':
+        duplicated = await repo.findByDireccion(normalizedValor, excluirId || null);
+        break;
+      case 'telefono':
+        duplicated = await repo.findByTelefono(normalizedValor, excluirId || null);
+        break;
+      case 'correo_empresa':
+      case 'correo_contacto':
+      case 'correo':
+        duplicated = await repo.findByCorreo(normalizedValor, excluirId || null);
+        break;
+      default:
+        return badRequest(res, `Campo de validación no soportado: ${campo}`);
+    }
+
+    if (duplicated) {
+      const mensajes = {
+        nombre_empresa: 'Ya existe un tercero con ese nombre',
+        nombre: 'Ya existe un tercero con ese nombre',
+        nit: 'Ya existe un tercero con ese NIT',
+        direccion: 'Ya existe un tercero con esa dirección',
+        telefono: 'Ya existe un tercero con ese teléfono',
+        correo_empresa: 'Ya existe un tercero con ese correo',
+        correo_contacto: 'Ya existe un tercero con ese correo',
+        correo: 'Ya existe un tercero con ese correo',
+      };
+      return ok(res, {
+        disponible: false,
+        campo,
+        valor: normalizedValor,
+        mensaje: mensajes[campo] || 'Valor ya registrado',
+      });
+    }
+
+    return ok(res, { disponible: true, campo, valor: normalizedValor });
+  } catch (err) {
+    console.error("[thirdPartiesController] Error validating unique field:", err);
+    return serverError(res);
+  }
+};
+
 const toggleThirdParty = async (req, res) => {
   try {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del usuario para cambiar el estado del tercero.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del usuario incorrecta.");
+    }
 
     const nextEstado = !(tp.estado === true);
     const updated = await repo.update(req.params.id, { estado: nextEstado });
@@ -240,6 +335,17 @@ const deleteThirdParty = async (req, res) => {
   try {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del usuario para eliminar el tercero.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del usuario incorrecta.");
+    }
+
     await repo.delete(req.params.id);
     return ok(res, { message: "Tercero eliminado exitosamente" });
   } catch (err) {
@@ -303,5 +409,6 @@ module.exports = {
   toggleThirdParty,
   deleteThirdParty,
   linkProduccionToTercero,
+  validateUniqueField,
 };
 

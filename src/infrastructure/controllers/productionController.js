@@ -28,6 +28,8 @@ const AsignarEmpleadoProduccion  = require("../../application/use-cases/producti
 const ReasignarEmpleadoProduccion = require("../../application/use-cases/production/ReasignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository             = require("../repositories/UserRepository");
+const ClientRepository            = require("../repositories/ClientRepository");
+const SiteRepository              = require("../repositories/SiteRepository");
 
 const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
 
@@ -47,6 +49,22 @@ const handleError = (res, err) => {
   console.error("[ProductionController]", err);
   const msg = process.env.NODE_ENV !== "production" ? err.message : undefined;
   return serverError(res, msg);
+};
+
+const resolveUserName = async (req, userId) => {
+  if (!userId) return "Sistema";
+  if (req.user?.nombreCompleto) return req.user.nombreCompleto;
+  if (req.user?.nombre) return req.user.nombre;
+  if (req.user?.username) return req.user.username;
+  try {
+    const user = await new UserRepository().findById(userId);
+    const name = user?.nombreCompleto || user?.nombre || user?.username || String(userId);
+    req.user = req.user || {};
+    req.user.nombreCompleto = name;
+    return name;
+  } catch {
+    return String(userId);
+  }
 };
 
 /**
@@ -103,9 +121,16 @@ const getOrders = async (req, res) => {
 
 const getOrderById = async (req, res) => {
   try {
-    const order = await prodRepo.findById(req.params.id);
-    if (!order) return notFound(res, "Orden no encontrada");
-    const details = await detailRepo.findAll({ id_orden: req.params.id });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
+    const order = await prodRepo.findById(id);
+    if (!order) {
+      console.warn(`[ProductionController] getOrderById 404 id=${id}`);
+      return notFound(res, "Orden no encontrada");
+    }
+    const details = await detailRepo.findAll({ id_orden: id });
     return ok(res, { ...order.toJSON(), detalles: details.map((d) => d.toJSON()) });
   } catch (err) {
     return handleError(res, err);
@@ -114,35 +139,48 @@ const getOrderById = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
-    const { fecha_entrega, cliente, id_usuario } = req.body;
+    const data = req.validatedData || req.body;
+    const { fecha_entrega, cliente, id_usuario } = data;
     const userId = id_usuario || req.user?.id || "anonymous";
 
     if (!fecha_entrega || !cliente)
       return badRequest(res, "Los campos fecha_entrega y cliente son requeridos");
 
-    // 🐛 FIX: este createOrder ignoraba por completo el campo "tipo" que
-    // manda el frontend y SIEMPRE creaba la orden en estado "Diseño" —
-    // incluso las de tipo "produccion" (artículo con ficha técnica YA
-    // EXISTENTE, elegido de un producto del catálogo), que deben arrancar
-    // directamente en "Ficha Técnica" (el "Diseño" se da por completado
-    // automáticamente porque ya existe) para que el flujo respete el orden
-    // real de las etapas: Diseño → Ficha Técnica → Corte → ... En Api/src
-    // (puerto 3000) esta lógica ya existía correctamente; aquí faltaba.
-    const tipo = req.body.tipo || req.body.type || "produccion";
-    const referencia = req.body.referencia || req.body.reference || null;
-    const producto = req.body.producto || req.body.product || null;
-    const designImages = Array.isArray(req.body.designImages) ? req.body.designImages : [];
-    const fromDamaged = req.body.fromDamaged === true || req.body.fromDamaged === "true";
-    const originalOrderNumber = req.body.originalOrderNumber || req.body.original_order_number || null;
-    const originalOrderStatus = req.body.originalOrderStatus || req.body.original_order_status || null;
+    const tipo = data.tipo || data.type || "produccion";
+    const referencia = data.referencia || data.reference || null;
+    const producto = data.producto || data.product || null;
+    const designImages = Array.isArray(data.designImages) ? data.designImages : [];
+    const finishedImages = Array.isArray(data.finishedImages) ? data.finishedImages : [];
+    const finishedImageUrl = typeof data.finishedImageUrl === 'string' ? data.finishedImageUrl : null;
 
-    let techSpecification = req.body.techSpecification || req.body.techSheet || null;
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    const normalizedDesignImages = normalizeImageArray(designImages);
+    const normalizedFinishedImages = normalizeImageArray(finishedImages);
+    const normalizedFinishedImageUrl = (typeof finishedImageUrl === 'string' && finishedImageUrl.trim()) || null;
+
+    console.log('[ProductionController] createOrder imagenes:', {
+      designImages: normalizedDesignImages,
+      finishedImages: normalizedFinishedImages,
+      finishedImageUrl: normalizedFinishedImageUrl,
+    });
+    const fromDamaged = data.fromDamaged === true || data.fromDamaged === "true";
+    const originalOrderNumber = data.originalOrderNumber || data.original_order_number || null;
+    const originalOrderStatus = data.originalOrderStatus || data.original_order_status || null;
+
+    let techSpecification = data.techSpecification || data.techSheet || null;
     const isProduccion = tipo === "produccion";
 
-    // Las órdenes tipo "produccion" referencian un producto que YA tiene
-    // ficha técnica registrada — se busca y se copia dentro de la orden
-    // para que quede disponible de inmediato en la etapa "Ficha Técnica".
-    if (isProduccion && !techSpecification && referencia) {
+    if (isProduccion && referencia) {
       let product = null;
       const refTrimmed = String(referencia).trim();
       if (mongoose.isValidObjectId(refTrimmed)) {
@@ -153,9 +191,18 @@ const createOrder = async (req, res) => {
         product = await productRepo.findByReference(referencia).catch(() => null);
       }
       if (product) {
-        const specs = await techSheetRepo.findAll({ id_producto: product.id }).catch(() => []);
-        const activeSpec = specs && specs.length ? specs[0] : null;
-        if (activeSpec) techSpecification = activeSpec;
+        if (!techSpecification) {
+          const specs = await techSheetRepo.findAll({ id_producto: product.id }).catch(() => []);
+          const activeSpec = specs && specs.length ? specs[0] : null;
+          if (activeSpec) techSpecification = activeSpec;
+        }
+
+        if (techSpecification && Number(product.precio) > 0) {
+          techSpecification = {
+            ...techSpecification,
+            costPerUnit: Number(product.precio),
+          };
+        }
       }
     }
 
@@ -169,15 +216,13 @@ const createOrder = async (req, res) => {
       producto,
       referencia,
       techSpecification,
-      designImages,
+      designImages: normalizedDesignImages,
+      finishedImages: normalizedFinishedImages,
+      finishedImageUrl: normalizedFinishedImageUrl,
       fromDamaged,
       originalOrderNumber,
       originalOrderStatus,
       estado: estadoInicial,
-      // "Diseño" se registra como paso automático completado cuando la
-      // orden arranca directo en "Ficha Técnica" (tipo producción), igual
-      // que hace Api/src, para que el historial/stepper no muestre un
-      // salto de etapa.
       historial: [{ estado: "Diseño", fecha: new Date(), id_usuario: userId, motivo: null }],
     });
     return created(res, order.toJSON());
@@ -188,7 +233,11 @@ const createOrder = async (req, res) => {
 
 const updateOrder = async (req, res) => {
   try {
-    const order = await prodRepo.findById(req.params.id);
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
+    const order = await prodRepo.findById(id);
     if (!order) return notFound(res, "Orden no encontrada");
 
     if (order.estaAnulada())
@@ -235,6 +284,30 @@ const updateOrder = async (req, res) => {
       safeChanges.fecha_entrega = fecha;
     }
 
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "designImages")) {
+      safeChanges.designImages = normalizeImageArray(safeChanges.designImages);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "finishedImages")) {
+      safeChanges.finishedImages = normalizeImageArray(safeChanges.finishedImages);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeChanges, "finishedImageUrl")) {
+      const url = safeChanges.finishedImageUrl;
+      safeChanges.finishedImageUrl = (typeof url === 'string' && url.trim()) || null;
+    }
+
+    console.log('[ProductionController] updateOrder safeChanges:', JSON.stringify(safeChanges));
+
     const updated = await prodRepo.update(req.params.id, safeChanges);
     if (!updated) return serverError(res, "Error al actualizar la orden");
     return ok(res, updated.toJSON());
@@ -250,15 +323,22 @@ const updateOrder = async (req, res) => {
 
 const anularOrder = async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
     const { motivo, id_usuario: bodyUser, user: bodyUserName } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
+    const user = await resolveUserName(req, id_usuario);
 
     const useCase = new AnularProduction(prodRepo);
-    const result  = await useCase.execute(req.params.id, motivo, id_usuario, user);
+    const result  = await useCase.execute(id, motivo, id_usuario, user);
     return ok(res, result);
   } catch (err) {
-    if (err.statusCode === 404) return notFound(res, err.message);
+    if (err.statusCode === 404) {
+      console.warn(`[ProductionController] anularOrder 404 id=${req.params.id} motivo=${err.message}`);
+      return notFound(res, err.message);
+    }
     if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
     return handleError(res, err);
   }
@@ -268,11 +348,33 @@ const anularOrder = async (req, res) => {
 
 const cambiarEstado = async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return badRequest(res, `ID de orden inválido: "${id}"`);
+    }
     const { estado, id_usuario: bodyUser, user: bodyUserName, force, ...rest } = req.body;
     const id_usuario = bodyUser || req.user?.id || null;
-    const user = bodyUserName || req.user?.nombre || req.user?.id || (typeof bodyUser === 'string' ? bodyUser : null);
-    console.log(`[ProductionController] cambiarEstado called id=${req.params.id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
+    const user = await resolveUserName(req, id_usuario);
+    console.log(`[ProductionController] cambiarEstado called id=${id} estado=${estado} id_usuario=${id_usuario} force=${!!force}`);
     console.log('[ProductionController] payload extra:', rest);
+
+    const normalizeImageArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.url || item.src || item.secure_url || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    if (rest.designImages !== undefined) rest.designImages = normalizeImageArray(rest.designImages);
+    if (rest.finishedImages !== undefined) rest.finishedImages = normalizeImageArray(rest.finishedImages);
+    if (rest.finishedImageUrl !== undefined) {
+      const url = rest.finishedImageUrl;
+      rest.finishedImageUrl = (typeof url === 'string' && url.trim()) || null;
+    }
 
     // Si retrocedemos a un estado igual o anterior a "Compras", eliminamos las asignaciones de terceros de la orden
     const Production = require("../../domain/entities/Production");
@@ -283,13 +385,25 @@ const cambiarEstado = async (req, res) => {
       await assignmentRepo.deleteByOrder(req.params.id);
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo, new UserRepository());
+    const useCase = new CambiarEstadoProduction(
+      prodRepo,
+      new UserRepository(),
+      new ClientRepository(),
+      new SiteRepository(),
+    );
     const result  = await useCase.execute(req.params.id, estado, id_usuario, user, {
       force: !!force, extra: rest,
       solicitante: req.user
         ? { id: req.user.id || req.user._id, rolNombre: req.user.rolNombre }
         : null,
     });
+
+    let response = result;
+    if (estado === "Corte") {
+      await detailRepo.assignRefCorteForOrder(req.params.id);
+      const details = await detailRepo.findAll({ id_orden: req.params.id });
+      response = { ...result, detalles: details.map((detail) => detail.toJSON()) };
+    }
       console.log('[ProductionController] cambiarEstado result:', result && result.id ? result.id : result);
 
     // Al confirmar el envío, los productos fabricados ingresan al stock
@@ -297,7 +411,7 @@ const cambiarEstado = async (req, res) => {
       await aplicarIngresoStockPorEnvio(req.params.id);
     }
 
-    return ok(res, result);
+    return ok(res, response);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
     if (err.statusCode === 400 || err.statusCode === 422) return badRequest(res, err.message);
@@ -329,6 +443,12 @@ const createOrderDetail = async (req, res) => {
       ...req.body,
       cantidad: req.body.cantidad !== undefined ? Number(req.body.cantidad) : undefined,
     };
+
+    const order = await prodRepo.findById(payload.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    if (order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden agregar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const useCase = new CreateOrderDetail(detailRepo, prodRepo);
     const detail  = await useCase.execute(payload);
@@ -365,6 +485,13 @@ const deleteOrderDetail = async (req, res) => {
   try {
     const detail = await detailRepo.findById(req.params.id);
     if (!detail) return notFound(res, 'Detalle no encontrado');
+
+    const order = await prodRepo.findById(detail.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    const isDamageAdjustment = req.body?.ajusteDanio === true;
+    if (!isDamageAdjustment && order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden eliminar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const deleted = await detailRepo.delete(req.params.id);
     if (!deleted) return notFound(res, 'No se pudo eliminar el detalle');
@@ -418,7 +545,7 @@ const ESTADOS_FINALIZADOS = ["Enviado", "Anulada"];
  * de la etapa ACTUAL (empleadoAsignadoId), para poder repartir
  * la carga de trabajo al asignar un nuevo responsable.
  *
- * 🐛 FIX: antes contaba desde `empleadoAsignaciones` (objeto que acumula
+ * Cuenta desde `empleadoAsignaciones` (objeto que acumula
  * TODAS las asignaciones históricas del empleado por etapa), lo cual podía
  * inflar el conteo o mostrar 0 si el empleado solo estaba asignado en la
  * etapa actual. Ahora cuenta desde `empleadoAsignadoId` (el empleado
@@ -429,34 +556,63 @@ const getEmployeeWorkload = async (req, res) => {
   try {
     const cargo = typeof req.query.cargo === "string" ? req.query.cargo.trim() : "";
     const sedeId = typeof req.query.sedeId === "string" ? req.query.sedeId.trim() : "";
-    const employeeFilter = { estado: true };
+    const normalizar = (value) => String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const cargoNormalizado = normalizar(cargo);
 
-    if (cargo) employeeFilter.cargo = { $regex: `^${cargo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
-    if (sedeId && mongoose.isValidObjectId(sedeId)) employeeFilter.sedeId = sedeId;
+    const userQuery = { estado: true };
+    if (sedeId && mongoose.isValidObjectId(sedeId)) {
+      userQuery.sedeId = new mongoose.Types.ObjectId(sedeId);
+    }
 
-    const employees = await UserModel.find(employeeFilter)
-      .select("_id nombre nombreCompleto correo cargo sedeId")
+    // Usar la colección nativa evita que un documento legacy provoque un
+    // CastError en el modelo Mongoose y tumbe todo el catálogo de empleados.
+    const employees = await UserModel.collection
+      .find(userQuery, {
+        projection: { _id: 1, nombre: 1, nombreCompleto: 1, correo: 1, cargo: 1, sedeId: 1 },
+      })
       .sort({ nombreCompleto: 1, nombre: 1 })
-      .lean();
+      .toArray();
 
-    // 🐛 FIX: contar desde `empleadoAsignadoId` (campo plano) en vez de
+    const disponibles = employees.filter((employee) => {
+      const cargos = Array.isArray(employee.cargo) ? employee.cargo : [employee.cargo];
+      return !cargoNormalizado || cargos.some((value) => normalizar(value) === cargoNormalizado);
+    });
+
+    // Cuenta desde `empleadoAsignadoId` (campo plano) en vez de
     // `empleadoAsignaciones` (objeto con todas las etapas históricas).
     // Así el conteo refleja la carga REAL del empleado en la etapa actual.
-    const activeOrders = await ProductionOrderModel.find(
-      { estado: { $nin: ESTADOS_FINALIZADOS } },
-      { empleadoAsignadoId: 1 },
-    ).lean();
+    let activeOrders = [];
+    try {
+      // Se consulta la colección nativa porque `empleadoAsignaciones` no
+      // existe en el esquema actual, pero sí puede existir en documentos
+      // legacy. Mongoose podría eliminar ese campo antes del conteo.
+      activeOrders = await ProductionOrderModel.collection
+        .find({ estado: { $nin: ESTADOS_FINALIZADOS } })
+        .project({ estado: 1, empleadoAsignadoId: 1, empleadoAsignaciones: 1 })
+        .toArray();
+    } catch (err) {
+      console.error("[Producción] No se pudo calcular la carga laboral:", err.message);
+    }
 
     const countByEmployeeId = new Map();
     for (const order of activeOrders) {
-      const idEmpleado = order.empleadoAsignadoId;
+      // Las órdenes nuevas guardan la carga en el campo plano. Las antiguas
+      // pueden conservar la asignación por etapa en empleadoAsignaciones.
+      const idEmpleado = order.empleadoAsignadoId ||
+        order.empleadoAsignaciones?.[order.estado]?.id_empleado ||
+        order.empleadoAsignaciones?.[order.estado]?.empleadoId ||
+        order.empleadoAsignaciones?.[order.estado]?.idEmpleado;
       if (idEmpleado) {
         const key = String(idEmpleado);
         countByEmployeeId.set(key, (countByEmployeeId.get(key) || 0) + 1);
       }
     }
 
-    const result = employees.map((u) => ({
+    const result = disponibles.map((u) => ({
       id: String(u._id),
       nombre: u.nombreCompleto || u.nombre,
       correo: u.correo,
@@ -522,22 +678,11 @@ const reasignarEmpleado = async (req, res) => {
     const motivo = (req.body.motivo || "").toString().trim();
     if (!empleadoId) return badRequest(res, "El campo id_empleado es requerido");
 
-    const userRepo = new UserRepository();
-    const useCase  = new AsignarEmpleadoProduccion(prodRepo, userRepo);
-    const result   = await useCase.execute(req.params.id, empleadoId);
+    const solicitanteId = req.user?.id || req.user?._id || null;
+    const solicitanteNombre = await resolveUserName(req, solicitanteId);
 
-    // Registrar la justificación del reemplazo en el historial de la orden.
-    if (motivo) {
-      const userId   = req.user?.id || req.user?._id || null;
-      const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
-      await prodRepo.agregarHistorial(
-        req.params.id,
-        `Reasignación de empleado responsable: ${motivo}`,
-        userId,
-        userName,
-        result.estado || "Reasignación",
-      ).catch(() => {});
-    }
+    const useCase = new ReasignarEmpleadoProduccion(prodRepo, new UserRepository());
+    const result = await useCase.execute(req.params.id, empleadoId, motivo, solicitanteId, solicitanteNombre);
 
     return ok(res, result);
   } catch (err) {
@@ -554,9 +699,11 @@ const confirmarEtapa = async (req, res) => {
     const solicitanteId = req.user?.id || req.body.id_usuario;
     if (!solicitanteId) return badRequest(res, "No se pudo identificar al usuario solicitante");
 
+    const solicitanteNombre = await resolveUserName(req, solicitanteId);
+
     const userRepo = new UserRepository();
     const useCase  = new ConfirmarEtapaProduccion(prodRepo, userRepo);
-    const result   = await useCase.execute(req.params.id, solicitanteId);
+    const result   = await useCase.execute(req.params.id, solicitanteId, solicitanteNombre);
     return ok(res, result);
   } catch (err) {
     if (err.statusCode === 404) return notFound(res, err.message);
@@ -571,6 +718,13 @@ const updateOrderDetail = async (req, res) => {
   try {
     const detail = await detailRepo.findById(req.params.id);
     if (!detail) return notFound(res, "Detalle no encontrado");
+
+    const order = await prodRepo.findById(detail.id_orden);
+    const productionIndex = Production.ESTADOS_VALIDOS.indexOf("Producción");
+    const isDamageAdjustment = req.body?.ajusteDanio === true;
+    if (!isDamageAdjustment && order && Production.ESTADOS_VALIDOS.indexOf(order.estado) >= productionIndex) {
+      return badRequest(res, "No se pueden editar detalles cuando la orden está en Producción o una etapa posterior");
+    }
 
     const ALLOWED_FIELDS = new Set(["cantidad", "color", "id_producto", "refCorte"]);
     const changes = {};
@@ -588,8 +742,8 @@ const updateOrderDetail = async (req, res) => {
     if (!updated) return serverError(res, "Error al actualizar el detalle");
 
     // Registrar en el historial de la orden
-    const userId   = req.user?.id || req.user?._id || null;
-    const userName = req.user?.nombreCompleto || req.user?.nombre || req.user?.username || "Sistema";
+    const userId = req.user?.id || req.user?._id || null;
+    const userName = await resolveUserName(req, userId);
     await prodRepo.agregarHistorial(
       detail.id_orden,
       `Detalle actualizado: producto ${detail.id_producto} - cambios: ${JSON.stringify(changes)}`,
@@ -634,8 +788,8 @@ const deleteAssignmentsByOrder = async (req, res) => {
 const agregarHistorial = async (req, res) => {
   try {
     const { motivo, estado } = req.body;
-    const userId = req.body.id_usuario || req.user?.id || req.user?.nombre || "Sistema";
-    const user = req.body.user || req.user?.nombre || "Sistema";
+    const userId = req.body.id_usuario || req.user?.id || null;
+    const user = await resolveUserName(req, userId);
     const order = await prodRepo.findById(req.params.id);
     if (!order) return notFound(res, "Orden no encontrada");
     const estadoRegistro = estado || order.estado;

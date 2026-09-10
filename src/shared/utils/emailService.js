@@ -130,6 +130,21 @@ const sendProductionStageCompletedEmail = async ({ nombreCompleto, correo, numer
   await sendEmail({ to: correo, subject: `Orden #${numeroOrden} — etapa "${etapaCompletada}" finalizada`, html });
 };
 
+const sendProductionCompletedEmail = async ({ nombreCliente, correo, numeroOrden, sedeDestino }) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+      <h2>Hola, ${nombreCliente}</h2>
+      <p>Tu orden de producción <strong>#${numeroOrden}</strong> fue terminada y enviada.</p>
+      <p>La orden fue enviada a la sede:</p>
+      <p><strong>${sedeDestino}</strong></p>
+      <p>Gracias por confiar en <strong>Unistock</strong>.</p>
+      <hr/>
+      <p><strong>Equipo de Unistock</strong></p>
+    </div>
+  `;
+  await sendEmail({ to: correo, subject: `Orden #${numeroOrden} terminada y enviada — Unistock`, html });
+};
+
 const sendAccountLockedEmail = async ({ gerenteNombre, gerenteCorreo, usuarioBloqueado }) => {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
@@ -160,6 +175,7 @@ module.exports = {
   sendEmailChangedEmail,
   sendProductionAssignedEmail,
   sendProductionStageCompletedEmail,
+  sendProductionCompletedEmail,
   sendAccountLockedEmail,
 
 };

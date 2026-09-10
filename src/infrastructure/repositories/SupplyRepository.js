@@ -1,5 +1,6 @@
 // infrastructure/repositories/SupplyRepository.js
 const SupplyModel = require("../db/SupplyModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const SupplyCategoryModel = require("../db/SupplyCategoryModel");
 const Supply = require("../../domain/entities/Supply");
 
@@ -19,7 +20,7 @@ class SupplyRepository {
     const query = {};
 
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [
         { nombre: re },
         { categoria: re }

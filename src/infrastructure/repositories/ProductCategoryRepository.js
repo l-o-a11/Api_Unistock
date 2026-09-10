@@ -1,5 +1,6 @@
 // infrastructure/repositories/ProductCategoryRepository.js
 const ProductCategoryModel = require("../db/ProductCategoryModel");
+const { escapeRegex } = require("../../shared/utils/securityInput");
 const ProductModel = require("../db/ProductModel");
 const ProductCategory = require("../../domain/entities/ProductCategory");
 
@@ -21,7 +22,7 @@ class ProductCategoryRepository {
   async findAll(filters = {}) {
     const query = {};
     if (filters.search) {
-      const re = new RegExp(filters.search, "i");
+      const re = new RegExp(escapeRegex(filters.search).slice(0, 100), "i");
       query.$or = [{ nombre: re }, { descripcion: re }, { descripción: re }];
     }
     if (filters.estado !== undefined) {

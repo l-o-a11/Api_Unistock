@@ -31,10 +31,24 @@ class UpdateSupply {
       throw err;
     }
 
-    if (stock !== undefined && parseFloat(stock) < 0) {
-      const err = new Error('El stock no puede ser negativo');
-      err.statusCode = 400;
-      throw err;
+    if (stock !== undefined) {
+      if (stock === null || stock === '' || !Number.isFinite(Number(stock))) {
+        const err = new Error('El stock debe ser un número válido');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const newStock = Number(stock);
+      if (newStock < 0) {
+        const err = new Error('El stock no puede ser negativo');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (newStock > Number(existing.stock)) {
+        const err = new Error('El stock solo puede disminuirse, no aumentarse');
+        err.statusCode = 400;
+        throw err;
+      }
     }
 
     // FIX: imagenes_Url ya no es obligatorio en update
@@ -76,7 +90,7 @@ class UpdateSupply {
     if (valor_medida  != null) changes.valor_medida = parseFloat(valor_medida);
     if (medida        != null) changes.medida       = medida.trim();
     if (imagenes_Url  != null) changes.imagenes_Url = imagenes_Url.filter(Boolean);
-    if (stock         != null) changes.stock        = parseInt(stock) || 0;
+    if (stock         != null) changes.stock        = Number(stock);
 
     // FIX: normalizar propiedades — acepta clave o propiedadId
     if (propiedades != null) {

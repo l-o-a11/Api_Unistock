@@ -170,7 +170,7 @@ const createThirdPartySchema = baseThirdParty.superRefine((data, ctx) => {
   if (!nombreFinal) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['nombre'],
+      path: ['nombre_empresa'],
       message: 'Nombre es requerido (nombre o nombre_empresa)',
     });
   }
@@ -178,7 +178,7 @@ const createThirdPartySchema = baseThirdParty.superRefine((data, ctx) => {
   if (!contactoFinal) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['contacto'],
+      path: ['nombre_contacto'],
       message: 'Contacto es requerido (contacto o nombre_contacto)',
     });
   }
@@ -192,26 +192,43 @@ const updateThirdPartySchema = baseThirdParty
     const nombreFinal = data.nombre ?? data.nombre_empresa;
     const contactoFinal = data.contacto ?? data.nombre_contacto;
 
-    // Si viene alguno de los campos relacionados, exige que exista el par correspondiente.
     const hasNombreRelated =
       data.nombre !== undefined || data.nombre_empresa !== undefined;
     const hasContactoRelated =
       data.contacto !== undefined || data.nombre_contacto !== undefined;
 
     if (hasNombreRelated && !nombreFinal) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['nombre'],
-        message: 'Nombre es requerido (nombre o nombre_empresa)',
-      });
+      if (data.nombre !== undefined && data.nombre !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nombre'],
+          message: 'Nombre es requerido (nombre o nombre_empresa)',
+        });
+      }
+      if (data.nombre_empresa !== undefined && data.nombre_empresa !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nombre_empresa'],
+          message: 'Nombre es requerido (nombre o nombre_empresa)',
+        });
+      }
     }
 
     if (hasContactoRelated && !contactoFinal) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['contacto'],
-        message: 'Contacto es requerido (contacto o nombre_contacto)',
-      });
+      if (data.contacto !== undefined && data.contacto !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contacto'],
+          message: 'Contacto es requerido (contacto o nombre_contacto)',
+        });
+      }
+      if (data.nombre_contacto !== undefined && data.nombre_contacto !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nombre_contacto'],
+          message: 'Contacto es requerido (contacto o nombre_contacto)',
+        });
+      }
     }
   })
   .strict('No se permiten campos adicionales');

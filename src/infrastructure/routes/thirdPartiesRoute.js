@@ -110,6 +110,7 @@ router.use(requireAuth);
  *         description: No autorizado
  */
 router.get("/", requirePermission(MODULO, "leer"), ctrl.getThirdParties);
+router.get("/validar", requirePermission(MODULO, "leer"), ctrl.validateUniqueField);
 router.get("/:id", requirePermission(MODULO, "leer"), ctrl.getThirdPartyById);
 router.post("/", requirePermission(MODULO, "crear"), validateSchema(createThirdPartySchema), ctrl.createThirdParty);
 router.put("/:id", requirePermission(MODULO, "actualizar"), validateSchema(updateThirdPartySchema), ctrl.updateThirdParty);
