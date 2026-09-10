@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -92,7 +92,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -100,10 +100,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -112,23 +112,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// application/use-cases/production/GetProductions.js
 &nbsp;
 class GetProductions {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(productionRepository) {
-<span class="cstat-no" title="statement not covered" >    this.productionRepository = productionRepository;</span>
+  constructor(productionRepository) {
+    this.productionRepository = productionRepository;
   }
 &nbsp;
   /**
    * @param {Object} filters — search, estado, id_usuario, fecha_desde, fecha_hasta,
    *                           page, limit, sortBy, order
    */
-<span class="fstat-no" title="function not covered" >as</span>ync execute(filters = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-    const result = <span class="cstat-no" title="statement not covered" >await this.productionRepository.findAll(filters);</span>
-    const orders = <span class="cstat-no" title="statement not covered" >Array.isArray(result?.data) ? result.data : [];</span>
-<span class="cstat-no" title="statement not covered" >    return {</span>
-      data: orders.map(<span class="fstat-no" title="function not covered" >(p</span>) =&gt; <span class="cstat-no" title="statement not covered" >p.toJSON())</span>,
+async execute(filters = {}) {
+    const result = await this.productionRepository.findAll(filters);
+    const orders = Array.isArray(result?.data) ? result.data : [];
+    return {
+      data: orders.map((p) =&gt; p.toJSON()),
       total: result.total || 0,
       page: result.page || 1,
       limit: result.limit || orders.length,
@@ -137,7 +137,7 @@ class GetProductions {
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = GetProductions;</span>
+module.exports = GetProductions;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -145,7 +145,7 @@ class GetProductions {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-10T00:52:21.356Z
+                at 2026-09-10T01:43:51.463Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -11,8 +11,12 @@ jest.mock("../../../../src/shared/utils/emailService", () => ({
   sendAccountLockedEmail: jest.fn().mockResolvedValue(true),
 }));
 
-const { compare } = require("../../../../src/infrastructure/security/password_encrypter");
-const { generate } = require("../../../../src/infrastructure/security/token_generator");
+const {
+  compare,
+} = require("../../../../src/infrastructure/security/password_encrypter");
+const {
+  generate,
+} = require("../../../../src/infrastructure/security/token_generator");
 
 // Helper para crear un usuario falso con toPublic()
 function makeFakeUser(overrides = {}) {
@@ -35,6 +39,7 @@ function makeFakeUser(overrides = {}) {
 describe("LoginUser", () => {
   let userRepository;
   let roleRepository;
+  let siteRepository;
   let loginUser;
 
   beforeEach(() => {
@@ -50,7 +55,10 @@ describe("LoginUser", () => {
       findById: jest.fn(),
       findByName: jest.fn().mockResolvedValue(null),
     };
-    loginUser = new LoginUser(userRepository, roleRepository);
+    siteRepository = {
+      findById: jest.fn(),
+    };
+    loginUser = new LoginUser(userRepository, roleRepository, siteRepository);
   });
 
   test("rama: usuario no existe -> 401 credenciales inválidas", async () => {
@@ -124,7 +132,10 @@ describe("LoginUser", () => {
   test("rama: password correcta pero rol está inactivo -> 403", async () => {
     userRepository.findByEmailWithPassword.mockResolvedValue(makeFakeUser());
     compare.mockResolvedValue(true);
-    roleRepository.findById.mockResolvedValue({ nombre: "Empleado", estado: false });
+    roleRepository.findById.mockResolvedValue({
+      nombre: "Empleado",
+      estado: false,
+    });
 
     await expect(
       loginUser.execute({ correo: "test@unistock.com", password: "buenaPass" }),
@@ -134,7 +145,11 @@ describe("LoginUser", () => {
   test("camino feliz: login correcto devuelve token y usuario sin password", async () => {
     userRepository.findByEmailWithPassword.mockResolvedValue(makeFakeUser());
     compare.mockResolvedValue(true);
-    roleRepository.findById.mockResolvedValue({ nombre: "Empleado", estado: true });
+    roleRepository.findById.mockResolvedValue({
+      nombre: "Empleado",
+      estado: true,
+    });
+    siteRepository.findById.mockResolvedValue({ nombre: "Sede Central" });
     generate.mockReturnValue("fake.jwt.token");
 
     const result = await loginUser.execute({
@@ -145,8 +160,48 @@ describe("LoginUser", () => {
     expect(result.token).toBe("fake.jwt.token");
     expect(result.user).not.toHaveProperty("password");
     expect(userRepository.resetFailedAttempts).toHaveBeenCalledWith("user123");
+    expect(siteRepository.findById).toHaveBeenCalledWith("sede1");
     expect(generate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "user123", rolNombre: "Empleado" }),
+      expect.objectContaining({
+        id: "user123",
+        rolNombre: "Empleado",
+        sedeNombre: "Sede Central",
+      }),
     );
+  });
+
+  test("rama: password correcta y rol activo pero la sede no existe -> 403", async () => {
+    userRepository.findByEmailWithPassword.mockResolvedValue(makeFakeUser());
+    compare.mockResolvedValue(true);
+    roleRepository.findById.mockResolvedValue({
+      nombre: "Empleado",
+      estado: true,
+    });
+    siteRepository.findById.mockResolvedValue(null);
+
+    await expect(
+      loginUser.execute({ correo: "test@unistock.com", password: "buenaPass" }),
+    ).rejects.toMatchObject({
+      message: "La sede del usuario no existe",
+      statusCode: 403,
+    });
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  test("rama: la sede existe pero no tiene nombre -> 403", async () => {
+    userRepository.findByEmailWithPassword.mockResolvedValue(makeFakeUser());
+    compare.mockResolvedValue(true);
+    roleRepository.findById.mockResolvedValue({
+      nombre: "Empleado",
+      estado: true,
+    });
+    siteRepository.findById.mockResolvedValue({ nombre: null });
+
+    await expect(
+      loginUser.execute({ correo: "test@unistock.com", password: "buenaPass" }),
+    ).rejects.toMatchObject({
+      message: "La sede del usuario no existe",
+      statusCode: 403,
+    });
   });
 });

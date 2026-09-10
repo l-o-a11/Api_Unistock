@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -99,75 +99,75 @@
 <a name='L34'></a><a href='#L34'>34</a>
 <a name='L35'></a><a href='#L35'>35</a>
 <a name='L36'></a><a href='#L36'>36</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// application/use-cases/production/AnularProduction.js
-const Production = <span class="cstat-no" title="statement not covered" >require("../../../domain/entities/Production");</span>
+const Production = require("../../../domain/entities/Production");
 &nbsp;
 class AnularProduction {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(productionRepository) {
-<span class="cstat-no" title="statement not covered" >    this.productionRepository = productionRepository;</span>
+  constructor(productionRepository) {
+    this.productionRepository = productionRepository;
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync execute(id, motivo, id_usuario, user) {
-    const production = <span class="cstat-no" title="statement not covered" >await this.productionRepository.findById(id);</span>
+  async execute(id, motivo, id_usuario, user) {
+    const production = await this.productionRepository.findById(id);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!production) {</span>
-      const error = <span class="cstat-no" title="statement not covered" >new Error("Orden de producción no encontrada");</span>
-<span class="cstat-no" title="statement not covered" >      error.statusCode = 404;</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+    if (!production) {
+      const error = new Error("Orden de producción no encontrada");
+      error.statusCode = 404;
+      throw error;
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (production.estaAnulada()) {</span>
-      const error = <span class="cstat-no" title="statement not covered" >new Error("La orden ya se encuentra anulada");</span>
-<span class="cstat-no" title="statement not covered" >      error.statusCode = 422;</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+    if (production.estaAnulada()) {
+      const error = new Error("La orden ya se encuentra anulada");
+      error.statusCode = 422;
+      throw error;
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!motivo || !motivo.trim()) {</span>
-      const error = <span class="cstat-no" title="statement not covered" >new Error("El motivo de anulación es requerido");</span>
-<span class="cstat-no" title="statement not covered" >      error.statusCode = 400;</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+    if (!motivo || !motivo.trim()) {
+      const error = new Error("El motivo de anulación es requerido");
+      error.statusCode = 400;
+      throw error;
     }
 &nbsp;
-    const updated = <span class="cstat-no" title="statement not covered" >await this.productionRepository.anular(id, motivo.trim(), id_usuario, user);</span>
-<span class="cstat-no" title="statement not covered" >    return updated.toJSON();</span>
+    const updated = await this.productionRepository.anular(id, motivo.trim(), id_usuario, user);
+    return updated.toJSON();
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = AnularProduction;</span>
+module.exports = AnularProduction;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -175,7 +175,7 @@ class AnularProduction {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-10T00:52:21.356Z
+                at 2026-09-10T01:43:51.463Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

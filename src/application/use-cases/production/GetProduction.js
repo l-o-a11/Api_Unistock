@@ -1,4 +1,4 @@
-// application/use-cases/productions/GetUser.js
+// application/use-cases/production/GetProduction.js
 // Caso de uso: listar Produccion con filtros opcionales
 
 class GetProduction {
@@ -7,7 +7,10 @@ class GetProduction {
   }
 
   async execute(filters = {}) {
-  const productions = await this.productionRepository.findAll(filters);
-  return productions.map((u) => u.toJSON()); // también cambia toPublic → toJSON
+    const result = await this.productionRepository.findAll(filters);
+    const productions = Array.isArray(result?.data) ? result.data : [];
+    return productions.map((p) => p.toJSON());
+  }
 }
-}
+
+module.exports = GetProduction;

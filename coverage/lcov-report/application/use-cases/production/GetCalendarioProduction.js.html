@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -133,7 +133,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -146,25 +146,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -177,7 +175,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -190,16 +190,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// application/use-cases/production/GetCalendarioProduction.js
 &nbsp;
 class GetCalendarioProduction {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(productionRepository) {
-<span class="cstat-no" title="statement not covered" >    this.productionRepository = productionRepository;</span>
+  constructor(productionRepository) {
+    this.productionRepository = productionRepository;
   }
 &nbsp;
   /**
@@ -211,10 +211,10 @@ class GetCalendarioProduction {
    * @param {string} desde  — ISO yyyy-mm-dd  (opcional)
    * @param {string} hasta  — ISO yyyy-mm-dd  (opcional)
    */
-<span class="fstat-no" title="function not covered" >  as</span>ync execute(desde, hasta) {
-    const ordenes = <span class="cstat-no" title="statement not covered" >await this.productionRepository.findParaCalendario(desde, hasta);</span>
+  async execute(desde, hasta) {
+    const ordenes = await this.productionRepository.findParaCalendario(desde, hasta);
 &nbsp;
-    const COLORES_ESTADO = <span class="cstat-no" title="statement not covered" >{</span>
+    const COLORES_ESTADO = {
       'Diseño':        { color: '#7c3aed', tipo: 'diseno'     },
       'Ficha Técnica': { color: '#7c3aed', tipo: 'diseno'     },
       'Corte':         { color: '#0891b2', tipo: 'corte'      },
@@ -222,13 +222,13 @@ class GetCalendarioProduction {
       'Producción':    { color: '#ec4899', tipo: 'produccion' },
     };
 &nbsp;
-    const eventos = <span class="cstat-no" title="statement not covered" >[];</span>
+    const eventos = [];
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    ordenes.forEach(<span class="fstat-no" title="function not covered" >(o</span>rden) =&gt; {</span>
-      const colorInfo = <span class="cstat-no" title="statement not covered" >COLORES_ESTADO[orden.estado] || { color: '#6366f1', tipo: 'creacion' };</span>
+    ordenes.forEach((orden) =&gt; {
+      const colorInfo = COLORES_ESTADO[orden.estado] || { color: '#6366f1', tipo: 'creacion' };
 &nbsp;
       // Evento de estado actual
-<span class="cstat-no" title="statement not covered" >      eventos.push({</span>
+      eventos.push({
         id:           `estado-${orden.id}`,
         title:        `#${orden.numero_orden} ${orden.cliente} — ${orden.estado}`,
         date:         orden.ultimo_cambio?.fecha
@@ -243,7 +243,7 @@ class GetCalendarioProduction {
       });
 &nbsp;
       // Evento de fecha de entrega (deadline)
-<span class="cstat-no" title="statement not covered" >      eventos.push({</span>
+      eventos.push({
         id:           `entrega-${orden.id}`,
         title:        ` Entrega #${orden.numero_orden} — ${orden.cliente}`,
         date:         new Date(orden.fecha_entrega).toISOString().split('T')[0],
@@ -256,11 +256,11 @@ class GetCalendarioProduction {
       });
     });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return eventos;</span>
+    return eventos;
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = GetCalendarioProduction;</span>
+module.exports = GetCalendarioProduction;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -268,7 +268,7 @@ class GetCalendarioProduction {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-10T00:52:21.356Z
+                at 2026-09-10T01:43:51.463Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

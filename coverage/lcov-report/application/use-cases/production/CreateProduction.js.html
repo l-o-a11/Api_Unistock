@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -90,43 +90,43 @@
 <a name='L25'></a><a href='#L25'>25</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// application/use-cases/production/CreateProduction.js
 class CreateProduction {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(productionRepository) {
-<span class="cstat-no" title="statement not covered" >    this.productionRepository = productionRepository;</span>
+  constructor(productionRepository) {
+    this.productionRepository = productionRepository;
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync execute(data) {
-    const { fecha_entrega, cliente, id_produccion } = <span class="cstat-no" title="statement not covered" >data;</span>
+  async execute(data) {
+    const { fecha_entrega, cliente, id_produccion } = data;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!fecha_entrega || !cliente || !id_produccion) {</span>
-      const error = <span class="cstat-no" title="statement not covered" >new Error("Faltan campos requeridos");</span>
-<span class="cstat-no" title="statement not covered" >      error.statusCode = 400;</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+    if (!fecha_entrega || !cliente || !id_produccion) {
+      const error = new Error("Faltan campos requeridos");
+      error.statusCode = 400;
+      throw error;
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return this.productionRepository.create({</span>
+    return this.productionRepository.create({
       fecha_entrega,
       cliente,
       id_produccion,
@@ -134,7 +134,7 @@ class CreateProduction {
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = CreateProduction;</span>
+module.exports = CreateProduction;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -142,7 +142,7 @@ class CreateProduction {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-10T00:52:21.356Z
+                at 2026-09-10T01:43:51.463Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
