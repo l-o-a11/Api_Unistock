@@ -261,6 +261,9 @@ const updateOrder = async (req, res) => {
       "fromDamaged",
       "originalOrderNumber",
       "originalOrderStatus",
+      "sedeAsignaciones",
+      "terceroAsignaciones",
+      "sedeId",
     ]);
 
     const safeChanges = {};
