@@ -574,11 +574,11 @@ Todas las rutas están montadas bajo el prefijo `/api` (ver `interfaces/server.j
 
 | Método | Ruta                       | Descripción                                    |
 | ------ | -------------------------- | ---------------------------------------------- |
-| POST   | `/upload/upload`           | Subir una imagen (campo `file`)                |
-| POST   | `/upload/upload-multiple`  | Subir varias imágenes (campo `files`, máx. 10) |
+| POST   | `/upload/upload`           | Subir una imagen (campo `file`, JPG/JPEG o PNG, máx. 10 MB)                |
+| POST   | `/upload/upload-multiple`  | Subir varias imágenes (campo `files`, máx. 10, JPG/JPEG o PNG, 10 MB por archivo) |
 | DELETE | `/upload/upload/:publicId` | Eliminar imagen de Cloudinary                  |
 
-**Formato:** `multipart/form-data`. Almacena en Cloudinary (carpeta `unistock/products`). Límite 10MB. Solo imágenes (JPG, PNG, GIF, WebP).
+**Formato:** `multipart/form-data`. Almacena en Cloudinary (carpeta `unistock/products`). Solo se permiten archivos `JPG/JPEG` o `PNG`, con un máximo de `10 MB por archivo` y hasta `10` archivos en `/upload-multiple`.
 
 **Config/servicio:** `cloudinary.config.js`, `cloudinary.service.js`, `multer.middleware.js`
 

@@ -25,6 +25,12 @@ class ClientRepository {
     return ClientModel.findOne({ documento: String(documento).trim() });
   }
 
+  async findByNombre(nombre) {
+    const value = String(nombre || "").trim();
+    if (!value) return null;
+    return ClientModel.findOne({ nombre: new RegExp(`^${escapeRegex(value)}$`, "i") });
+  }
+
   async create(data) {
     return ClientModel.create(data);
   }

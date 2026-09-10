@@ -5,7 +5,7 @@ const upload = multer({
   storage: multer.memoryStorage(),  // archivo en RAM, sin tocar el disco
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
-    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const ALLOWED = ["image/jpeg", "image/png"];
     if (ALLOWED.includes(file.mimetype)) {
       cb(null, true);
     } else {

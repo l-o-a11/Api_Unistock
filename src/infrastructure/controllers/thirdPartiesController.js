@@ -2,11 +2,14 @@
 const ThirdPartiesRepository = require("../repositories/ThirdPartiesRepository");
 const ThirdPartyAssignmentRepository = require("../repositories/ThirdPartyAssignmentRepository");
 const ProductionRepository = require("../repositories/ProductionRepository");
-const { ok, created, badRequest, notFound, conflict, serverError } = require("../../shared/utils/response");
+const UserRepository = require("../repositories/UserRepository");
+const { ok, created, badRequest, notFound, conflict, forbidden, serverError } = require("../../shared/utils/response");
+const { extractManagerPassword, verifyManagerPassword } = require("../../shared/utils/managerAuth");
 
 const repo = new ThirdPartiesRepository();
 const assignmentRepo = new ThirdPartyAssignmentRepository();
 const productionRepo = new ProductionRepository();
+const userRepo = new UserRepository();
 
 const idToString = (value, depth = 0) => {
   if (!value) return "";
@@ -32,14 +35,13 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
   });
 
   const orderIds = [...new Set(filtered.map((assignment) => idToString(assignment.id_orden)).filter(Boolean))];
-  const validOrderIds = orderIds.filter((id) => {
-    try { new mongoose.Types.ObjectId(id); return true; }
-    catch { return false; }
-  });
-  const orders = validOrderIds.length > 0
-    ? await productionRepo.find({ _id: { $in: validOrderIds.map((id) => new mongoose.Types.ObjectId(id)) } })
-    : [];
-  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const orders = await Promise.all(
+    orderIds.map(async (orderId) => [
+      orderId,
+      await productionRepo.findById(orderId).catch(() => null),
+    ]),
+  );
+  const orderById = new Map(orders.filter(([, order]) => order));
 
   const grouped = new Map();
   for (const assignment of filtered) {
@@ -55,8 +57,8 @@ const buildProduccionesByThirdParty = async (thirdPartyIds = []) => {
     }
 
     producciones.push({
-      orden: order?.numero_orden || order?.orderNumber || orderId,
-      orderNumber: order?.numero_orden || order?.orderNumber || orderId,
+      orden: order?.numero_orden || order?.orderNumber || "",
+      orderNumber: order?.numero_orden || order?.orderNumber || "",
       fecha: order?.fecha_entrega || assignment.fecha || "",
       produccionId: order?.id || orderId,
       cantidad: Number(assignment.cantidad) || 0,
@@ -310,6 +312,16 @@ const toggleThirdParty = async (req, res) => {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
 
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del usuario para cambiar el estado del tercero.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del usuario incorrecta.");
+    }
+
     const nextEstado = !(tp.estado === true);
     const updated = await repo.update(req.params.id, { estado: nextEstado });
     return ok(res, updated);
@@ -323,6 +335,17 @@ const deleteThirdParty = async (req, res) => {
   try {
     const tp = await repo.findById(req.params.id);
     if (!tp) return notFound(res, "Tercero no encontrado");
+
+    const password = extractManagerPassword(req);
+    if (!password) {
+      return badRequest(res, "Se requiere la contraseña del usuario para eliminar el tercero.");
+    }
+
+    const passwordOk = await verifyManagerPassword(userRepo, req.user?.id, password);
+    if (!passwordOk) {
+      return forbidden(res, "Contraseña del usuario incorrecta.");
+    }
+
     await repo.delete(req.params.id);
     return ok(res, { message: "Tercero eliminado exitosamente" });
   } catch (err) {

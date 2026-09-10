@@ -28,6 +28,8 @@ const AsignarEmpleadoProduccion  = require("../../application/use-cases/producti
 const ReasignarEmpleadoProduccion = require("../../application/use-cases/production/ReasignarEmpleadoProduccion");
 const ConfirmarEtapaProduccion   = require("../../application/use-cases/production/ConfirmarEtapaProduccion");
 const UserRepository             = require("../repositories/UserRepository");
+const ClientRepository            = require("../repositories/ClientRepository");
+const SiteRepository              = require("../repositories/SiteRepository");
 
 const { ok, created, badRequest, notFound, serverError } = require("../../shared/utils/response");
 
@@ -374,7 +376,12 @@ const cambiarEstado = async (req, res) => {
       await assignmentRepo.deleteByOrder(req.params.id);
     }
 
-    const useCase = new CambiarEstadoProduction(prodRepo, new UserRepository());
+    const useCase = new CambiarEstadoProduction(
+      prodRepo,
+      new UserRepository(),
+      new ClientRepository(),
+      new SiteRepository(),
+    );
     const result  = await useCase.execute(req.params.id, estado, id_usuario, user, {
       force: !!force, extra: rest,
       solicitante: req.user
