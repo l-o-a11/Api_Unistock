@@ -180,7 +180,7 @@ const createOrder = async (req, res) => {
     let techSpecification = data.techSpecification || data.techSheet || null;
     const isProduccion = tipo === "produccion";
 
-    if (isProduccion && !techSpecification && referencia) {
+    if (isProduccion && referencia) {
       let product = null;
       const refTrimmed = String(referencia).trim();
       if (mongoose.isValidObjectId(refTrimmed)) {
@@ -191,9 +191,18 @@ const createOrder = async (req, res) => {
         product = await productRepo.findByReference(referencia).catch(() => null);
       }
       if (product) {
-        const specs = await techSheetRepo.findAll({ id_producto: product.id }).catch(() => []);
-        const activeSpec = specs && specs.length ? specs[0] : null;
-        if (activeSpec) techSpecification = activeSpec;
+        if (!techSpecification) {
+          const specs = await techSheetRepo.findAll({ id_producto: product.id }).catch(() => []);
+          const activeSpec = specs && specs.length ? specs[0] : null;
+          if (activeSpec) techSpecification = activeSpec;
+        }
+
+        if (techSpecification && Number(product.precio) > 0) {
+          techSpecification = {
+            ...techSpecification,
+            costPerUnit: Number(product.precio),
+          };
+        }
       }
     }
 
@@ -578,17 +587,25 @@ const getEmployeeWorkload = async (req, res) => {
     // Así el conteo refleja la carga REAL del empleado en la etapa actual.
     let activeOrders = [];
     try {
-      activeOrders = await ProductionOrderModel.find(
-        { estado: { $nin: ESTADOS_FINALIZADOS } },
-        { empleadoAsignadoId: 1 },
-      ).lean();
+      // Se consulta la colección nativa porque `empleadoAsignaciones` no
+      // existe en el esquema actual, pero sí puede existir en documentos
+      // legacy. Mongoose podría eliminar ese campo antes del conteo.
+      activeOrders = await ProductionOrderModel.collection
+        .find({ estado: { $nin: ESTADOS_FINALIZADOS } })
+        .project({ estado: 1, empleadoAsignadoId: 1, empleadoAsignaciones: 1 })
+        .toArray();
     } catch (err) {
       console.error("[Producción] No se pudo calcular la carga laboral:", err.message);
     }
 
     const countByEmployeeId = new Map();
     for (const order of activeOrders) {
-      const idEmpleado = order.empleadoAsignadoId;
+      // Las órdenes nuevas guardan la carga en el campo plano. Las antiguas
+      // pueden conservar la asignación por etapa en empleadoAsignaciones.
+      const idEmpleado = order.empleadoAsignadoId ||
+        order.empleadoAsignaciones?.[order.estado]?.id_empleado ||
+        order.empleadoAsignaciones?.[order.estado]?.empleadoId ||
+        order.empleadoAsignaciones?.[order.estado]?.idEmpleado;
       if (idEmpleado) {
         const key = String(idEmpleado);
         countByEmployeeId.set(key, (countByEmployeeId.get(key) || 0) + 1);
