@@ -18,12 +18,12 @@ const baseThirdParty = z.object({
 
 // Mínimo y máximo por dígitos (permite que venga con '-')
       if (digitsOnly.length < 6) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 20 dígitos' });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 12 dígitos' });
         return;
       }
 
-      if (digitsOnly.length > 20) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 20 dígitos' });
+      if (digitsOnly.length > 12) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nit'], message: 'NIT debe tener entre 6 y 12 dígitos' });
         return;
       }
 
@@ -78,11 +78,11 @@ const baseThirdParty = z.object({
     .superRefine((s, ctx) => {
       if (!s || !s.trim()) return;
       const digits = s.replace(/\D/g, '');
-      if (digits.length < 7 || digits.length > 15) {
+      if (digits.length < 7 || digits.length > 12) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['telefono_contacto'],
-          message: 'Teléfono inválido (debe tener entre 7 y 15 dígitos)',
+          message: 'Teléfono inválido (debe tener entre 7 y 12 dígitos)',
         });
       }
     }),
@@ -102,8 +102,8 @@ const baseThirdParty = z.object({
       if (s.trim().length < 5) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direccion'], message: 'Dirección debe tener al menos 5 caracteres' });
       }
-      if (s.trim().length > 200) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direccion'], message: 'Dirección no puede exceder 200 caracteres' });
+      if (s.trim().length > 100) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direccion'], message: 'Dirección no puede exceder 100 caracteres' });
       }
     }),
 
@@ -121,11 +121,11 @@ const baseThirdParty = z.object({
       if (!s || !s.trim()) return;
 
       const digits = s.replace(/\D/g, '');
-      if (digits.length < 7 || digits.length > 15) {
+      if (digits.length < 7 || digits.length > 12) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['telefono'],
-          message: 'Teléfono inválido (debe tener entre 7 y 15 dígitos)',
+          message: 'Teléfono inválido (debe tener entre 7 y 12 dígitos)',
         });
       }
     }),
