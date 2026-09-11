@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     tipoDocumento: { type: String, required: true, enum: ["CC", "TI", "CE", "PEP", "PAS", "PPT"] },
     numeroDocumento: { type: String, required: true, unique: true },
     nombreCompleto: { type: String, required: true },
+    telefono: { type: String, match: /^\d{10,12}$/ },
     correo: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
     rolId: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },

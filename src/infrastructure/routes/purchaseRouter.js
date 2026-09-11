@@ -20,6 +20,7 @@
 const express = require("express");
 const { requireAuth, requirePermission } = require("../../interfaces/middlewares/authMiddleware");
 const ctrl = require("../controllers/purchaseController");
+const { validate, rules } = require("../../interfaces/middlewares/validationMiddleware");
 
 const router = express.Router();
 const MODULO = "compras";
@@ -29,16 +30,16 @@ router.use(requireAuth);
 // ── Detalles (ANTES de /:id para evitar captura por ese parámetro) ─────────
 router.get("/detalle-purchase", requirePermission(MODULO, "leer"), ctrl.getPurchaseDetail);
 router.get("/detalle-purchase/:id", requirePermission(MODULO, "leer"), ctrl.getPurchaseDetailById);
-router.post("/detalle-purchase", requirePermission(MODULO, "crear"), ctrl.createPurchaseDetail);
+router.post("/detalle-purchase", requirePermission(MODULO, "crear"), rules.createPurchaseDetail, validate, ctrl.createPurchaseDetail);
 
 // ── Compras CRUD ───────────────────────────────────────────────────────────
-router.post("/", requirePermission(MODULO, "crear"), ctrl.crearPurchase);
+router.post("/", requirePermission(MODULO, "crear"), rules.createPurchase, validate, ctrl.crearPurchase);
 router.get("/", requirePermission(MODULO, "leer"), ctrl.obtenerPurchases);
 router.get("/:id", requirePermission(MODULO, "leer"), ctrl.obtenerPurchase);
-router.put("/:id", requirePermission(MODULO, "actualizar"), ctrl.actualizarPurchase);
+router.put("/:id", requirePermission(MODULO, "actualizar"), rules.updatePurchase, validate, ctrl.actualizarPurchase);
 router.delete("/:id", requirePermission(MODULO, "eliminar"), ctrl.eliminarPurchase);
 
 // ── Anulación ──────────────────────────────────────────────────────────────
-router.patch("/:id/anular", requirePermission(MODULO, "actualizar"), ctrl.anularPurchase);
+router.patch("/:id/anular", requirePermission(MODULO, "actualizar"), rules.cancelPurchase, validate, ctrl.anularPurchase);
 
 module.exports = router;

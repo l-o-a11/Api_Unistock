@@ -9,9 +9,9 @@ const purchaseDetailSchema = new mongoose.Schema(
     productoId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", default: null },
     insumoId: { type: mongoose.Schema.Types.ObjectId, ref: "Supply", default: null },
     // Nombre libre para cuando no hay referencia en catálogo todavía
-    nombre: { type: String, default: null },
+    nombre: { type: String, default: null, maxlength: 100 },
     // Unidad de medida — string valor del catálogo: "kg", "und", "m", etc.
-    medida: { type: String, default: null },
+    medida: { type: String, default: null, maxlength: 100 },
     cantidad: { type: Number, required: true },
     precioUnitario: { type: Number, required: true },
     subtotal: { type: Number, required: true },

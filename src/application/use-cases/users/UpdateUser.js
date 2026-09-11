@@ -27,6 +27,7 @@ class UpdateUser {
       tipoDocumento,
       numeroDocumento,
       nombreCompleto,
+      telefono,
       correo,
       rolId,
       sedeId,
@@ -63,6 +64,7 @@ class UpdateUser {
     if (numeroDocumento) changes.numeroDocumento = numeroDocumento;
     if (nombreCompleto) changes.nombreCompleto = nombreCompleto.trim();
     if (correo) changes.correo = correo;
+    if (telefono !== undefined) changes.telefono = telefono;
 
     if (rolId) {
       const role = await this.roleRepository.findById(rolId);
