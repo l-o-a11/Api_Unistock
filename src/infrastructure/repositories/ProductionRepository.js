@@ -1,9 +1,6 @@
 // infrastructure/repositories/ProductionRepository.js
 const ProductionOrderModel = require("../db/ProductionOrderModel");
-<<<<<<< HEAD
-=======
 const { escapeRegex } = require("../../shared/utils/securityInput");
->>>>>>> 5ffdc31483e12d086b070a3f59b3472920682e32
 const Production = require("../../domain/entities/Production");
 
 class ProductionRepository {

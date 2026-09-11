@@ -18,7 +18,7 @@ class CreateProduct {
       error.statusCode = 400;
       throw error;
     }
-    
+
     if (!nombre) {
       const error = new Error("El nombre es obligatorio");
       error.statusCode = 400;
@@ -43,8 +43,8 @@ class CreateProduct {
       throw error;
     }
 
-    // Unicidad
-    const existing = await this.productRepository.findByName(nombre);
+    // Unicidad (por referencia, que es la clave única real en el repositorio)
+    const existing = await this.productRepository.findByReference(referencia);
     if (existing) {
       const error = new Error("Producto ya existente");
       error.statusCode = 409;
@@ -67,4 +67,3 @@ class CreateProduct {
 }
 
 module.exports = CreateProduct;
-

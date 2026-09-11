@@ -5,8 +5,10 @@ class GetProduct {
     this.productRepository = productRepository;
   }
 
-  execute(filters = {}) {
-    const products = this.productRepository.findAll(filters);
-    return products.map((p) => p.toPublic());
+  async execute(filters = {}) {
+    const products = await this.productRepository.findAll(filters);
+    return products.map((p) => p.toJSON());
   }
 }
+
+module.exports = GetProduct;

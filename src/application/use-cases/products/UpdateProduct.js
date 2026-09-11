@@ -15,9 +15,10 @@ class UpdateProduct {
       throw error;
     }
 
-    // Validar nombre único si cambia
-    if (nombre && nombre !== product.nombre) {
-      const existing = await this.productRepository.findByName(nombre);
+    // Validar referencia única si cambia (findByReference es el único método
+    // de unicidad que expone el repositorio; no existe findByName)
+    if (referencia && referencia !== product.referencia) {
+      const existing = await this.productRepository.findByReference(referencia);
       if (existing) {
         const error = new Error("Producto ya existente");
         error.statusCode = 409;
