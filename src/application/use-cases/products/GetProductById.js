@@ -5,8 +5,8 @@ class GetProductById {
     this.productRepository = productRepository;
   }
 
-  async execute(id) {
-    const product = await this.productRepository.findById(id);
+  execute(id) {
+    const product = this.productRepository.findById(id);
 
     if (!product) {
       const error = new Error("Producto no encontrado");
@@ -14,8 +14,6 @@ class GetProductById {
       throw error;
     }
 
-    return product.toJSON();
+    return product.toPublic();
   }
 }
-
-module.exports = GetProductById;

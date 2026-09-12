@@ -15,10 +15,9 @@ class UpdateProduct {
       throw error;
     }
 
-    // Validar referencia única si cambia (findByReference es el único método
-    // de unicidad que expone el repositorio; no existe findByName)
-    if (referencia && referencia !== product.referencia) {
-      const existing = await this.productRepository.findByReference(referencia);
+    // Validar nombre único si cambia
+    if (nombre && nombre !== product.nombre) {
+      const existing = await this.productRepository.findByName(nombre);
       if (existing) {
         const error = new Error("Producto ya existente");
         error.statusCode = 409;
@@ -27,11 +26,12 @@ class UpdateProduct {
     }
 
     const updated = await this.productRepository.update(id, {
-      imagenes_Url: imagenes_Url !== undefined ? imagenes_Url : product.imagenes_Url,
+      imagenes_Url:
+        imagenes_Url !== undefined ? imagenes_Url : product.imagenes_Url,
       referencia: referencia !== undefined ? referencia : product.referencia,
       nombre: nombre ? nombre.trim() : product.nombre,
       precio: precio !== undefined ? precio : product.precio,
-      stock: stock !== undefined ? stock : product.stock
+      stock: stock !== undefined ? stock : product.stock,
     });
 
     return updated;

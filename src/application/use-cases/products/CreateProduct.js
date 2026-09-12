@@ -4,7 +4,8 @@ class CreateProduct {
   }
 
   async execute(data) {
-    const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } = data;
+    const { id_categorias, imagenes_Url, referencia, nombre, precio, stock } =
+      data;
 
     // Validaciones
     if (!id_categorias) {
@@ -13,7 +14,11 @@ class CreateProduct {
       throw error;
     }
 
-    if (!imagenes_Url || !Array.isArray(imagenes_Url) || imagenes_Url.length === 0) {
+    if (
+      !imagenes_Url ||
+      !Array.isArray(imagenes_Url) ||
+      imagenes_Url.length === 0
+    ) {
       const error = new Error("Se requiere al menos una imagen");
       error.statusCode = 400;
       throw error;
@@ -43,8 +48,8 @@ class CreateProduct {
       throw error;
     }
 
-    // Unicidad (por referencia, que es la clave única real en el repositorio)
-    const existing = await this.productRepository.findByReference(referencia);
+    // Unicidad
+    const existing = await this.productRepository.findByName(nombre);
     if (existing) {
       const error = new Error("Producto ya existente");
       error.statusCode = 409;
@@ -59,7 +64,7 @@ class CreateProduct {
       nombre: nombre.trim(),
       precio: precio,
       stock: stock,
-      estado: true
+      estado: true,
     });
 
     return product;

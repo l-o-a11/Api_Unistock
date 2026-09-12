@@ -14,6 +14,17 @@ class DeleteProduct {
       throw error;
     }
 
+    // VALIDACION: No eliminar si tiene fichas técnicas asociadas
+    const products = await this.productRepository.findByCategoryId(id);
+
+    if (products && products.length > 0) {
+      const error = new Error(
+        "No se puede eliminar el producto porque tiene más de una ficha técnica asociada",
+      );
+      error.statusCode = 422;
+      throw error;
+    }
+
     await this.productRepository.delete(id);
 
     return { message: "Producto eliminado correctamente" };
